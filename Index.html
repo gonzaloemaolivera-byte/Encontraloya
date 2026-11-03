@@ -1,1 +1,310 @@
 
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#102a43">
+<meta name="description" content="Encontrá lo que necesitás. Compará y comprá en comercios de tu zona.">
+<title>Encontralo Ya | Buscá, compará y comprá</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--ink:#172b4d;--muted:#627d98;--line:#d9e2ec;--paper:#f5f8fb;--white:#fff;--green:#16845b;--shadow:0 12px 32px rgba(16,42,67,.09)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.wrap{width:min(1120px,calc(100% - 32px));margin:auto}
+header{background:var(--navy);color:white;padding:17px 0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-size:1.35rem;font-weight:850;letter-spacing:-.5px}
+.brand span{color:#65d6df}
+.tag{font-size:.82rem;color:#d7e7f5}
+.register-link{border:1px solid #8fb5d4;border-radius:999px;padding:9px 14px;color:white;background:transparent;font-weight:700}
+.hero{padding:44px 0 34px;background:linear-gradient(135deg,#e5f5f8,#f5f8fb 70%)}
+.hero-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:28px;align-items:center}
+.eyebrow{color:var(--blue);font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:1.2px}
+h1{font-size:clamp(2rem,5vw,3.5rem);line-height:1.06;letter-spacing:-1.7px;margin:10px 0 14px;color:var(--navy)}
+.lead{font-size:1.08rem;color:#486581;max-width:620px}
+.searchbox{display:flex;gap:8px;margin-top:24px;background:white;padding:8px;border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow)}
+.searchbox input{min-width:0;flex:1;border:0;outline:0;padding:10px 12px}
+.primary{background:var(--blue);color:white;border:0;border-radius:10px;padding:12px 18px;font-weight:800}
+.hero-note{background:white;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+.hero-note strong{display:block;font-size:1.12rem;color:var(--navy);margin-bottom:6px}
+.hero-note p{margin:0;color:var(--muted);font-size:.93rem}
+main{padding:30px 0 60px}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:16px}
+h2{font-size:1.45rem;margin:0;color:var(--navy);letter-spacing:-.4px}
+.sub{color:var(--muted);font-size:.9rem;margin:4px 0 0}
+.categories{display:flex;gap:8px;overflow:auto;padding:3px 0 14px}
+.chip{white-space:nowrap;border:1px solid var(--line);background:white;color:#486581;border-radius:999px;padding:8px 13px;font-size:.88rem;font-weight:700}
+.chip.active{background:var(--navy);border-color:var(--navy);color:white}
+.status{font-size:.9rem;color:var(--muted);padding:10px 0 16px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.product{background:white;border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:0 4px 14px rgba(16,42,67,.04);display:flex;flex-direction:column;min-height:210px}
+.product h3{font-size:1.03rem;margin:0 0 5px;color:var(--navy)}
+.desc{font-size:.88rem;color:var(--muted);margin:0 0 12px}
+.meta{font-size:.82rem;color:var(--muted);margin-top:auto}
+.price{font-size:1.2rem;font-weight:850;color:var(--green);margin:9px 0}
+.product-actions{display:flex;gap:8px;margin-top:12px}
+.small-btn{display:inline-block;text-align:center;text-decoration:none;border:1px solid var(--blue);color:var(--blue);background:white;border-radius:9px;padding:8px 11px;font-weight:750;font-size:.84rem}
+.empty{grid-column:1/-1;background:white;border:1px dashed #9fb3c8;border-radius:15px;padding:25px;text-align:center;color:var(--muted)}
+.panel{margin-top:34px;background:white;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+.panel p{color:var(--muted);margin:6px 0 18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.full{grid-column:1/-1}
+label{font-size:.85rem;font-weight:750;color:#334e68}
+input,select,textarea{width:100%;border:1px solid #bcccdc;border-radius:9px;padding:11px 12px;background:white;color:var(--ink)}
+textarea{min-height:85px;resize:vertical}
+.form-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px}
+.form-message{font-size:.88rem;color:var(--muted)}
+.hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+footer{background:var(--navy);color:#d7e7f5;padding:23px 0;font-size:.85rem}
+footer strong{color:white}
+@media(max-width:760px){.hero-grid{grid-template-columns:1fr}.hero-note{display:none}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.wrap{width:min(100% - 24px,1120px)}.tag{display:none}.register-link{font-size:.8rem;padding:8px 10px}.hero{padding:34px 0 26px}.searchbox{flex-direction:column}.searchbox .primary{width:100%}.grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.panel{padding:17px}}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap top">
+<div>
+<div class="brand">Encontralo <span>Ya</span></div>
+<div class="tag">Una idea que conecta compradores y comercios</div>
+</div>
+<button class="register-link" id="goRegister" type="button">Sumá tu comercio</button>
+</div>
+</header>
+
+<section class="hero">
+<div class="wrap hero-grid">
+<div>
+<div class="eyebrow">Comprá mejor, cerca tuyo</div>
+<h1>Encontrá lo que necesitás. Compará y comprá.</h1>
+<p class="lead">Buscá productos de distintos comercios en un solo lugar. Desde repuestos y ferretería hasta artículos para tu hogar.</p>
+<form class="searchbox" id="searchForm">
+<input id="searchInput" type="search" placeholder="¿Qué producto estás buscando?" aria-label="Buscar productos">
+<button class="primary" type="submit">Buscar productos</button>
+</form>
+</div>
+<aside class="hero-note">
+<strong>Una búsqueda, distintas opciones.</strong>
+<p>Encontrá comercios, consultá precios y contactate directamente. La información publicada depende de cada comercio.</p>
+</aside>
+</div>
+</section>
+
+<main class="wrap">
+<section>
+<div class="section-head">
+<div><h2>Explorá productos</h2><p class="sub">Resultados publicados por comercios registrados.</p></div>
+</div>
+<nav class="categories" id="categories" aria-label="Filtrar por categoría">
+<button class="chip active" data-category="Todos">Todos</button>
+<button class="chip" data-category="Ferretería">Ferretería</button>
+<button class="chip" data-category="Repuestos">Repuestos</button>
+<button class="chip" data-category="Limpieza">Limpieza</button>
+<button class="chip" data-category="Bazar y hogar">Bazar y hogar</button>
+<button class="chip" data-category="Electricidad">Electricidad</button>
+<button class="chip" data-category="Construcción">Construcción</button>
+<button class="chip" data-category="Alimentos">Alimentos</button>
+<button class="chip" data-category="Otros">Otros</button>
+</nav>
+<div class="status" id="catalogStatus" role="status">Conectando con el catálogo…</div>
+<div class="grid" id="productGrid"></div>
+</section>
+
+<section class="panel" id="registerPanel">
+<h2>¿Tenés un comercio?</h2>
+<p>Registralo gratis para que más personas puedan encontrar tus productos. Completá los datos y nos pondremos en contacto.</p>
+<form id="merchantForm">
+<div class="form-grid">
+<div class="field"><label for="merchantName">Nombre del comercio *</label><input id="merchantName" name="nombre" required maxlength="100"></div>
+<div class="field"><label for="merchantType">Rubro *</label><select id="merchantType" name="rubro" required><option value="">Elegí un rubro</option><option>Ferretería</option><option>Repuestos</option><option>Limpieza</option><option>Bazar y hogar</option><option>Electricidad</option><option>Construcción</option><option>Alimentos</option><option>Otros</option></select></div>
+<div class="field"><label for="merchantCity">Localidad *</label><input id="merchantCity" name="localidad" required maxlength="80"></div>
+<div class="field"><label for="merchantProvince">Provincia *</label><input id="merchantProvince" name="provincia" required maxlength="80"></div>
+<div class="field"><label for="merchantPhone">WhatsApp o teléfono *</label><input id="merchantPhone" name="telefono" required maxlength="30" inputmode="tel"></div>
+<div class="field"><label for="merchantContact">Persona de contacto</label><input id="merchantContact" name="contacto" maxlength="100"></div>
+<div class="field full"><label for="merchantAddress">Dirección</label><input id="merchantAddress" name="direccion" maxlength="180"></div>
+<div class="field full"><label for="merchantProducts">¿Qué vendés?</label><textarea id="merchantProducts" name="que_vende" maxlength="1000" placeholder="Contanos brevemente qué productos ofrecés"></textarea></div>
+<div class="hp" aria-hidden="true"><label for="website">Dejar vacío</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
+</div>
+<div class="form-foot">
+<button class="primary" id="merchantSubmit" type="submit">Enviar registro</button>
+<span class="form-message" id="merchantMessage" role="status">El registro se envía a la base de datos cuando la conexión está disponible.</span>
+</div>
+</form>
+</section>
+</main>
+
+<footer><div class="wrap"><strong>Encontralo Ya</strong> · Una idea que conecta compradores y comercios.<br>La disponibilidad y los precios deben ser confirmados por cada comercio.</div></footer>
+
+<script>
+(() => {
+"use strict";
+
+// Clave publicable: puede utilizarse en el navegador. Nunca usar una clave secret/service_role.
+const SUPABASE_URL = "https://egvchkzktjaitskcqlnr.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_MhdqvUOMFQrImKw0ePCH1g_FU2BpGxj";
+
+const grid = document.getElementById("productGrid");
+const status = document.getElementById("catalogStatus");
+const searchInput = document.getElementById("searchInput");
+const merchantForm = document.getElementById("merchantForm");
+const merchantMessage = document.getElementById("merchantMessage");
+const merchantSubmit = document.getElementById("merchantSubmit");
+let allProducts = [];
+let allBusinesses = [];
+let selectedCategory = "Todos";
+
+const headers = {
+apikey: SUPABASE_ANON_KEY,
+Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+"Content-Type": "application/json"
+};
+
+function escapeHTML(value) {
+return String(value ?? "").replace(/[&<>"']/g, char => ({
+"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+})[char]);
+}
+
+function money(value, currency) {
+const number = Number(value);
+if (!Number.isFinite(number)) return "Consultar precio";
+const code = currency || "ARS";
+try {
+return new Intl.NumberFormat("es-AR", {style:"currency", currency:code, maximumFractionDigits:2}).format(number);
+} catch {
+return `${code} ${number.toLocaleString("es-AR")}`;
+}
+}
+
+async function supabaseGet(path) {
+const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {headers});
+if (!response.ok) {
+const detail = await response.text();
+throw new Error(`Supabase respondió ${response.status}: ${detail.slice(0,220)}`);
+}
+return response.json();
+}
+
+function renderProducts() {
+const term = searchInput.value.trim().toLocaleLowerCase("es-AR");
+const filtered = allProducts.filter(product => {
+const categoryMatch = selectedCategory === "Todos" ||
+String(product.categoria || "").toLocaleLowerCase("es-AR") === selectedCategory.toLocaleLowerCase("es-AR");
+const text = `${product.nombre || ""} ${product.descripcion || ""} ${product.categoria || ""}`.toLocaleLowerCase("es-AR");
+return categoryMatch && (!term || text.includes(term));
+});
+
+if (!filtered.length) {
+grid.innerHTML = '<div class="empty">No encontramos productos publicados con esos filtros. Probá otra búsqueda o volvé más tarde.</div>';
+return;
+}
+
+const businessMap = new Map(allBusinesses.map(business => [business.id, business]));
+grid.innerHTML = filtered.map(product => {
+const business = businessMap.get(product.comercio_id);
+const phone = business?.telefono ? String(business.telefono).replace(/[^\d+]/g, "") : "";
+const whatsapp = phone ? `https://wa.me/${phone.replace(/^\+/, "")}?text=${encodeURIComponent("Hola, vi este producto en Encontralo Ya: " + (product.nombre || "") + ". ¿Me confirmás precio y disponibilidad?")}` : "";
+return `<article class="product">
+<h3>${escapeHTML(product.nombre || "Producto")}</h3>
+<p class="desc">${escapeHTML(product.descripcion || product.categoria || "")}</p>
+<div class="meta">${escapeHTML(business?.nombre || "Comercio")}${business?.localidad ? " · " + escapeHTML(business.localidad) : ""}${business?.provincia ? ", " + escapeHTML(business.provincia) : ""}</div>
+<div class="price">${escapeHTML(money(product.precio, product.moneda))}</div>
+<div class="product-actions">${whatsapp ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>` : '<span class="meta">Contactá al comercio para consultar</span>'}</div>
+</article>`;
+}).join("");
+}
+
+async function loadCatalog() {
+status.textContent = "Buscando productos publicados…";
+grid.innerHTML = "";
+try {
+allProducts = await supabaseGet("productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id&disponible=eq.true&order=nombre.asc&limit=100");
+const ids = [...new Set(allProducts.map(item => item.comercio_id).filter(Boolean))];
+allBusinesses = [];
+if (ids.length) {
+const inList = ids.map(id => `"${String(id).replace(/"/g, "")}"`).join(",");
+allBusinesses = await supabaseGet(`comercios?select=id,nombre,localidad,provincia,telefono&id=in.(${encodeURIComponent(inList)})`);
+}
+status.textContent = `${allProducts.length} producto(s) encontrado(s) en el catálogo.`;
+renderProducts();
+} catch (error) {
+console.error(error);
+status.textContent = "No pudimos cargar el catálogo. Revisá la conexión y los permisos de lectura de Supabase.";
+grid.innerHTML = '<div class="empty">El catálogo no está disponible en este momento. Intentá nuevamente más tarde.</div>';
+}
+}
+
+document.getElementById("searchForm").addEventListener("submit", event => {
+event.preventDefault();
+renderProducts();
+});
+searchInput.addEventListener("input", renderProducts);
+
+document.getElementById("categories").addEventListener("click", event => {
+const button = event.target.closest("button[data-category]");
+if (!button) return;
+selectedCategory = button.dataset.category;
+document.querySelectorAll(".chip").forEach(chip => chip.classList.toggle("active", chip === button));
+renderProducts();
+});
+
+document.getElementById("goRegister").addEventListener("click", () => {
+document.getElementById("registerPanel").scrollIntoView({behavior:"smooth"});
+document.getElementById("merchantName").focus({preventScroll:true});
+});
+
+merchantForm.addEventListener("submit", async event => {
+event.preventDefault();
+if (document.getElementById("website").value) return;
+if (!merchantForm.reportValidity()) return;
+
+const payload = {
+nombre: document.getElementById("merchantName").value.trim(),
+rubro: document.getElementById("merchantType").value,
+localidad: document.getElementById("merchantCity").value.trim(),
+provincia: document.getElementById("merchantProvince").value.trim(),
+telefono: document.getElementById("merchantPhone").value.trim(),
+contacto: document.getElementById("merchantContact").value.trim() || null,
+direccion: document.getElementById("merchantAddress").value.trim() || null,
+que_vende: document.getElementById("merchantProducts").value.trim() || null
+};
+
+if (payload.nombre.length < 2 || payload.localidad.length < 2 || payload.telefono.length < 6) {
+merchantMessage.textContent = "Revisá el nombre, la localidad y el teléfono antes de enviar.";
+return;
+}
+
+merchantSubmit.disabled = true;
+merchantSubmit.textContent = "Enviando…";
+merchantMessage.textContent = "Conectando con la base de datos…";
+try {
+const response = await fetch(`${SUPABASE_URL}/rest/v1/comercios`, {
+method:"POST",
+headers:{...headers, Prefer:"return=minimal"},
+body:JSON.stringify(payload)
+});
+if (!response.ok) {
+const detail = await response.text();
+throw new Error(`Supabase respondió ${response.status}: ${detail.slice(0,260)}`);
+}
+merchantForm.reset();
+merchantMessage.textContent = "¡Registro recibido! El comercio fue guardado correctamente.";
+} catch (error) {
+console.error(error);
+merchantMessage.textContent = "No se pudo guardar el registro. " + error.message;
+} finally {
+merchantSubmit.disabled = false;
+merchantSubmit.textContent = "Enviar registro";
+}
+});
+
+loadCatalog();
+})();
+</script>
+</body>
+</html>
