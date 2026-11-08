@@ -132,7 +132,7 @@ footer strong{color:white}
 </div>
 <div class="form-foot">
 <button class="primary" id="merchantSubmit" type="submit">Enviar registro</button>
-<span class="form-message" id="merchantMessage" role="status">El registro se envía a la base de datos cuando la conexión está disponible.</span>
+<span class="form-message" id="merchantMessage" role="status">Al enviar, el registro se guarda directamente en la base de datos del catálogo.</span>
 </div>
 </form>
 </section>
@@ -168,6 +168,18 @@ function escapeHTML(value) {
 return String(value ?? "").replace(/[&<>"']/g, char => ({
 "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
 })[char]);
+}
+
+function whatsappLink(phoneRaw, productName) {
+  const digits = String(phoneRaw ?? "").replace(/[^\d]/g, "");
+  if (!digits) return "";
+  let number = digits;
+  if (!number.startsWith("54")) {
+    if (number.length === 10) number = "54" + number;
+    else if (number.length === 11 && number.startsWith("9")) number = "54" + number;
+  }
+  const text = encodeURIComponent("Hola, vi este producto en Encontralo Ya: " + (productName || "") + ". ¿Me confirmás precio y disponibilidad?");
+  return `https://wa.me/${number}?text=${text}`;
 }
 
 function money(value, currency) {
@@ -206,9 +218,8 @@ return;
 
 const businessMap = new Map(allBusinesses.map(business => [business.id, business]));
 grid.innerHTML = filtered.map(product => {
-const business = businessMap.get(product.comercio_id);
-const phone = business?.telefono ? String(business.telefono).replace(/[^\d+]/g, "") : "";
-const whatsapp = phone ? `https://wa.me/${phone.replace(/^\+/, "")}?text=${encodeURIComponent("Hola, vi este producto en Encontralo Ya: " + (product.nombre || "") + ". ¿Me confirmás precio y disponibilidad?")}` : "";
+  const business = businessMap.get(product.comercio_id);
+  const whatsapp = business?.telefono ? whatsappLink(business.telefono, product.nombre) : "";
 return `<article class="product">
 <h3>${escapeHTML(product.nombre || "Producto")}</h3>
 <p class="desc">${escapeHTML(product.descripcion || product.categoria || "")}</p>
@@ -258,6 +269,12 @@ document.getElementById("registerPanel").scrollIntoView({behavior:"smooth"});
 document.getElementById("merchantName").focus({preventScroll:true});
 });
 
+async function existingMerchant(nombre, localidad) {
+  const query = `comercios?select=id,nombre&nombre=ilike.${encodeURIComponent(nombre)}&localidad=ilike.${encodeURIComponent(localidad)}&limit=1`;
+  const found = await supabaseGet(query);
+  return Array.isArray(found) && found.length ? found[0] : null;
+}
+
 merchantForm.addEventListener("submit", async event => {
 event.preventDefault();
 if (document.getElementById("website").value) return;
@@ -283,7 +300,12 @@ merchantSubmit.disabled = true;
 merchantSubmit.textContent = "Enviando…";
 merchantMessage.textContent = "Conectando con la base de datos…";
 try {
-const response = await fetch(`${SUPABASE_URL}/rest/v1/comercios`, {
+  const duplicate = await existingMerchant(payload.nombre, payload.localidad);
+  if (duplicate) {
+    merchantMessage.textContent = `Ese comercio ya figura registrado como "${duplicate.nombre}". Si los datos cambiaron, escribinos para actualizarlo.`;
+    return;
+  }
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/comercios`, {
 method:"POST",
 headers:{...headers, Prefer:"return=minimal"},
 body:JSON.stringify(payload)
@@ -293,7 +315,7 @@ const detail = await response.text();
 throw new Error(`Supabase respondió ${response.status}: ${detail.slice(0,260)}`);
 }
 merchantForm.reset();
-merchantMessage.textContent = "¡Registro recibido! El comercio fue guardado correctamente.";
+merchantMessage.textContent = "¡Registro recibido! El comercio quedó guardado en la base de datos. Para aparecer en el catálogo, cargá tus productos cuando te enviemos el acceso.";
 } catch (error) {
 console.error(error);
 merchantMessage.textContent = "No se pudo guardar el registro. " + error.message;
