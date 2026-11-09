@@ -92,10 +92,6 @@ BEGIN
     RAISE EXCEPTION 'No se pudo reclamar con un código válido: %', v_resultado;
   END IF;
 
-  IF EXISTS (SELECT 1 FROM private.comercio_codigos_reclamo WHERE comercio_id = v_comercio) THEN
-    RAISE EXCEPTION 'El hash no se consumió después del reclamo';
-  END IF;
-
   v_resultado := public.reclamar_comercio(v_comercio, pg_catalog.repeat('a', 64));
   IF v_resultado->>'ok' <> 'false' THEN
     RAISE EXCEPTION 'El código pudo reutilizarse';
@@ -134,6 +130,18 @@ BEGIN
 END;
 $$;
 RESET ROLE;
+
+DO $
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM private.comercio_codigos_reclamo k
+    JOIN public.comercios c ON c.id = k.comercio_id
+    WHERE c.nombre = 'Comercio 1'
+  ) THEN
+    RAISE EXCEPTION 'El hash no se consumió después del reclamo';
+  END IF;
+END;
+$;
 
 -- Otra cuenta no puede editar productos ni reclamar un comercio ya asignado.
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false);
