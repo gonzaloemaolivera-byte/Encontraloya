@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="es">
 <head>
@@ -14,6 +13,7 @@
 body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
 button,input,select,textarea{font:inherit}
 button{cursor:pointer}
+button:disabled{opacity:.65;cursor:wait}
 .wrap{width:min(1120px,calc(100% - 32px));margin:auto}
 header{background:var(--navy);color:white;padding:17px 0}
 .top{display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -124,7 +124,7 @@ footer strong{color:white}
 <div class="field"><label for="merchantType">Rubro *</label><select id="merchantType" name="rubro" required><option value="">Elegí un rubro</option><option>Ferretería</option><option>Repuestos</option><option>Limpieza</option><option>Bazar y hogar</option><option>Electricidad</option><option>Construcción</option><option>Alimentos</option><option>Otros</option></select></div>
 <div class="field"><label for="merchantCity">Localidad *</label><input id="merchantCity" name="localidad" required maxlength="80"></div>
 <div class="field"><label for="merchantProvince">Provincia *</label><input id="merchantProvince" name="provincia" required maxlength="80"></div>
-<div class="field"><label for="merchantPhone">WhatsApp o teléfono *</label><input id="merchantPhone" name="telefono" required maxlength="30" inputmode="tel"></div>
+<div class="field"><label for="merchantPhone">WhatsApp o teléfono *</label><input id="merchantPhone" name="telefono" required maxlength="30" inputmode="tel" autocomplete="tel" placeholder="Ej.: 11 2345-6789"></div>
 <div class="field"><label for="merchantContact">Persona de contacto</label><input id="merchantContact" name="contacto" maxlength="100"></div>
 <div class="field full"><label for="merchantAddress">Dirección</label><input id="merchantAddress" name="direccion" maxlength="180"></div>
 <div class="field full"><label for="merchantProducts">¿Qué vendés?</label><textarea id="merchantProducts" name="que_vende" maxlength="1000" placeholder="Contanos brevemente qué productos ofrecés"></textarea></div>
@@ -132,7 +132,7 @@ footer strong{color:white}
 </div>
 <div class="form-foot">
 <button class="primary" id="merchantSubmit" type="submit">Enviar registro</button>
-<span class="form-message" id="merchantMessage" role="status">El registro se envía a la base de datos cuando la conexión está disponible.</span>
+<span class="form-message" id="merchantMessage" role="status">El registro se guarda en la base de datos al enviarlo correctamente.</span>
 </div>
 </form>
 </section>
@@ -144,7 +144,8 @@ footer strong{color:white}
 (() => {
 "use strict";
 
-// Clave publicable: puede utilizarse en el navegador. Nunca usar una clave secret/service_role.
+// Clave publicable: puede utilizarse en el navegador.
+// Nunca colocar aquí una clave secret o service_role.
 const SUPABASE_URL = "https://egvchkzktjaitskcqlnr.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_MhdqvUOMFQrImKw0ePCH1g_FU2BpGxj";
 
@@ -154,153 +155,313 @@ const searchInput = document.getElementById("searchInput");
 const merchantForm = document.getElementById("merchantForm");
 const merchantMessage = document.getElementById("merchantMessage");
 const merchantSubmit = document.getElementById("merchantSubmit");
+
 let allProducts = [];
 let allBusinesses = [];
 let selectedCategory = "Todos";
 
 const headers = {
-apikey: SUPABASE_ANON_KEY,
-Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-"Content-Type": "application/json"
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  "Content-Type": "application/json"
 };
 
 function escapeHTML(value) {
-return String(value ?? "").replace(/[&<>"']/g, char => ({
-"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
-})[char]);
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  })[char]);
+}
+
+// Devuelve los 10 dígitos nacionales de un teléfono argentino.
+// Acepta 11..., 011..., 54 11... y 54 9 11...
+function normalizeArgentinePhone(value) {
+  let digits = String(value ?? "").replace(/\D/g, "");
+  let national = "";
+
+  if (digits.startsWith("549") && digits.length === 13) {
+    national = digits.slice(3);
+  } else if (digits.startsWith("54") && digits.length === 12) {
+    national = digits.slice(2);
+  } else if (digits.startsWith("0") && digits.length === 11) {
+    national = digits.slice(1);
+  } else if (digits.length === 10) {
+    national = digits;
+  }
+
+  if (!/^[2-9]\d{9}$/.test(national)) return "";
+  if (/^0+$/.test(national)) return "";
+
+  return national;
+}
+
+// WhatsApp usa el formato internacional argentino 549 + número nacional.
+function whatsappLink(phoneRaw, productName) {
+  const national = normalizeArgentinePhone(phoneRaw);
+  if (!national) return "";
+
+  const international = "549" + national;
+  const message = encodeURIComponent(
+    "Hola, vi este producto en Encontralo Ya: " +
+    (productName || "") +
+    ". ¿Me confirmás precio y disponibilidad?"
+  );
+
+  return `https://wa.me/${international}?text=${message}`;
 }
 
 function money(value, currency) {
-const number = Number(value);
-if (!Number.isFinite(number)) return "Consultar precio";
-const code = currency || "ARS";
-try {
-return new Intl.NumberFormat("es-AR", {style:"currency", currency:code, maximumFractionDigits:2}).format(number);
-} catch {
-return `${code} ${number.toLocaleString("es-AR")}`;
-}
+  if (value === null || value === undefined || value === "") {
+    return "Consultar precio";
+  }
+
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "Consultar precio";
+
+  const code = currency || "ARS";
+
+  try {
+    return new Intl.NumberFormat("es-AR", {
+      style:"currency",
+      currency:code,
+      maximumFractionDigits:2
+    }).format(number);
+  } catch {
+    return `${code} ${number.toLocaleString("es-AR")}`;
+  }
 }
 
 async function supabaseGet(path) {
-const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {headers});
-if (!response.ok) {
-const detail = await response.text();
-throw new Error(`Supabase respondió ${response.status}: ${detail.slice(0,220)}`);
-}
-return response.json();
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Supabase respondió ${response.status}: ${detail.slice(0,220)}`);
+  }
+
+  return response.json();
 }
 
 function renderProducts() {
-const term = searchInput.value.trim().toLocaleLowerCase("es-AR");
-const filtered = allProducts.filter(product => {
-const categoryMatch = selectedCategory === "Todos" ||
-String(product.categoria || "").toLocaleLowerCase("es-AR") === selectedCategory.toLocaleLowerCase("es-AR");
-const text = `${product.nombre || ""} ${product.descripcion || ""} ${product.categoria || ""}`.toLocaleLowerCase("es-AR");
-return categoryMatch && (!term || text.includes(term));
-});
+  const term = searchInput.value.trim().toLocaleLowerCase("es-AR");
+  const businessMap = new Map(
+    allBusinesses.map(business => [business.id, business])
+  );
 
-if (!filtered.length) {
-grid.innerHTML = '<div class="empty">No encontramos productos publicados con esos filtros. Probá otra búsqueda o volvé más tarde.</div>';
-return;
-}
+  const filtered = allProducts.filter(product => {
+    const categoryMatch =
+      selectedCategory === "Todos" ||
+      String(product.categoria || "").toLocaleLowerCase("es-AR") ===
+      selectedCategory.toLocaleLowerCase("es-AR");
 
-const businessMap = new Map(allBusinesses.map(business => [business.id, business]));
-grid.innerHTML = filtered.map(product => {
-const business = businessMap.get(product.comercio_id);
-const phone = business?.telefono ? String(business.telefono).replace(/[^\d+]/g, "") : "";
-const whatsapp = phone ? `https://wa.me/${phone.replace(/^\+/, "")}?text=${encodeURIComponent("Hola, vi este producto en Encontralo Ya: " + (product.nombre || "") + ". ¿Me confirmás precio y disponibilidad?")}` : "";
-return `<article class="product">
-<h3>${escapeHTML(product.nombre || "Producto")}</h3>
-<p class="desc">${escapeHTML(product.descripcion || product.categoria || "")}</p>
-<div class="meta">${escapeHTML(business?.nombre || "Comercio")}${business?.localidad ? " · " + escapeHTML(business.localidad) : ""}${business?.provincia ? ", " + escapeHTML(business.provincia) : ""}</div>
-<div class="price">${escapeHTML(money(product.precio, product.moneda))}</div>
-<div class="product-actions">${whatsapp ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>` : '<span class="meta">Contactá al comercio para consultar</span>'}</div>
-</article>`;
-}).join("");
+    const business = businessMap.get(product.comercio_id);
+
+    const text = [
+      product.nombre,
+      product.descripcion,
+      product.categoria,
+      business?.nombre,
+      business?.localidad,
+      business?.provincia
+    ].filter(Boolean).join(" ").toLocaleLowerCase("es-AR");
+
+    return categoryMatch && (!term || text.includes(term));
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML =
+      '<div class="empty">No encontramos productos publicados con esos filtros. Probá otra búsqueda o volvé más tarde.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(product => {
+    const business = businessMap.get(product.comercio_id);
+    const whatsapp = whatsappLink(
+      business?.telefono,
+      product.nombre
+    );
+
+    return `<article class="product">
+      <h3>${escapeHTML(product.nombre || "Producto")}</h3>
+      <p class="desc">${escapeHTML(product.descripcion || product.categoria || "")}</p>
+      <div class="meta">${escapeHTML(business?.nombre || "Comercio")}${business?.localidad ? " · " + escapeHTML(business.localidad) : ""}${business?.provincia ? ", " + escapeHTML(business.provincia) : ""}</div>
+      <div class="price">${escapeHTML(money(product.precio, product.moneda))}</div>
+      <div class="product-actions">${whatsapp
+        ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>`
+        : '<span class="meta">Teléfono no disponible para WhatsApp</span>'
+      }</div>
+    </article>`;
+  }).join("");
 }
 
 async function loadCatalog() {
-status.textContent = "Buscando productos publicados…";
-grid.innerHTML = "";
-try {
-allProducts = await supabaseGet("productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id&disponible=eq.true&order=nombre.asc&limit=100");
-const ids = [...new Set(allProducts.map(item => item.comercio_id).filter(Boolean))];
-allBusinesses = [];
-if (ids.length) {
-const inList = ids.map(id => `"${String(id).replace(/"/g, "")}"`).join(",");
-allBusinesses = await supabaseGet(`comercios?select=id,nombre,localidad,provincia,telefono&id=in.(${encodeURIComponent(inList)})`);
-}
-status.textContent = `${allProducts.length} producto(s) encontrado(s) en el catálogo.`;
-renderProducts();
-} catch (error) {
-console.error(error);
-status.textContent = "No pudimos cargar el catálogo. Revisá la conexión y los permisos de lectura de Supabase.";
-grid.innerHTML = '<div class="empty">El catálogo no está disponible en este momento. Intentá nuevamente más tarde.</div>';
-}
+  status.textContent = "Buscando productos publicados…";
+  grid.innerHTML = "";
+
+  try {
+    allProducts = await supabaseGet(
+      "productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id&disponible=eq.true&order=nombre.asc&limit=100"
+    );
+
+    const ids = [
+      ...new Set(allProducts.map(item => item.comercio_id).filter(Boolean))
+    ];
+
+    allBusinesses = [];
+
+    if (ids.length) {
+      const inList = ids.map(id =>
+        `"${String(id).replace(/"/g, "")}"`
+      ).join(",");
+
+      allBusinesses = await supabaseGet(
+        `comercios?select=id,nombre,localidad,provincia,telefono&id=in.(${encodeURIComponent(inList)})`
+      );
+    }
+
+    status.textContent =
+      `${allProducts.length} producto(s) encontrado(s) en el catálogo.`;
+
+    renderProducts();
+  } catch (error) {
+    console.error(error);
+    status.textContent =
+      "No pudimos cargar el catálogo. Revisá la conexión y los permisos de lectura de Supabase.";
+    grid.innerHTML =
+      '<div class="empty">El catálogo no está disponible en este momento. Intentá nuevamente más tarde.</div>';
+  }
 }
 
 document.getElementById("searchForm").addEventListener("submit", event => {
-event.preventDefault();
-renderProducts();
+  event.preventDefault();
+  renderProducts();
 });
+
 searchInput.addEventListener("input", renderProducts);
 
 document.getElementById("categories").addEventListener("click", event => {
-const button = event.target.closest("button[data-category]");
-if (!button) return;
-selectedCategory = button.dataset.category;
-document.querySelectorAll(".chip").forEach(chip => chip.classList.toggle("active", chip === button));
-renderProducts();
+  const button = event.target.closest("button[data-category]");
+  if (!button) return;
+
+  selectedCategory = button.dataset.category;
+
+  document.querySelectorAll(".chip").forEach(chip => {
+    chip.classList.toggle("active", chip === button);
+  });
+
+  renderProducts();
 });
 
 document.getElementById("goRegister").addEventListener("click", () => {
-document.getElementById("registerPanel").scrollIntoView({behavior:"smooth"});
-document.getElementById("merchantName").focus({preventScroll:true});
+  document.getElementById("registerPanel").scrollIntoView({
+    behavior:"smooth"
+  });
+  document.getElementById("merchantName").focus({
+    preventScroll:true
+  });
 });
 
 merchantForm.addEventListener("submit", async event => {
-event.preventDefault();
-if (document.getElementById("website").value) return;
-if (!merchantForm.reportValidity()) return;
+  event.preventDefault();
 
-const payload = {
-nombre: document.getElementById("merchantName").value.trim(),
-rubro: document.getElementById("merchantType").value,
-localidad: document.getElementById("merchantCity").value.trim(),
-provincia: document.getElementById("merchantProvince").value.trim(),
-telefono: document.getElementById("merchantPhone").value.trim(),
-contacto: document.getElementById("merchantContact").value.trim() || null,
-direccion: document.getElementById("merchantAddress").value.trim() || null,
-que_vende: document.getElementById("merchantProducts").value.trim() || null
-};
+  if (document.getElementById("website").value) return;
+  if (!merchantForm.reportValidity()) return;
 
-if (payload.nombre.length < 2 || payload.localidad.length < 2 || payload.telefono.length < 6) {
-merchantMessage.textContent = "Revisá el nombre, la localidad y el teléfono antes de enviar.";
-return;
-}
+  const rawPhone = document.getElementById("merchantPhone").value.trim();
+  const nationalPhone = normalizeArgentinePhone(rawPhone);
 
-merchantSubmit.disabled = true;
-merchantSubmit.textContent = "Enviando…";
-merchantMessage.textContent = "Conectando con la base de datos…";
-try {
-const response = await fetch(`${SUPABASE_URL}/rest/v1/comercios`, {
-method:"POST",
-headers:{...headers, Prefer:"return=minimal"},
-body:JSON.stringify(payload)
-});
-if (!response.ok) {
-const detail = await response.text();
-throw new Error(`Supabase respondió ${response.status}: ${detail.slice(0,260)}`);
-}
-merchantForm.reset();
-merchantMessage.textContent = "¡Registro recibido! El comercio fue guardado correctamente.";
-} catch (error) {
-console.error(error);
-merchantMessage.textContent = "No se pudo guardar el registro. " + error.message;
-} finally {
-merchantSubmit.disabled = false;
-merchantSubmit.textContent = "Enviar registro";
-}
+  if (!nationalPhone) {
+    merchantMessage.textContent =
+      "Revisá el teléfono. Ingresá un número argentino válido de 10 dígitos, con o sin prefijo +54.";
+    document.getElementById("merchantPhone").focus();
+    return;
+  }
+
+  const payload = {
+    nombre: document.getElementById("merchantName").value.trim(),
+    rubro: document.getElementById("merchantType").value,
+    localidad: document.getElementById("merchantCity").value.trim(),
+    provincia: document.getElementById("merchantProvince").value.trim(),
+    telefono: rawPhone,
+    contacto: document.getElementById("merchantContact").value.trim() || null,
+    direccion: document.getElementById("merchantAddress").value.trim() || null,
+    que_vende: document.getElementById("merchantProducts").value.trim() || null
+  };
+
+  if (
+    payload.nombre.length < 2 ||
+    payload.localidad.length < 2 ||
+    payload.provincia.length < 2
+  ) {
+    merchantMessage.textContent =
+      "Revisá el nombre del comercio, la localidad y la provincia.";
+    return;
+  }
+
+  merchantSubmit.disabled = true;
+  merchantSubmit.textContent = "Enviando…";
+  merchantMessage.textContent = "Conectando con la base de datos…";
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/comercios`, {
+      method:"POST",
+      headers:{
+        ...headers,
+        Prefer:"return=minimal"
+      },
+      body:JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      let apiError = {};
+
+      try {
+        apiError = JSON.parse(detail);
+      } catch {
+        // La respuesta no vino en formato JSON.
+      }
+
+      if (
+        apiError.code === "23505" ||
+        response.status === 409
+      ) {
+        merchantMessage.textContent =
+          "Este teléfono ya está registrado en Encontralo Ya. Si pertenece a tu comercio, contactanos para revisar o actualizar los datos.";
+        return;
+      }
+
+      if (apiError.code === "23514") {
+        merchantMessage.textContent =
+          "Los datos enviados no cumplen las validaciones de la base de datos. Revisalos e intentá nuevamente.";
+        return;
+      }
+
+      console.error("Error de Supabase:", detail);
+
+      throw new Error(
+        `No se pudo guardar el registro (error ${response.status}).`
+      );
+    }
+
+    merchantForm.reset();
+
+    merchantMessage.textContent =
+      "¡Registro recibido! El comercio se guardó en la base de datos. Su aparición en el catálogo depende de la carga y publicación de productos.";
+
+  } catch (error) {
+    console.error(error);
+    merchantMessage.textContent =
+      error.message || "No se pudo guardar el registro. Intentá nuevamente.";
+  } finally {
+    merchantSubmit.disabled = false;
+    merchantSubmit.textContent = "Enviar registro";
+  }
 });
 
 loadCatalog();
