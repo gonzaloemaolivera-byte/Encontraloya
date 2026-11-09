@@ -141,7 +141,7 @@ BEGIN
     RAISE EXCEPTION 'El hash no se consumió después del reclamo';
   END IF;
 END;
-$;
+$$;
 
 -- Otra cuenta no puede editar productos ni reclamar un comercio ya asignado.
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false);
