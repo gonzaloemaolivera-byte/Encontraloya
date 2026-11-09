@@ -19,7 +19,7 @@
 5. Los intentos incorrectos se limitan a cinco por cuenta y comercio cada 15 minutos, con bloqueo temporal de 30 minutos.
 6. El código viaja desde el navegador a Supabase por HTTPS para su validación, pero no se devuelve en la respuesta ni se persiste en el navegador.
 
-La migración copia únicamente códigos preexistentes que ya tengan 64 caracteres hexadecimales. Los códigos antiguos más cortos o débiles se invalidan; deberán emitirse nuevamente. También limpia `comercios.codigo_vendedor` para que ningún token permanezca en la tabla pública.
+La migración copia únicamente códigos preexistentes que ya tengan 64 caracteres hexadecimales. Si hubiera duplicados, conserva solo uno. Los códigos antiguos más cortos o débiles se invalidan; deberán emitirse nuevamente. La columna pública antigua se limpia y recibe una restricción CHECK para impedir que vuelva a almacenar texto plano. También limpia `comercios.codigo_vendedor` para que ningún token permanezca en la tabla pública.
 
 **Importante:** el límite se aplica por cuenta y comercio. No reemplaza un control de abuso por IP/WAF, por lo que antes de una apertura masiva conviene agregar monitoreo y protección perimetral.
 
@@ -42,7 +42,7 @@ VALUES (
 );
 ```
 
-El hash debe calcularse sobre el token normalizado a minúsculas y codificado en UTF-8. La restricción única impide reutilizar el mismo token en dos comercios. La inserción debe hacerse con una cuenta administrativa confiable; no se debe conceder este permiso al navegador ni a usuarios autenticados.
+El hash debe calcularse como SHA-256 sobre el token normalizado a minúsculas y codificado en UTF-8; el valor hexadecimal resultante se inserta como 32 bytes con `decode(..., 'hex')`. La restricción única impide reutilizar el mismo token en dos comercios. La inserción debe hacerse con una cuenta administrativa confiable; no se debe conceder este permiso al navegador ni a usuarios autenticados.
 
 ## Permisos y datos
 
@@ -55,7 +55,7 @@ El hash debe calcularse sobre el token normalizado a minúsculas y codificado en
 
 ## Compatibilidad y efecto de la migración
 
-La migración crea dos tablas privadas, agrega un índice no único sobre `propietario_id`, crea/actualiza cinco funciones y limpia la columna antigua `codigo_vendedor`. No modifica filas de productos ni asigna propietarios a comercios existentes. Los tokens antiguos que no cumplan el formato nuevo se invalidan.
+La migración crea dos tablas privadas, agrega un índice no único sobre `propietario_id`, crea/actualiza cinco funciones y limpia la columna antigua `codigo_vendedor`. No modifica filas de productos ni asigna propietarios a comercios existentes. Sí limpia la columna obsoleta `codigo_vendedor`, invalida tokens débiles y agrega un CHECK que obliga a mantenerla en NULL. Los tokens antiguos que no cumplan el formato nuevo se invalidan.
 
 Antes de ejecutarla se debe confirmar que la versión de PostgreSQL de Supabase soporta las funciones SHA-256 integradas (`pg_catalog.sha256`) y que el usuario que ejecuta la migración puede crear tablas, índices, funciones y cambiar privilegios. No se requiere habilitar extensiones externas.
 
@@ -65,7 +65,7 @@ Antes de producción, usar un proyecto Supabase de prueba y comprobar:
 
 1. Un usuario sin sesión no puede ejecutar las funciones privadas.
 2. Un usuario autenticado puede ver la lista de comercios pendientes, pero no leer las tablas privadas ni sus hashes.
-3. Una clave incorrecta no vincula el comercio y activa el límite después de cinco intentos.
+3. Una clave incorrecta o un ID inexistente no vincula el comercio; cinco intentos incorrectos bloquean temporalmente esa combinación de cuenta y comercio.
 4. Una clave válida vincula un comercio una sola vez y queda inutilizable luego del reclamo.
 5. Un segundo usuario no puede reclamar un comercio ya vinculado.
 6. Un usuario propietario puede crear y editar productos de sus comercios.
