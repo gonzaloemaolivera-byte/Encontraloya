@@ -71,7 +71,7 @@ footer strong{color:white}
 <!-- ======== Acceso privado ======== -->
 <section class="card" id="authCard">
 <h2>Acceso de comercios</h2>
-<p class="sub">Entrá con tu correo y contraseña para administrar los productos de tu comercio.</p>
+<p class="sub">Entrá con tu correo y contraseña para administrar uno o varios comercios desde la misma cuenta.</p>
 <div class="tabs">
 <button type="button" id="tabLogin" class="active">Iniciar sesión</button>
 <button type="button" id="tabSignup">Crear cuenta</button>
@@ -92,7 +92,7 @@ footer strong{color:white}
 <section class="card hidden" id="claimCard">
 <h2>Reclamá tu comercio</h2>
 <p class="sub">Tu cuenta todavía no está vinculada a un comercio. Elegilo en la lista y validá el código privado que te dimos al registrar tu comercio.</p>
-<p class="info">El código se valida <strong>en el servidor</strong> contra la columna protegida <code>código_vendedor</code>. Nunca se muestra en el navegador y el teléfono, por sí solo, no sirve como prueba de titularidad.</p>
+<p class="info">El código se valida <strong>en el servidor</strong> contra la columna protegida <code>codigo_vendedor</code>. Nunca se muestra en el navegador y el teléfono, por sí solo, no sirve como prueba de titularidad.</p>
 <form id="claimForm">
 <div class="form-grid">
 <div class="field full"><label for="claimComercio">Comercio a reclamar *</label><select id="claimComercio" required><option value="">Cargando comercios disponibles…</option></select></div>
@@ -110,10 +110,29 @@ footer strong{color:white}
 <section class="card" id="comercioCard">
 <h2 id="comercioNombre">Mi comercio</h2>
 <p class="sub" id="comercioDetalle"></p>
+<div class="field" id="shopSelectorWrap" style="margin-top:14px">
+<label for="shopSelect">Comercio que estás administrando</label>
+<select id="shopSelect" aria-label="Elegir comercio"></select>
+</div>
 <div class="form-foot">
 <button class="ghost" id="logoutBtn" type="button">Cerrar sesión</button>
 <span class="form-message">Accedés como <strong id="comercioEmail"></strong>.</span>
 </div>
+</section>
+
+<section class="card" id="claimMoreCard">
+<h2>Sumar otro comercio a esta cuenta</h2>
+<p class="sub">Si administrás más de un local, podés vincularlo con su código privado sin crear otra cuenta.</p>
+<form id="claimMoreForm">
+<div class="form-grid">
+<div class="field full"><label for="claimMoreComercio">Comercio *</label><select id="claimMoreComercio" required><option value="">Cargando comercios disponibles…</option></select></div>
+<div class="field full"><label for="claimMoreCode">Código privado *</label><input id="claimMoreCode" required minlength="6" maxlength="40" autocomplete="off"></div>
+</div>
+<div class="form-foot">
+<button class="primary" id="claimMoreSubmit" type="submit">Vincular otro comercio</button>
+<span class="form-message" id="claimMoreMessage" role="status"></span>
+</div>
+</form>
 </section>
 
 <section class="card">
@@ -174,6 +193,7 @@ const tabSignup = $("tabSignup");
 let mode = "login";
 let session = null;
 let comercio = null;
+let comercios = [];
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -306,19 +326,29 @@ function showComercioView() {
   claimCard.classList.add("hidden");
   comercioView.classList.remove("hidden");
   renderComercio();
+  loadComerciosSinReclamar("claimMoreComercio", "claimMoreMessage");
   loadMisProductos();
 }
 
 function renderComercio() {
   $("comercioNombre").textContent = comercio.nombre || "Mi comercio";
-  const partes = [
-    comercio.localidad,
-    comercio.provincia,
-    comercio.rubro
-  ].filter(Boolean).join(" · ");
-  $("comercioDetalle").textContent =
-    partes ? `Comercio reclamado y verificado: ${partes}` : "Comercio reclamado y verificado.";
+  const partes = [comercio.localidad, comercio.provincia, comercio.rubro]
+    .filter(Boolean).join(" · ");
+  $("comercioDetalle").textContent = partes
+    ? `Comercio vinculado a tu cuenta: ${partes}`
+    : "Comercio vinculado a tu cuenta.";
   $("comercioEmail").textContent = session?.email || "";
+
+  const selector = $("shopSelect");
+  selector.replaceChildren();
+  for (const item of comercios) {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.nombre || "Comercio";
+    selector.appendChild(option);
+  }
+  selector.value = comercio.id;
+  $("shopSelectorWrap").classList.toggle("hidden", comercios.length < 2);
 }
 
 // ---------- Flujo de acceso ----------
@@ -398,6 +428,8 @@ $("logoutBtn").addEventListener("click", async () => {
     // Cerramos igual aunque el servidor no responda.
   }
   saveSession(null);
+  comercio = null;
+  comercios = [];
   showAuth();
 });
 
@@ -412,34 +444,45 @@ async function afterAuth() {
     return;
   }
 
-  const datos = Array.isArray(result.data) ? result.data[0] : result.data;
+  comercios = Array.isArray(result.data)
+    ? result.data.filter(item => item && item.id)
+    : (result.data && result.data.id ? [result.data] : []);
 
-  if (datos && datos.id) {
-    comercio = datos;
+  if (comercios.length) {
+    const anterior = comercio?.id;
+    comercio = comercios.find(item => item.id === anterior) || comercios[0];
     showComercioView();
     return;
   }
 
+  comercio = null;
   showClaim();
 }
 
 // ---------- Reclamo con código privado ----------
 
-async function loadComerciosSinReclamar() {
-  const select = $("claimComercio");
-  const result = await apiFetch("rpc/comercios_sin_reclamar", session.access_token);
+async function loadComerciosSinReclamar(selectId, messageId) {
+  const select = $(selectId);
+  if (!select || !session?.access_token) return;
 
-  select.innerHTML = "";
+  const result = await apiFetch("rpc/comercios_sin_reclamar", session.access_token);
+  select.replaceChildren();
 
   if (!result.ok || !Array.isArray(result.data) || !result.data.length) {
-    select.innerHTML = '<option value="">No hay comercios pendientes de reclamo</option>';
-    setMessage($("claimMessage"),
-      "No encontramos comercios sin titular. Si ya registraste tu comercio, esperá la verificación o escribinos.",
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No hay comercios pendientes de reclamo";
+    select.appendChild(option);
+    setMessage($(messageId),
+      "No encontramos comercios pendientes de vinculación. Si necesitás ayuda, escribinos.",
       "error");
     return;
   }
 
-  setMessage($("claimMessage"), "");
+  const first = document.createElement("option");
+  first.value = "";
+  first.textContent = "Elegí un comercio";
+  select.appendChild(first);
 
   for (const item of result.data) {
     const option = document.createElement("option");
@@ -447,45 +490,64 @@ async function loadComerciosSinReclamar() {
     option.textContent = `${item.nombre}${item.localidad ? " — " + item.localidad : ""}${item.provincia ? ", " + item.provincia : ""}`;
     select.appendChild(option);
   }
+  setMessage($(messageId), "");
 }
 
-$("claimForm").addEventListener("submit", async event => {
-  event.preventDefault();
-  if (!$("claimForm").reportValidity()) return;
+function bindClaimForm(formId, selectId, codeId, submitId, messageId) {
+  $(formId).addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!$(formId).reportValidity() || !session?.access_token) return;
 
-  const submit = $("claimSubmit");
-  submit.disabled = true;
-  setMessage($("claimMessage"), "Validando el código en el servidor…");
+    const submit = $(submitId);
+    submit.disabled = true;
+    setMessage($(messageId), "Validando el código en el servidor…");
 
-  try {
-    const result = await fetch(`${SUPABASE_URL}/rest/v1/rpc/reclamar_comercio`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${session.access_token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        p_comercio_id: $("claimComercio").value,
-        p_codigo: $("claimCode").value.trim()
-      })
-    }).then(r => r.json().then(d => ({ ok: r.ok, data: d })));
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/reclamar_comercio`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          p_comercio_id: $(selectId).value,
+          p_codigo: $(codeId).value.trim()
+        })
+      });
 
-    const data = Array.isArray(result.data) ? result.data[0] : result.data;
+      const payload = await response.json().catch(() => ({}));
+      const data = Array.isArray(payload) ? payload[0] : payload;
 
-    if (!result.ok || !data?.ok) {
-      setMessage($("claimMessage"), data?.mensaje || "No pudimos reclamar el comercio.", "error");
-      return;
+      if (!response.ok || !data?.ok) {
+        setMessage($(messageId),
+          data?.mensaje || "No pudimos vincular el comercio. Revisá el código e intentá nuevamente.",
+          "error");
+        return;
+      }
+
+      $(codeId).value = "";
+      setMessage($(messageId), data.mensaje || "Comercio vinculado.", "ok");
+      await afterAuth();
+    } catch (error) {
+      console.error(error);
+      setMessage($(messageId), "Error de conexión. Intentá nuevamente.", "error");
+    } finally {
+      submit.disabled = false;
     }
+  });
+}
 
-    $("claimCode").value = "";
-    await afterAuth();
-  } catch (error) {
-    console.error(error);
-    setMessage($("claimMessage"), "Error de conexión. Intentá nuevamente.", "error");
-  } finally {
-    submit.disabled = false;
-  }
+bindClaimForm("claimForm", "claimComercio", "claimCode", "claimSubmit", "claimMessage");
+bindClaimForm("claimMoreForm", "claimMoreComercio", "claimMoreCode", "claimMoreSubmit", "claimMoreMessage");
+
+$("shopSelect").addEventListener("change", () => {
+  const elegido = comercios.find(item => item.id === $("shopSelect").value);
+  if (!elegido) return;
+  comercio = elegido;
+  clearProductForm();
+  renderComercio();
+  loadMisProductos();
 });
 
 // ---------- Productos ----------
