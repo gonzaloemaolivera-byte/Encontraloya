@@ -218,19 +218,19 @@ BEGIN
   SET intentos = CASE
         WHEN private.comercio_reclamo_intentos.ventana_inicio
              < pg_catalog.now() - interval '15 minutes' THEN 1
-        WHEN public.comercio_reclamo_intentos.intentos >= 5 THEN 5
-        ELSE public.comercio_reclamo_intentos.intentos + 1
+        WHEN private.comercio_reclamo_intentos.intentos >= 5 THEN 5
+        ELSE private.comercio_reclamo_intentos.intentos + 1
       END,
       ventana_inicio = CASE
-        WHEN public.comercio_reclamo_intentos.ventana_inicio
+        WHEN private.comercio_reclamo_intentos.ventana_inicio
              < pg_catalog.now() - interval '15 minutes' THEN pg_catalog.now()
-        ELSE public.comercio_reclamo_intentos.ventana_inicio
+        ELSE private.comercio_reclamo_intentos.ventana_inicio
       END,
       bloqueado_hasta = CASE
         WHEN CASE
-          WHEN public.comercio_reclamo_intentos.ventana_inicio
+          WHEN private.comercio_reclamo_intentos.ventana_inicio
                < pg_catalog.now() - interval '15 minutes' THEN 1
-          ELSE public.comercio_reclamo_intentos.intentos + 1
+          ELSE private.comercio_reclamo_intentos.intentos + 1
         END >= 5
         THEN pg_catalog.now() + interval '30 minutes'
         ELSE NULL
