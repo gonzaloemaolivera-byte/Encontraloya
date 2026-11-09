@@ -120,7 +120,7 @@ footer strong{color:white}
 
 <section class="panel" id="registerPanel">
 <h2>¿Tenés un comercio?</h2>
-<p>Registralo gratis para que más personas puedan encontrar tus productos. Completá los datos y nos pondremos en contacto.</p>
+<p>Registralo gratis para que más personas puedan encontrar tus productos. Completá los datos y nos pondremos en contacto. Para administrar productos desde el panel privado, además necesitarás un código de titularidad emitido por Encontralo Ya.</p>
 <form id="merchantForm">
 <div class="form-grid">
 <div class="field"><label for="merchantName">Nombre del comercio *</label><input id="merchantName" name="nombre" required maxlength="100"></div>
@@ -430,12 +430,9 @@ merchantForm.addEventListener("submit", async event => {
         // La respuesta no vino en formato JSON.
       }
 
-      if (
-        apiError.code === "23505" ||
-        response.status === 409
-      ) {
+      if (apiError.code === "23505" || response.status === 409) {
         merchantMessage.textContent =
-          "Este teléfono ya está registrado en Encontralo Ya. Si pertenece a tu comercio, contactanos para revisar o actualizar los datos.";
+          "Ya existe un registro con alguno de los datos enviados. Revisá la información o contactanos para revisar el alta.";
         return;
       }
 
