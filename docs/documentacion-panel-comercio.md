@@ -61,7 +61,7 @@ Antes de ejecutarla se debe confirmar que la versión de PostgreSQL de Supabase 
 
 ## Plan de prueba obligatorio
 
-Antes de producción, ejecutar primero la suite en un PostgreSQL 17 descartable de GitHub Actions, sin conexión ni credenciales de la base real. El repositorio es público y el runner estándar de GitHub Actions no tiene costo. Los archivos `supabase/tests/fixtures/esquema-supabase-prueba.sql` y `supabase/tests/verificar-migracion-comercial.sql` montan un esquema ficticio y verifican la migración. Después de que esa suite pase, repetir la prueba funcional en un proyecto Supabase de prueba si se dispone de uno. Comprobar:
+La suite de PostgreSQL 17 descartable de GitHub Actions ya se ejecutó con éxito: aplicó la migración y pasó las pruebas funcionales descritas abajo, sin conexión ni credenciales de la base real. El repositorio es público y el runner estándar de GitHub Actions no tiene costo. Los archivos `supabase/tests/fixtures/esquema-supabase-prueba.sql` y `supabase/tests/verificar-migracion-comercial.sql` montan un esquema ficticio y verifican la migración. Esta prueba valida PostgreSQL y el modelo de permisos simulado; no sustituye una comprobación de integración final con Supabase Auth/PostgREST antes de producción. Comprobar:
 
 1. Un usuario sin sesión no puede ejecutar las funciones privadas.
 2. Un usuario autenticado puede ver la lista de comercios pendientes, pero no leer las tablas privadas ni sus hashes.
