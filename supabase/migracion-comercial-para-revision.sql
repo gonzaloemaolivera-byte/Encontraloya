@@ -11,8 +11,9 @@
 -- Los códigos se guardan como SHA-256 en una tabla privada, nunca en texto
 -- plano en public.comercios. Solo se aceptan tokens hexadecimales de 64
 -- caracteres (256 bits). Todos los códigos preexistentes se invalidan.
--- La migración no genera ni entrega tokens: deben provisionarse por un canal
--- administrativo seguro y entregarse directamente al titular.
+-- Incluye una función de emisión manual reservada al propietario postgres.
+-- La migración no emite tokens por sí sola: deben generarse desde SQL Editor
+-- y entregarse directamente al titular.
 -- ============================================================================
 
 BEGIN;
