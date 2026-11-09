@@ -5,6 +5,7 @@ on:
     paths:
       - "supabase/migracion-comercial-para-revision.sql"
       - "supabase/tests/**"
+      - "panel-comercio.html"
       - ".github/workflows/prueba-migracion-comercial.yml"
   workflow_dispatch:
 
@@ -48,3 +49,16 @@ jobs:
 
       - name: Verificar permisos y flujos del panel
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/verificar-migracion-comercial.sql
+
+      - name: Validar sintaxis JavaScript del panel
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("panel-comercio.html").read_text()
+          scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+          if not scripts:
+              raise SystemExit("No se encontró el JavaScript del panel")
+          Path("/tmp/panel-comercio.js").write_text(scripts[-1])
+          PY
+          node --check /tmp/panel-comercio.js
