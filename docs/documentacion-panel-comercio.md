@@ -37,12 +37,11 @@ Se incorpora un acceso privado para comercios con las siguientes piezas:
 
 ## Permisos y seguridad
 
-**Columna `codigo_vendedor` (protección respetada):** hoy la lectura
+**Columna `codigo_vendedor` (protección respetada):** la lectura
 pública de `comercios` usa permisos por columna y `codigo_vendedor` no está
-incluido — se verificó contra el proyecto real: pedir `*` o esa columna
-devuelve `permission denied`. La migración agrega un
-`REVOKE SELECT (codigo_vendedor)` explícito para blindarlo frente a futuros
-`GRANT SELECT ON ALL TABLES` accidentales.
+incluido. La función de reclamo compara el código dentro de la base y nunca
+lo devuelve al navegador. Esta migración no cambia los permisos SELECT que
+ya existen.
 
 **Administración de productos:** el panel no usa la API REST para escribir:
 usa las funciones `crear_producto()` y `actualizar_producto()`, que
@@ -84,8 +83,10 @@ Agrega un índice no único sobre `propietario_id` y cinco funciones. No agrega 
      no los asigna ni los modifica.
    - El catálogo público (`index.html`) debe seguir cargando los 4
      productos actuales.
-   - Intentar `DELETE` de un producto con la clave publicable debe
-     fallar con permiso denegado.
+   - Confirmar que el catálogo público siga leyendo los productos y
+     que cada función del panel responda solo con una sesión autenticada.
+   - Probar los límites de acceso con cuentas de prueba distintas antes
+     de habilitar el panel a comercios reales.
 5. Recién después del deploy del panel, entregar los códigos privados a
    cada titular por un canal directo (nunca por la web pública).
 
