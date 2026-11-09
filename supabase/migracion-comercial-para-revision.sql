@@ -10,7 +10,7 @@
 -- Cada comercio sigue teniendo un solo propietario_id.
 -- Los códigos se guardan como SHA-256 en una tabla privada, nunca en texto
 -- plano en public.comercios. Solo se aceptan tokens hexadecimales de 64
--- caracteres (256 bits). Los códigos antiguos débiles se invalidan.
+-- caracteres (256 bits). Todos los códigos preexistentes se invalidan.
 -- La migración no genera ni entrega tokens: deben provisionarse por un canal
 -- administrativo seguro y entregarse directamente al titular.
 -- ============================================================================
@@ -51,25 +51,8 @@ CREATE TABLE IF NOT EXISTS public.comercio_reclamo_intentos (
 ALTER TABLE public.comercio_reclamo_intentos ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.comercio_reclamo_intentos FROM PUBLIC, anon, authenticated;
 
--- Migra únicamente tokens antiguos fuertes (64 caracteres hexadecimales).
--- Si hubiera códigos duplicados, conserva solo uno; los demás se reemiten.
-WITH tokens AS (
-  SELECT
-    c.id,
-    pg_catalog.sha256(pg_catalog.convert_to(pg_catalog.lower(pg_catalog.btrim(c.codigo_vendedor)), 'UTF8')) AS hash,
-    pg_catalog.row_number() OVER (
-      PARTITION BY pg_catalog.sha256(pg_catalog.convert_to(pg_catalog.lower(pg_catalog.btrim(c.codigo_vendedor)), 'UTF8'))
-      ORDER BY c.id
-    ) AS posicion
-  FROM public.comercios AS c
-  WHERE c.codigo_vendedor ~ '^[0-9A-Fa-f]{64}$'
-)
-INSERT INTO public.comercio_codigos_reclamo (comercio_id, codigo_hash)
-SELECT id, hash
-FROM tokens
-WHERE posicion = 1
-ON CONFLICT (comercio_id) DO NOTHING;
-
+-- No se conserva ningún código preexistente: su entropía no puede demostrarse
+-- solo por su longitud. Todos deberán emitirse nuevamente como tokens aleatorios.
 CREATE UNIQUE INDEX IF NOT EXISTS comercio_codigos_reclamo_hash_uidx
   ON public.comercio_codigos_reclamo (codigo_hash);
 
@@ -423,7 +406,7 @@ COMMIT;
 -- IMPORTANTE:
 -- * No se ejecuta esta migración al guardarla en GitHub.
 -- * No modifica datos comerciales ni productos; limpia codigo_vendedor,
---   invalida códigos débiles y agrega una restricción para mantenerlo NULL.
+--   invalida todos los códigos preexistentes y obliga a mantenerlo NULL.
 -- * No cambia políticas RLS ni permisos DELETE/SELECT de las tablas
 --   principales; activa RLS y revoca acceso en las dos tablas privadas nuevas.
 -- * No crea auth_user_id: usa public.comercios.propietario_id.
