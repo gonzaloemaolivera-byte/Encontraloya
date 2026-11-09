@@ -1,88 +1,39 @@
 -- ============================================================================
 -- Encontralo Ya — Migración comercial PARA REVISIÓN
 -- ============================================================================
--- Estado: BORRADOR PARA REVISIÓN. NO EJECUTAR en producción sin la
--- aprobación de Gonzalo. Ver docs/documentacion-panel-comercio.md para el
--- procedimiento de aplicación segura.
+-- BORRADOR: NO EJECUTAR en producción sin autorización expresa.
+-- Usa la columna propietario_id que ya existe en public.comercios.
+-- No crea auth_user_id, no modifica datos existentes y no cambia RLS.
 --
--- Objetivos:
---   1. Permitir que cada comercio tenga un acceso privado (Supabase Auth,
---      correo y contraseña) sin tocar comercios, productos ni datos
---      existentes: todos los cambios son ADITIVOS.
---   2. Que el reclamo de un comercio valide el código privado (columna
---      codigo_vendedor) EN EL SERVIDOR, mediante funciones SECURITY DEFINER.
---      El código nunca viaja al navegador ni queda expuesto en consultas
---      públicas.
---   3. Que cada comercio solo pueda administrar SUS PROPIOS productos y que
---      NO exista ninguna vía para borrar datos (ni por el panel ni por la
---      API pública).
---   4. Mantener el catálogo y las búsquedas públicas exactamente como
---      funcionan hoy.
---
--- La migración se ejecuta completa dentro de una transacción: si algo falla,
--- se revierte sola (BEGIN/COMMIT).
+-- Permite que una cuenta de Supabase Auth administre VARIOS comercios.
+-- Cada comercio sigue teniendo un solo propietario_id.
 -- ============================================================================
 
 BEGIN;
 
--- ----------------------------------------------------------------------------
--- 1) Vínculo comercio <-> usuario de Supabase Auth
--- ----------------------------------------------------------------------------
--- Columna nueva, nullable. Los comercios existentes quedan igual (sin dueño
--- asignado) hasta que su titular los reclame con su código privado.
-ALTER TABLE public.comercios
-  ADD COLUMN IF NOT EXISTS auth_user_id uuid REFERENCES auth.users (id)
-  ON DELETE SET NULL;
+-- Índice no único: un mismo usuario puede tener muchos comercios.
+CREATE INDEX IF NOT EXISTS comercios_propietario_id_idx
+  ON public.comercios (propietario_id)
+  WHERE propietario_id IS NOT NULL;
 
--- Un usuario de auth puede ser titular de un solo comercio.
-CREATE UNIQUE INDEX IF NOT EXISTS comercios_un_usuario_por_comercio
-  ON public.comercios (auth_user_id)
-  WHERE auth_user_id IS NOT NULL;
-
--- ----------------------------------------------------------------------------
--- 2) Protección de la columna codigo_vendedor
--- ----------------------------------------------------------------------------
--- Hoy el acceso público de lectura usa permisos por columna y codigo_vendedor
--- NO está incluido. Esta línea lo deja explícito y a prueba de futuros
--- "GRANT SELECT ON ALL TABLES" accidentales. No modifica ningún dato.
-REVOKE SELECT (codigo_vendedor) ON public.comercios FROM anon, authenticated;
-
--- ----------------------------------------------------------------------------
--- 3) Cierre defensivo: sin borrados por la API pública
--- ----------------------------------------------------------------------------
--- Durante la revisión se verificó que el rol anon puede ejecutar DELETE sobre
--- productos (PostgREST devuelve 204). Ninguna funcionalidad pública o del
--- panel necesita borrar, así que se revoca el permiso. Esto no elimina datos:
--- solo cierra la posibilidad de borrarlos por error.
-REVOKE DELETE ON public.productos FROM anon, authenticated;
-REVOKE DELETE ON public.comercios FROM anon, authenticated;
-
--- ----------------------------------------------------------------------------
--- 4) Funciones SECURITY DEFINER para el panel del comercio
--- ----------------------------------------------------------------------------
--- Se usan funciones en lugar de permisos directos sobre las tablas para que:
---   * la validación del codigo_vendedor ocurra dentro de la base (servidor),
---   * cada comercio solo alcance SUS propios productos,
---   * no exista ninguna operación de borrado.
-
--- Lista de comercios sin titular, para que su dueño los reclame desde el
--- panel. No expone codigo_vendedor ni teléfonos.
+-- Lista solo los comercios todavía no reclamados. Nunca devuelve el código.
 CREATE OR REPLACE FUNCTION public.comercios_sin_reclamar()
 RETURNS TABLE (id uuid, nombre text, localidad text, provincia text)
 LANGUAGE sql
+STABLE
 SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT c.id, c.nombre, c.localidad, c.provincia
-  FROM public.comercios c
-  WHERE c.auth_user_id IS NULL
-  ORDER BY c.nombre ASC;
-$$;
+SET search_path = ''
+AS $function$
+  SELECT c.id, c.nombre::text, c.localidad::text, c.provincia::text
+  FROM public.comercios AS c
+  WHERE c.propietario_id IS NULL
+    AND c.codigo_vendedor IS NOT NULL
+    AND pg_catalog.btrim(c.codigo_vendedor) <> ''
+  ORDER BY c.nombre;
+$function$;
 
--- Reclama un comercio: valida el código privado en el servidor y vincula el
--- comercio al usuario autenticado. Un solo UPDATE atómico evita que se
--- reclame dos veces. Un código incorrecto y un comercio ya reclamado dan el
--- mismo mensaje genérico, sin filtrar información.
+-- Reclama un comercio mediante su código privado validado en la base.
+-- propietario_id permite que una misma cuenta reclame más de un comercio.
 CREATE OR REPLACE FUNCTION public.reclamar_comercio(
   p_comercio_id uuid,
   p_codigo text
@@ -90,55 +41,76 @@ CREATE OR REPLACE FUNCTION public.reclamar_comercio(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
-AS $$
+SET search_path = ''
+AS $function$
 DECLARE
   v_uid uuid := auth.uid();
-  v_reclamado boolean;
+  v_reclamado boolean := false;
 BEGIN
   IF v_uid IS NULL THEN
-    RETURN jsonb_build_object(
+    RETURN pg_catalog.jsonb_build_object(
       'ok', false,
-      'mensaje', 'Iniciá sesión con tu correo y contraseña para reclamar el comercio.');
+      'mensaje', 'Iniciá sesión con tu correo y contraseña para reclamar el comercio.'
+    );
   END IF;
 
-  IF p_codigo IS NULL OR length(btrim(p_codigo)) NOT BETWEEN 6 AND 40 THEN
-    RETURN jsonb_build_object(
+  IF p_comercio_id IS NULL
+     OR p_codigo IS NULL
+     OR pg_catalog.length(pg_catalog.btrim(p_codigo)) NOT BETWEEN 6 AND 40 THEN
+    RETURN pg_catalog.jsonb_build_object(
       'ok', false,
-      'mensaje', 'Revisá el código privado. Debe tener entre 6 y 40 caracteres.');
+      'mensaje', 'Revisá el código privado. Debe tener entre 6 y 40 caracteres.'
+    );
   END IF;
 
-  UPDATE public.comercios
-     SET auth_user_id = v_uid
-   WHERE id = p_comercio_id
-     AND auth_user_id IS NULL
-     AND codigo_vendedor = btrim(p_codigo)
+  UPDATE public.comercios AS c
+     SET propietario_id = v_uid
+   WHERE c.id = p_comercio_id
+     AND c.propietario_id IS NULL
+     AND c.codigo_vendedor = pg_catalog.btrim(p_codigo)
   RETURNING true INTO v_reclamado;
 
   IF v_reclamado THEN
-    RETURN jsonb_build_object('ok', true, 'mensaje', 'Comercio reclamado correctamente.');
+    RETURN pg_catalog.jsonb_build_object(
+      'ok', true,
+      'mensaje', 'Comercio vinculado correctamente a tu cuenta.'
+    );
   END IF;
 
-  RETURN jsonb_build_object(
+  RETURN pg_catalog.jsonb_build_object(
     'ok', false,
-    'mensaje', 'No pudimos reclamar el comercio: el código no coincide o el comercio ya tiene titular. Escribinos para revisarlo.');
+    'mensaje', 'No pudimos vincular el comercio: el código no coincide o el comercio ya tiene titular. Escribinos para revisarlo.'
+  );
 END;
-$$;
+$function$;
 
--- Devuelve los datos del comercio del usuario autenticado, sin
--- codigo_vendedor.
+-- Devuelve TODOS los comercios del usuario autenticado (no solo uno).
+-- PostgREST entrega una lista de filas para que el panel permita elegir.
 CREATE OR REPLACE FUNCTION public.datos_del_comercio()
-RETURNS jsonb
+RETURNS TABLE (
+  id uuid,
+  nombre text,
+  localidad text,
+  provincia text,
+  rubro text
+)
 LANGUAGE sql
+STABLE
 SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT to_jsonb(c) - 'codigo_vendedor' - 'auth_user_id'
-  FROM public.comercios c
-  WHERE c.auth_user_id = auth.uid();
-$$;
+SET search_path = ''
+AS $function$
+  SELECT
+    c.id,
+    c.nombre::text,
+    c.localidad::text,
+    c.provincia::text,
+    c.rubro::text
+  FROM public.comercios AS c
+  WHERE c.propietario_id = auth.uid()
+  ORDER BY c.nombre;
+$function$;
 
--- Alta de productos: solo para el comercio del usuario autenticado.
+-- Alta de productos: solo para un comercio perteneciente al usuario.
 CREATE OR REPLACE FUNCTION public.crear_producto(
   p_comercio_id uuid,
   p_nombre text,
@@ -151,50 +123,65 @@ CREATE OR REPLACE FUNCTION public.crear_producto(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
-AS $$
+SET search_path = ''
+AS $function$
 DECLARE
   v_uid uuid := auth.uid();
   v_id uuid;
+  v_moneda text := pg_catalog.upper(pg_catalog.btrim(pg_catalog.coalesce(p_moneda, 'ARS')));
 BEGIN
   IF v_uid IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'mensaje', 'Iniciá sesión para publicar productos.');
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'Iniciá sesión para publicar productos.');
   END IF;
 
   IF NOT EXISTS (
-    SELECT 1 FROM public.comercios
-     WHERE id = p_comercio_id AND auth_user_id = v_uid
+    SELECT 1
+    FROM public.comercios AS c
+    WHERE c.id = p_comercio_id
+      AND c.propietario_id = v_uid
   ) THEN
-    RETURN jsonb_build_object('ok', false, 'mensaje', 'Solo podés publicar productos de tu propio comercio.');
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'Solo podés publicar productos de tus propios comercios.');
   END IF;
 
-  IF p_nombre IS NULL OR length(btrim(p_nombre)) NOT BETWEEN 2 AND 120 THEN
-    RETURN jsonb_build_object('ok', false, 'mensaje', 'El nombre del producto debe tener entre 2 y 120 caracteres.');
+  IF p_nombre IS NULL OR pg_catalog.length(pg_catalog.btrim(p_nombre)) NOT BETWEEN 2 AND 120 THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'El nombre del producto debe tener entre 2 y 120 caracteres.');
   END IF;
 
-  IF p_precio IS NOT NULL AND p_precio < 0 THEN
-    RETURN jsonb_build_object('ok', false, 'mensaje', 'El precio no puede ser negativo.');
+  IF p_descripcion IS NOT NULL AND pg_catalog.length(p_descripcion) > 500 THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'La descripción no puede superar los 500 caracteres.');
+  END IF;
+
+  IF p_categoria IS NOT NULL AND pg_catalog.length(p_categoria) > 80 THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'La categoría no puede superar los 80 caracteres.');
+  END IF;
+
+  IF p_precio IS NOT NULL AND (p_precio < 0 OR p_precio > 999999999999.99) THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'Revisá el precio ingresado.');
+  END IF;
+
+  IF v_moneda NOT IN ('ARS', 'USD') THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'La moneda debe ser ARS o USD.');
   END IF;
 
   INSERT INTO public.productos
     (comercio_id, nombre, descripcion, categoria, precio, moneda, disponible)
   VALUES
     (p_comercio_id,
-     btrim(p_nombre),
-     nullif(btrim(p_descripcion), ''),
-     nullif(btrim(p_categoria), ''),
-     p_precio,
-     coalesce(nullif(btrim(p_moneda), ''), 'ARS'),
-     coalesce(p_disponible, true))
+     pg_catalog.btrim(p_nombre),
+     pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(p_descripcion, '')), ''),
+     pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(p_categoria, '')), ''),
+     CASE WHEN p_precio IS NULL THEN NULL ELSE pg_catalog.round(p_precio, 2) END,
+     v_moneda,
+     pg_catalog.coalesce(p_disponible, true))
   RETURNING id INTO v_id;
 
-  RETURN jsonb_build_object('ok', true, 'id', v_id,
-    'mensaje', 'Producto publicado en el catálogo.');
+  RETURN pg_catalog.jsonb_build_object(
+    'ok', true, 'id', v_id, 'mensaje', 'Producto publicado en el catálogo.'
+  );
 END;
-$$;
+$function$;
 
--- Edición de productos: solo los del propio comercio. No existe función de
--- borrado a propósito: los productos solo se marcan como no disponibles.
+-- Edición: exige que el producto pertenezca a alguno de los comercios del usuario.
 CREATE OR REPLACE FUNCTION public.actualizar_producto(
   p_producto_id uuid,
   p_nombre text,
@@ -207,47 +194,71 @@ CREATE OR REPLACE FUNCTION public.actualizar_producto(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
-AS $$
+SET search_path = ''
+AS $function$
 DECLARE
   v_uid uuid := auth.uid();
   v_id uuid;
+  v_moneda text := pg_catalog.upper(pg_catalog.btrim(pg_catalog.coalesce(p_moneda, 'ARS')));
 BEGIN
   IF v_uid IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'mensaje', 'Iniciá sesión para editar productos.');
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'Iniciá sesión para editar productos.');
   END IF;
 
-  UPDATE public.productos
-     SET nombre = btrim(p_nombre),
-         descripcion = nullif(btrim(p_descripcion), ''),
-         categoria = nullif(btrim(p_categoria), ''),
-         precio = p_precio,
-         moneda = coalesce(nullif(btrim(p_moneda), ''), 'ARS'),
-         disponible = coalesce(p_disponible, true)
-   WHERE id = p_producto_id
-     AND comercio_id IN (
-       SELECT id FROM public.comercios WHERE auth_user_id = v_uid
+  IF p_nombre IS NULL OR pg_catalog.length(pg_catalog.btrim(p_nombre)) NOT BETWEEN 2 AND 120 THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'El nombre del producto debe tener entre 2 y 120 caracteres.');
+  END IF;
+
+  IF p_descripcion IS NOT NULL AND pg_catalog.length(p_descripcion) > 500 THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'La descripción no puede superar los 500 caracteres.');
+  END IF;
+
+  IF p_categoria IS NOT NULL AND pg_catalog.length(p_categoria) > 80 THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'La categoría no puede superar los 80 caracteres.');
+  END IF;
+
+  IF p_precio IS NOT NULL AND (p_precio < 0 OR p_precio > 999999999999.99) THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'Revisá el precio ingresado.');
+  END IF;
+
+  IF v_moneda NOT IN ('ARS', 'USD') THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'La moneda debe ser ARS o USD.');
+  END IF;
+
+  UPDATE public.productos AS p
+     SET nombre = pg_catalog.btrim(p_nombre),
+         descripcion = pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(p_descripcion, '')), ''),
+         categoria = pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(p_categoria, '')), ''),
+         precio = CASE WHEN p_precio IS NULL THEN NULL ELSE pg_catalog.round(p_precio, 2) END,
+         moneda = v_moneda,
+         disponible = pg_catalog.coalesce(p_disponible, true)
+   WHERE p.id = p_producto_id
+     AND EXISTS (
+       SELECT 1
+       FROM public.comercios AS c
+       WHERE c.id = p.comercio_id
+         AND c.propietario_id = v_uid
      )
-  RETURNING id INTO v_id;
+  RETURNING p.id INTO v_id;
 
   IF v_id IS NULL THEN
-    RETURN jsonb_build_object('ok', false,
-      'mensaje', 'Solo podés editar productos de tu propio comercio.');
+    RETURN pg_catalog.jsonb_build_object(
+      'ok', false, 'mensaje', 'No encontramos ese producto entre los comercios de tu cuenta.'
+    );
   END IF;
 
-  RETURN jsonb_build_object('ok', true, 'id', v_id,
-    'mensaje', 'Producto actualizado.');
+  RETURN pg_catalog.jsonb_build_object('ok', true, 'id', v_id, 'mensaje', 'Producto actualizado.');
 END;
-$$;
+$function$;
 
--- Las funciones se ejecutan solo con sesión iniciada (rol authenticated).
-REVOKE EXECUTE ON FUNCTION public.comercios_sin_reclamar()  FROM PUBLIC, anon;
+-- Solo usuarios autenticados pueden invocar las funciones del panel.
+REVOKE EXECUTE ON FUNCTION public.comercios_sin_reclamar() FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.reclamar_comercio(uuid, text) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.datos_del_comercio() FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.crear_producto(uuid, text, text, text, numeric, text, boolean) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.actualizar_producto(uuid, text, text, text, numeric, text, boolean) FROM PUBLIC, anon;
 
-GRANT EXECUTE ON FUNCTION public.comercios_sin_reclamar()  TO authenticated;
+GRANT EXECUTE ON FUNCTION public.comercios_sin_reclamar() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.reclamar_comercio(uuid, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.datos_del_comercio() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.crear_producto(uuid, text, text, text, numeric, text, boolean) TO authenticated;
@@ -255,11 +266,9 @@ GRANT EXECUTE ON FUNCTION public.actualizar_producto(uuid, text, text, text, num
 
 COMMIT;
 
--- ============================================================================
--- Qué NO hace esta migración (para la revisión):
---   * No ejecuta UPDATE ni DELETE sobre filas existentes: solo agrega una
---     columna, un índice y funciones nuevas.
---   * No habilita RLS ni cambia los permisos existentes de lectura y de
---     registro del catálogo y del formulario público.
---   * No toca el contenido de la columna codigo_vendedor ni lo expone.
--- ============================================================================
+-- IMPORTANTE:
+-- * No se ejecuta esta migración al guardarla en GitHub.
+-- * No modifica ni elimina comercios o productos existentes.
+-- * No cambia políticas RLS ni permisos DELETE/SELECT de las tablas.
+-- * No crea auth_user_id: usa public.comercios.propietario_id.
+-- * Una misma cuenta puede administrar varios comercios.
