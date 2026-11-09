@@ -131,7 +131,7 @@ END;
 $$;
 RESET ROLE;
 
-DO $
+DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM private.comercio_codigos_reclamo k
