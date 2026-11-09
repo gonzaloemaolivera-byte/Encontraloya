@@ -128,7 +128,7 @@ AS $function$
 DECLARE
   v_uid uuid := auth.uid();
   v_id uuid;
-  v_moneda text := pg_catalog.upper(pg_catalog.btrim(pg_catalog.coalesce(p_moneda, 'ARS')));
+  v_moneda text := pg_catalog.upper(pg_catalog.btrim(COALESCE(p_moneda, 'ARS')));
 BEGIN
   IF v_uid IS NULL THEN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'Iniciá sesión para publicar productos.');
@@ -168,11 +168,11 @@ BEGIN
   VALUES
     (p_comercio_id,
      pg_catalog.btrim(p_nombre),
-     pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(p_descripcion, '')), ''),
-     pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(p_categoria, '')), ''),
+     NULLIF(pg_catalog.btrim(COALESCE(p_descripcion, '')), ''),
+     NULLIF(pg_catalog.btrim(COALESCE(p_categoria, '')), ''),
      CASE WHEN p_precio IS NULL THEN NULL ELSE pg_catalog.round(p_precio, 2) END,
      v_moneda,
-     pg_catalog.coalesce(p_disponible, true))
+     COALESCE(p_disponible, true))
   RETURNING id INTO v_id;
 
   RETURN pg_catalog.jsonb_build_object(
@@ -199,7 +199,7 @@ AS $function$
 DECLARE
   v_uid uuid := auth.uid();
   v_id uuid;
-  v_moneda text := pg_catalog.upper(pg_catalog.btrim(pg_catalog.coalesce(p_moneda, 'ARS')));
+  v_moneda text := pg_catalog.upper(pg_catalog.btrim(COALESCE(p_moneda, 'ARS')));
 BEGIN
   IF v_uid IS NULL THEN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'Iniciá sesión para editar productos.');
@@ -227,11 +227,11 @@ BEGIN
 
   UPDATE public.productos AS p
      SET nombre = pg_catalog.btrim(p_nombre),
-         descripcion = pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(p_descripcion, '')), ''),
-         categoria = pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(p_categoria, '')), ''),
+         descripcion = NULLIF(pg_catalog.btrim(COALESCE(p_descripcion, '')), ''),
+         categoria = NULLIF(pg_catalog.btrim(COALESCE(p_categoria, '')), ''),
          precio = CASE WHEN p_precio IS NULL THEN NULL ELSE pg_catalog.round(p_precio, 2) END,
          moneda = v_moneda,
-         disponible = pg_catalog.coalesce(p_disponible, true)
+         disponible = COALESCE(p_disponible, true)
    WHERE p.id = p_producto_id
      AND EXISTS (
        SELECT 1
