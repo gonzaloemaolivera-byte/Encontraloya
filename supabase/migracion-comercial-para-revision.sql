@@ -437,6 +437,48 @@ BEGIN
 END;
 $function$;
 
+-- Emisión administrativa de tokens nuevos.
+-- Se ejecuta manualmente desde SQL Editor como postgres:
+--   SELECT private.emitir_codigo_reclamo('<uuid-del-comercio>');
+-- El token se muestra una sola vez en el resultado y se entrega al titular
+-- por un canal directo. La base conserva únicamente SHA-256.
+-- No se concede EXECUTE a roles de API ni al service_role.
+CREATE OR REPLACE FUNCTION private.emitir_codigo_reclamo(p_comercio_id uuid)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_token text;
+BEGIN
+  IF p_comercio_id IS NULL OR NOT EXISTS (
+    SELECT 1
+    FROM public.comercios AS c
+    WHERE c.id = p_comercio_id
+      AND c.propietario_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'El comercio no existe o ya tiene titular.';
+  END IF;
+
+  v_token := pg_catalog.encode(extensions.gen_random_bytes(32), 'hex');
+
+  INSERT INTO private.comercio_codigos_reclamo (comercio_id, codigo_hash)
+  VALUES (
+    p_comercio_id,
+    pg_catalog.sha256(pg_catalog.convert_to(v_token, 'UTF8'))
+  )
+  ON CONFLICT (comercio_id) DO UPDATE
+    SET codigo_hash = EXCLUDED.codigo_hash,
+        creado_en = pg_catalog.now();
+
+  RETURN v_token;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION private.emitir_codigo_reclamo(uuid)
+  FROM PUBLIC, anon, authenticated, service_role;
+
 -- Solo usuarios autenticados pueden invocar las funciones del panel.
 REVOKE EXECUTE ON FUNCTION public.comercios_sin_reclamar() FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.reclamar_comercio(uuid, text) FROM PUBLIC, anon;
