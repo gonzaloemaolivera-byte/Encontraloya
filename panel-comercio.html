@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#102a43">
+<meta name="description" content="Panel privado para comercios de Encontralo Ya.">
+<title>Encontralo Ya | Panel del comercio</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--ink:#172b4d;--muted:#627d98;--line:#d9e2ec;--paper:#f5f8fb;--white:#fff;--green:#16845b;--shadow:0 12px 32px rgba(16,42,67,.09)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.65;cursor:wait}
+.wrap{width:min(1120px,calc(100% - 32px));margin:auto}
+header{background:var(--navy);color:white;padding:17px 0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-size:1.35rem;font-weight:850;letter-spacing:-.5px}
+.brand span{color:#65d6df}
+.tag{font-size:.82rem;color:#d7e7f5}
+.back-link{border:1px solid #8fb5d4;border-radius:999px;padding:9px 14px;color:white;background:transparent;font-weight:700;text-decoration:none;display:inline-block;font-size:.9rem}
+main{padding:30px 0 60px}
+.card{background:white;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow);max-width:640px;margin:0 auto 20px}
+.card h2{margin:0 0 6px;color:var(--navy);letter-spacing:-.4px;font-size:1.35rem}
+.card p.sub{margin:0 0 16px;color:var(--muted);font-size:.92rem}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tabs button{flex:1;border:1px solid var(--line);background:white;color:#486581;border-radius:10px;padding:10px;font-weight:750}
+.tabs button.active{background:var(--navy);border-color:var(--navy);color:white}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.full{grid-column:1/-1}
+label{font-size:.85rem;font-weight:750;color:#334e68}
+input,select,textarea{width:100%;border:1px solid #bcccdc;border-radius:9px;padding:11px 12px;background:white;color:var(--ink)}
+textarea{min-height:85px;resize:vertical}
+.form-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px}
+.form-message{font-size:.88rem;color:var(--muted)}
+.form-message.error{color:#a8201a}
+.form-message.ok{color:var(--green)}
+.primary{background:var(--blue);color:white;border:0;border-radius:10px;padding:12px 18px;font-weight:800}
+.ghost{background:white;color:var(--blue);border:1px solid var(--blue);border-radius:10px;padding:11px 16px;font-weight:750}
+.info{background:#e5f5f8;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 16px;color:#334e68;font-size:.9rem}
+.product{background:white;border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:0 4px 14px rgba(16,42,67,.04)}
+.product h3{font-size:1.03rem;margin:0 0 5px;color:var(--navy)}
+.product .desc{font-size:.88rem;color:var(--muted);margin:0 0 10px}
+.product .meta{font-size:.82rem;color:var(--muted)}
+.price{font-size:1.2rem;font-weight:850;color:var(--green);margin:9px 0}
+.badge{display:inline-block;border-radius:999px;padding:3px 10px;font-size:.75rem;font-weight:800;margin-top:6px}
+.badge.on{background:#e3f6ef;color:var(--green)}
+.badge.off{background:#f0f4f8;color:#829ab1}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.empty{background:white;border:1px dashed #9fb3c8;border-radius:15px;padding:25px;text-align:center;color:var(--muted)}
+footer{background:var(--navy);color:#d7e7f5;padding:23px 0;font-size:.85rem}
+footer strong{color:white}
+.hidden{display:none}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.card{padding:17px}}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap top">
+<div>
+<div class="brand">Encontralo <span>Ya</span></div>
+<div class="tag">Panel privado para comercios</div>
+</div>
+<a class="back-link" href="index.html">Volver al catálogo</a>
+</div>
+</header>
+
+<main class="wrap">
+<!-- ======== Acceso privado ======== -->
+<section class="card" id="authCard">
+<h2>Acceso de comercios</h2>
+<p class="sub">Entrá con tu correo y contraseña para administrar uno o varios comercios desde la misma cuenta.</p>
+<div class="tabs">
+<button type="button" id="tabLogin" class="active">Iniciar sesión</button>
+<button type="button" id="tabSignup">Crear cuenta</button>
+</div>
+<form id="authForm">
+<div class="form-grid">
+<div class="field full"><label for="authEmail">Correo electrónico *</label><input id="authEmail" type="email" required autocomplete="email" maxlength="120"></div>
+<div class="field full"><label for="authPassword">Contraseña *</label><input id="authPassword" type="password" required minlength="8" autocomplete="current-password" placeholder="Al crear cuenta: 12+ caracteres, mayúscula, minúscula, número y símbolo"></div>
+</div>
+<div class="form-foot">
+<button class="primary" id="authSubmit" type="submit">Iniciar sesión</button>
+<span class="form-message" id="authMessage" role="status">Tu contraseña se verifica contra Supabase Auth; no la guardamos en el navegador.</span>
+</div>
+</form>
+</section>
+
+<!-- ======== Reclamar comercio ======== -->
+<section class="card hidden" id="claimCard">
+<h2>Reclamá tu comercio</h2>
+<p class="sub">Tu cuenta todavía no está vinculada a un comercio. Elegilo en la lista y validá el código privado que te entregamos por un canal directo.</p>
+<p class="info">El código se valida <strong>en el servidor</strong> comparando su hash privado. El token no se almacena en texto plano ni se devuelve al navegador. El teléfono, por sí solo, no sirve como prueba de titularidad.</p>
+<form id="claimForm">
+<div class="form-grid">
+<div class="field full"><label for="claimComercio">Comercio a reclamar *</label><select id="claimComercio" required><option value="">Cargando comercios disponibles…</option></select></div>
+<div class="field full"><label for="claimCode">Código privado *</label><input id="claimCode" type="text" required minlength="64" maxlength="64" pattern="[A-Fa-f0-9]{64}" inputmode="text" autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="Token de 64 caracteres hexadecimales"></div>
+</div>
+<div class="form-foot">
+<button class="primary" id="claimSubmit" type="submit">Validar código y reclamar</button>
+<span class="form-message" id="claimMessage" role="status"></span>
+</div>
+</form>
+</section>
+
+<!-- ======== Administración del comercio ======== -->
+<div class="hidden" id="comercioView">
+<section class="card" id="comercioCard">
+<h2 id="comercioNombre">Mi comercio</h2>
+<p class="sub" id="comercioDetalle"></p>
+<div class="field" id="shopSelectorWrap" style="margin-top:14px">
+<label for="shopSelect">Comercio que estás administrando</label>
+<select id="shopSelect" aria-label="Elegir comercio"></select>
+</div>
+<div class="form-foot">
+<button class="ghost" id="logoutBtn" type="button">Cerrar sesión</button>
+<span class="form-message">Accedés como <strong id="comercioEmail"></strong>.</span>
+</div>
+</section>
+
+<section class="card" id="claimMoreCard">
+<h2>Sumar otro comercio a esta cuenta</h2>
+<p class="sub">Si administrás más de un local, podés vincularlo con su código privado sin crear otra cuenta.</p>
+<form id="claimMoreForm">
+<div class="form-grid">
+<div class="field full"><label for="claimMoreComercio">Comercio *</label><select id="claimMoreComercio" required><option value="">Cargando comercios disponibles…</option></select></div>
+<div class="field full"><label for="claimMoreCode">Código privado *</label><input id="claimMoreCode" type="text" required minlength="64" maxlength="64" pattern="[A-Fa-f0-9]{64}" inputmode="text" autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="Token de 64 caracteres hexadecimales"></div>
+</div>
+<div class="form-foot">
+<button class="primary" id="claimMoreSubmit" type="submit">Vincular otro comercio</button>
+<span class="form-message" id="claimMoreMessage" role="status"></span>
+</div>
+</form>
+</section>
+
+<section class="card">
+<h2 id="formTitle">Publicar un producto</h2>
+<p class="sub">Los productos publicados aparecen en el catálogo público si están disponibles. No se puede borrar: si ya no lo tenés, marcálo como no disponible.</p>
+<form id="productForm">
+<input type="hidden" id="productId">
+<div class="form-grid">
+<div class="field full"><label for="productName">Nombre del producto *</label><input id="productName" required maxlength="120"></div>
+<div class="field"><label for="productCategory">Categoría</label><select id="productCategory"><option value="">Sin categoría</option><option>Ferretería</option><option>Repuestos</option><option>Limpieza</option><option>Bazar y hogar</option><option>Electricidad</option><option>Construcción</option><option>Alimentos</option><option>Otros</option></select></div>
+<div class="field"><label for="productPrice">Precio</label><input id="productPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Vacío = consultar precio"></div>
+<div class="field"><label for="productCurrency">Moneda</label><select id="productCurrency"><option value="ARS">ARS</option><option value="USD">USD</option></select></div>
+<div class="field"><label for="productAvailable">Disponibilidad</label><select id="productAvailable"><option value="true">Disponible</option><option value="false">No disponible</option></select></div>
+<div class="field full"><label for="productDescription">Descripción</label><textarea id="productDescription" maxlength="500" placeholder="Detalles del producto: marca, medidas, presentación…"></textarea></div>
+</div>
+<div class="form-foot">
+<button class="primary" id="productSubmit" type="submit">Publicar producto</button>
+<button class="ghost hidden" id="productCancel" type="button">Cancelar edición</button>
+<span class="form-message" id="productMessage" role="status"></span>
+</div>
+</form>
+</section>
+
+<section class="card" style="max-width:none">
+<h2>Mis productos</h2>
+<p class="sub">Publicados con tu comercio. La edición usa funciones del servidor que solo alcanzan a tus propios productos.</p>
+<div class="status" id="productsStatus" role="status" style="color:var(--muted);font-size:.9rem;padding:8px 0"></div>
+<div class="grid" id="productsGrid"></div>
+</section>
+</div>
+</main>
+
+<footer><div class="wrap"><strong>Encontralo Ya</strong> · Una idea que conecta compradores y comercios.<br>La disponibilidad y los precios deben ser confirmados por cada comercio.</div></footer>
+
+<script>
+(() => {
+"use strict";
+
+// Clave publicable: puede utilizarse en el navegador.
+// Nunca colocar aquí una clave secret o service_role.
+const SUPABASE_URL = "https://egvchkzktjaitskcqlnr.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_MhdqvUOMFQrImKw0ePCH1g_FU2BpGxj";
+const SESSION_KEY = "encontraloya_sesion";
+
+const $ = id => document.getElementById(id);
+
+const authCard = $("authCard");
+const claimCard = $("claimCard");
+const comercioView = $("comercioView");
+const authForm = $("authForm");
+const authMessage = $("authMessage");
+const authSubmit = $("authSubmit");
+const authEmail = $("authEmail");
+const authPassword = $("authPassword");
+const tabLogin = $("tabLogin");
+const tabSignup = $("tabSignup");
+
+let mode = "login";
+let session = null;
+let comercio = null;
+let comercios = [];
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  })[char]);
+}
+
+function setMessage(element, text, kind) {
+  element.textContent = text || "";
+  element.classList.toggle("error", kind === "error");
+  element.classList.toggle("ok", kind === "ok");
+}
+
+function money(value, currency) {
+  if (value === null || value === undefined || value === "") return "Consultar precio";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "Consultar precio";
+  try {
+    return new Intl.NumberFormat("es-AR", {
+      style:"currency", currency: currency || "ARS", maximumFractionDigits:2
+    }).format(number);
+  } catch {
+    return `${currency || "ARS"} ${number.toLocaleString("es-AR")}`;
+  }
+}
+
+// ---------- Sesión ----------
+
+function saveSession(data) {
+  if (!data) {
+    localStorage.removeItem(SESSION_KEY);
+    session = null;
+    return;
+  }
+  session = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    email: data.user?.email || ""
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+async function authFetch(path, body, extraHeaders) {
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+    method: body === undefined ? "GET" : "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      "Content-Type": "application/json",
+      ...(extraHeaders || {})
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) })
+  });
+  return response;
+}
+
+async function authenticatedGet(url) {
+  const send = () => fetch(url, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token || ""}`
+    }
+  });
+
+  let response = await send();
+  if (response.status === 401 && await refreshAccessToken()) {
+    response = await send();
+  }
+  return response;
+}
+
+async function authenticatedRpc(name, body) {
+  const send = () => fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token || ""}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  let response = await send();
+  if (response.status === 401 && await refreshAccessToken()) {
+    response = await send();
+  }
+  return response;
+}
+
+// Las funciones RPC consultadas aquí son STABLE y admiten GET sin cuerpo.
+async function apiFetch(path) {
+  const response = await authenticatedGet(`${SUPABASE_URL}/rest/v1/${path}`);
+  const detail = await response.json().catch(() => ({}));
+  return { ok: response.ok, status: response.status, data: detail };
+}
+
+async function refreshAccessToken() {
+  if (!session?.refresh_token) return false;
+  const response = await authFetch(
+    "token?grant_type=refresh_token",
+    { refresh_token: session.refresh_token }
+  );
+  if (!response.ok) return false;
+  const data = await response.json();
+  if (!data.access_token) return false;
+  saveSession(data);
+  return true;
+}
+
+// Revalida la sesión guardada; devuelve true si sigue activa.
+async function restoreSession() {
+  const stored = localStorage.getItem(SESSION_KEY);
+  if (!stored) return false;
+
+  try { session = JSON.parse(stored); } catch { return false; }
+
+  let response = await authFetch("user", undefined, {
+    Authorization: `Bearer ${session.access_token || ""}`
+  });
+
+  if (response.status === 401 && (await refreshAccessToken())) {
+    response = await authFetch("user", undefined, {
+      Authorization: `Bearer ${session.access_token}`
+    });
+  }
+
+  if (!response.ok) {
+    saveSession(null);
+    return false;
+  }
+
+  const user = await response.json();
+  saveSession({ ...session, user: { email: user.email || "" } });
+  return true;
+}
+
+// ---------- Vistas ----------
+
+function showAuth() {
+  authCard.classList.remove("hidden");
+  claimCard.classList.add("hidden");
+  comercioView.classList.add("hidden");
+}
+
+function showClaim() {
+  authCard.classList.add("hidden");
+  claimCard.classList.remove("hidden");
+  comercioView.classList.add("hidden");
+  loadComerciosSinReclamar("claimComercio", "claimMessage");
+}
+
+function showComercioView() {
+  authCard.classList.add("hidden");
+  claimCard.classList.add("hidden");
+  comercioView.classList.remove("hidden");
+  renderComercio();
+  loadComerciosSinReclamar("claimMoreComercio", "claimMoreMessage");
+  loadMisProductos();
+}
+
+function renderComercio() {
+  $("comercioNombre").textContent = comercio.nombre || "Mi comercio";
+  const partes = [comercio.localidad, comercio.provincia, comercio.rubro]
+    .filter(Boolean).join(" · ");
+  $("comercioDetalle").textContent = partes
+    ? `Comercio vinculado a tu cuenta: ${partes}`
+    : "Comercio vinculado a tu cuenta.";
+  $("comercioEmail").textContent = session?.email || "";
+
+  const selector = $("shopSelect");
+  selector.replaceChildren();
+  for (const item of comercios) {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.nombre || "Comercio";
+    selector.appendChild(option);
+  }
+  selector.value = comercio.id;
+  $("shopSelectorWrap").classList.toggle("hidden", comercios.length < 2);
+}
+
+// ---------- Flujo de acceso ----------
+
+tabLogin.addEventListener("click", () => setMode("login"));
+tabSignup.addEventListener("click", () => setMode("signup"));
+
+function setMode(next) {
+  mode = next;
+  tabLogin.classList.toggle("active", next === "login");
+  tabSignup.classList.toggle("active", next === "signup");
+  authSubmit.textContent = next === "login" ? "Iniciar sesión" : "Crear cuenta";
+  authPassword.setAttribute("autocomplete", next === "login" ? "current-password" : "new-password");
+  setMessage(authMessage, next === "login"
+    ? "Tu contraseña se verifica contra Supabase Auth; no la guardamos en el navegador."
+    : "Te enviaremos un correo de confirmación si tu cuenta la necesita.");
+}
+
+authForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!authForm.reportValidity()) return;
+
+  if (mode === "signup") {
+    const password = authPassword.value;
+    const strongPassword = password.length >= 12
+      && /[a-z]/.test(password)
+      && /[A-Z]/.test(password)
+      && /[0-9]/.test(password)
+      && /[^A-Za-z0-9]/.test(password);
+
+    if (!strongPassword) {
+      setMessage(authMessage,
+        "Para crear la cuenta usá al menos 12 caracteres, con mayúscula, minúscula, número y símbolo.",
+        "error");
+      authPassword.focus();
+      return;
+    }
+  }
+
+  authSubmit.disabled = true;
+  setMessage(authMessage, mode === "login" ? "Verificando credenciales…" : "Creando cuenta…");
+
+  try {
+    let response;
+    if (mode === "login") {
+      response = await authFetch("token?grant_type=password", {
+        email: authEmail.value.trim(),
+        password: authPassword.value
+      });
+    } else {
+      response = await authFetch("signup", {
+        email: authEmail.value.trim(),
+        password: authPassword.value
+      });
+    }
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const detalle = data.error_description || data.msg || data.message || "";
+      setMessage(authMessage,
+        mode === "login" && response.status === 400
+          ? "Correo o contraseña incorrectos."
+          : (detalle || "No pudimos completar la operación. Intentá nuevamente."),
+        "error");
+      return;
+    }
+
+    if (data.access_token) {
+      saveSession(data);
+      authForm.reset();
+      await afterAuth();
+      return;
+    }
+
+    // Cuenta creada sin sesión activa: requiere confirmación por correo.
+    setMessage(authMessage,
+      "Cuenta creada. Revisá tu correo y confirmá la dirección para continuar.",
+      "ok");
+  } catch (error) {
+    console.error(error);
+    setMessage(authMessage, "Error de conexión. Intentá nuevamente.", "error");
+  } finally {
+    authSubmit.disabled = false;
+  }
+});
+
+$("logoutBtn").addEventListener("click", async () => {
+  try {
+    await authFetch("logout", {}, {
+      Authorization: `Bearer ${session?.access_token || ""}`
+    });
+  } catch {
+    // Cerramos igual aunque el servidor no responda.
+  }
+  saveSession(null);
+  comercio = null;
+  comercios = [];
+  showAuth();
+});
+
+// Después de iniciar sesión: ¿el usuario ya tiene comercio reclamado?
+async function afterAuth() {
+  const result = await apiFetch("rpc/datos_del_comercio");
+
+  if (!result.ok) {
+    setMessage(authMessage,
+      "No pudimos verificar tu comercio. Probá recargar la página.", "error");
+    showClaim();
+    return;
+  }
+
+  comercios = Array.isArray(result.data)
+    ? result.data.filter(item => item && item.id)
+    : (result.data && result.data.id ? [result.data] : []);
+
+  if (comercios.length) {
+    const anterior = comercio?.id;
+    comercio = comercios.find(item => item.id === anterior) || comercios[0];
+    showComercioView();
+    return;
+  }
+
+  comercio = null;
+  showClaim();
+}
+
+// ---------- Reclamo con código privado ----------
+
+async function loadComerciosSinReclamar(selectId, messageId) {
+  const select = $(selectId);
+  if (!select || !session?.access_token) return;
+
+  const result = await apiFetch("rpc/comercios_sin_reclamar");
+  select.replaceChildren();
+
+  if (!result.ok || !Array.isArray(result.data) || !result.data.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No hay comercios pendientes de reclamo";
+    select.appendChild(option);
+    setMessage($(messageId),
+      "No encontramos comercios pendientes de vinculación. Si necesitás ayuda, escribinos.",
+      "error");
+    return;
+  }
+
+  const first = document.createElement("option");
+  first.value = "";
+  first.textContent = "Elegí un comercio";
+  select.appendChild(first);
+
+  for (const item of result.data) {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = `${item.nombre}${item.localidad ? " — " + item.localidad : ""}${item.provincia ? ", " + item.provincia : ""}`;
+    select.appendChild(option);
+  }
+  setMessage($(messageId), "");
+}
+
+function bindClaimForm(formId, selectId, codeId, submitId, messageId) {
+  $(formId).addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!$(formId).reportValidity() || !session?.access_token) return;
+
+    const submit = $(submitId);
+    submit.disabled = true;
+    setMessage($(messageId), "Validando el código en el servidor…");
+
+    try {
+      const codigo = $(codeId).value.trim();
+      if (!/^[a-fA-F0-9]{64}$/.test(codigo)) {
+        setMessage($(messageId),
+          "El código debe tener exactamente 64 caracteres hexadecimales.", "error");
+        return;
+      }
+
+      const response = await authenticatedRpc("reclamar_comercio", {
+        p_comercio_id: $(selectId).value,
+        p_codigo: codigo
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      const data = Array.isArray(payload) ? payload[0] : payload;
+
+      if (!response.ok || !data?.ok) {
+        setMessage($(messageId),
+          data?.mensaje || "No pudimos vincular el comercio. Revisá el código e intentá nuevamente.",
+          "error");
+        return;
+      }
+
+      $(codeId).value = "";
+      setMessage($(messageId), data.mensaje || "Comercio vinculado.", "ok");
+      await afterAuth();
+    } catch (error) {
+      console.error(error);
+      setMessage($(messageId), "Error de conexión. Intentá nuevamente.", "error");
+    } finally {
+      submit.disabled = false;
+    }
+  });
+}
+
+bindClaimForm("claimForm", "claimComercio", "claimCode", "claimSubmit", "claimMessage");
+bindClaimForm("claimMoreForm", "claimMoreComercio", "claimMoreCode", "claimMoreSubmit", "claimMoreMessage");
+
+$("shopSelect").addEventListener("change", () => {
+  const elegido = comercios.find(item => item.id === $("shopSelect").value);
+  if (!elegido) return;
+  comercio = elegido;
+  clearProductForm();
+  renderComercio();
+  loadMisProductos();
+});
+
+// ---------- Productos ----------
+
+function clearProductForm() {
+  $("productId").value = "";
+  $("productForm").reset();
+  $("productAvailable").value = "true";
+  $("productSubmit").textContent = "Publicar producto";
+  $("formTitle").textContent = "Publicar un producto";
+  $("productCancel").classList.add("hidden");
+  setMessage($("productMessage"), "");
+}
+
+$("productCancel").addEventListener("click", clearProductForm);
+
+$("productForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!$("productForm").reportValidity() || !comercio) return;
+
+  const submit = $("productSubmit");
+  const editando = Boolean($("productId").value);
+
+  submit.disabled = true;
+  setMessage($("productMessage"), editando ? "Guardando cambios…" : "Publicando producto…");
+
+  try {
+    const cuerpo = editando
+      ? {
+          p_producto_id: $("productId").value,
+          p_nombre: $("productName").value.trim(),
+          p_descripcion: $("productDescription").value.trim(),
+          p_categoria: $("productCategory").value,
+          p_precio: $("productPrice").value === "" ? null : Number($("productPrice").value),
+          p_moneda: $("productCurrency").value,
+          p_disponible: $("productAvailable").value === "true"
+        }
+      : {
+          p_comercio_id: comercio.id,
+          p_nombre: $("productName").value.trim(),
+          p_descripcion: $("productDescription").value.trim(),
+          p_categoria: $("productCategory").value,
+          p_precio: $("productPrice").value === "" ? null : Number($("productPrice").value),
+          p_moneda: $("productCurrency").value,
+          p_disponible: $("productAvailable").value === "true"
+        };
+
+    const fn = editando ? "actualizar_producto" : "crear_producto";
+
+    const response = await authenticatedRpc(fn, cuerpo);
+
+    const data = await response.json().catch(() => ({}));
+    const resultado = Array.isArray(data) ? data[0] : data;
+
+    if (!response.ok || !resultado?.ok) {
+      setMessage($("productMessage"),
+        resultado?.mensaje || `No se pudo guardar el producto (error ${response.status}).`,
+        "error");
+      return;
+    }
+
+    setMessage($("productMessage"), resultado.mensaje, "ok");
+    clearProductForm();
+    loadMisProductos();
+  } catch (error) {
+    console.error(error);
+    setMessage($("productMessage"), "Error de conexión. Intentá nuevamente.", "error");
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+function llenarParaEditar(producto) {
+  $("productId").value = producto.id;
+  $("productName").value = producto.nombre || "";
+  $("productDescription").value = producto.descripcion || "";
+  $("productCategory").value = producto.categoria || "";
+  $("productPrice").value = producto.precio ?? "";
+  $("productCurrency").value = producto.moneda || "ARS";
+  $("productAvailable").value = producto.disponible === false ? "false" : "true";
+  $("productSubmit").textContent = "Guardar cambios";
+  $("formTitle").textContent = "Editar producto";
+  $("productCancel").classList.remove("hidden");
+  $("productForm").scrollIntoView({ behavior: "smooth" });
+  $("productName").focus({ preventScroll: true });
+  setMessage($("productMessage"), `Editando: ${producto.nombre || "producto"}.`);
+}
+
+async function loadMisProductos() {
+  if (!comercio) return;
+
+  const status = $("productsStatus");
+  const grid = $("productsGrid");
+  status.textContent = "Buscando tus productos…";
+  grid.innerHTML = "";
+
+  try {
+    const response = await authenticatedGet(
+      `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=nombre.asc`
+    );
+
+    if (!response.ok) {
+      const detalle = await response.text();
+      throw new Error(`Supabase respondió ${response.status}: ${detalle.slice(0, 200)}`);
+    }
+
+    const productos = await response.json();
+
+    if (!productos.length) {
+      status.textContent = "Todavía no publicaste productos.";
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Publicá tu primer producto con el formulario de arriba.</div>';
+      return;
+    }
+
+    status.textContent = `${productos.length} producto(s) publicados.`;
+
+    grid.innerHTML = productos.map(producto => {
+      const disponible = producto.disponible !== false;
+      return `<article class="product">
+        <h3>${escapeHTML(producto.nombre || "Producto")}</h3>
+        <p class="desc">${escapeHTML(producto.descripcion || producto.categoria || "")}</p>
+        <div class="price">${escapeHTML(money(producto.precio, producto.moneda))}</div>
+        <div class="meta">${escapeHTML(producto.categoria || "Sin categoría")}</div>
+        <span class="badge ${disponible ? "on" : "off"}">${disponible ? "Disponible" : "No disponible"}</span>
+        <div class="form-foot">
+          <button class="ghost" type="button" data-edit="${escapeHTML(producto.id)}">Editar</button>
+        </div>
+      </article>`;
+    }).join("");
+  } catch (error) {
+    console.error(error);
+    status.textContent = "No pudimos cargar tus productos. Intentá nuevamente.";
+  }
+}
+
+$("productsGrid").addEventListener("click", event => {
+  const button = event.target.closest("button[data-edit]");
+  if (!button) return;
+
+  authenticatedGet(
+    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible&id=eq.${encodeURIComponent(button.dataset.edit)}`
+  )
+    .then(response => response.json())
+    .then(rows => {
+      if (rows && rows[0]) llenarParaEditar(rows[0]);
+    })
+    .catch(error => console.error(error));
+});
+
+// ---------- Inicio ----------
+
+(async () => {
+  if (await restoreSession()) {
+    await afterAuth();
+  } else {
+    showAuth();
+  }
+})();
+})();
+</script>
+</body>
+</html>
