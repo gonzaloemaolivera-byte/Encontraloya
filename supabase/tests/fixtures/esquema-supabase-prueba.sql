@@ -159,13 +159,13 @@ AS $$
 $$;
 
 INSERT INTO public.comercios (nombre, rubro, localidad, provincia, telefono)
-SELECT 'Comercio ' || n, 'Ferretería', 'Moreno', 'Buenos Aires', '11 2345-678' || n
-FROM generate_series(1, 7) AS n;
+SELECT 'Comercio ' || g.n, 'Ferretería', 'Moreno', 'Buenos Aires', '11 2345-678' || g.n
+FROM generate_series(1, 7) AS g(n);
 
 INSERT INTO public.productos (comercio_id, nombre, descripcion, categoria, precio, moneda, disponible)
 SELECT c.id, 'Producto ' || n, 'Producto de prueba', 'Ferretería', n * 100, 'ARS', true
 FROM public.comercios c
-JOIN generate_series(1, 4) AS n ON c.nombre = 'Comercio ' || n;
+JOIN generate_series(1, 4) AS g(n) ON c.nombre = 'Comercio ' || g.n;
 
 CREATE VIEW public.encontralo_revision_telefonos_v1 AS
 SELECT id, nombre, telefono,
