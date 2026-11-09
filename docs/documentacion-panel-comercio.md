@@ -12,7 +12,7 @@ Se incorpora un acceso privado para comercios con las siguientes piezas:
 |---|---|---|
 | `panel-comercio.html` (nuevo) | Página privada para comercios | Inicio de sesión con **Supabase Auth (correo y contraseña)**, reclamo del comercio con código privado y publicación/edición de productos propios. Usa la misma paleta azul (`#102a43`, `#1769aa`) y verde (`#16845b`) del sitio. |
 | `index.html` (3 líneas) | Sitio público | Solo agrega el enlace **"Panel del comercio"** en el encabezado. El catálogo, la búsqueda y el formulario de registro quedan intactos, con el mismo diseño. |
-| `supabase/migracion-comercial-para-revision.sql` (nuevo) | Migración SQL **solo para revisión** | Columna `auth_user_id` en `comercios`, índice único (un dueño por comercio), funciones `SECURITY DEFINER` para reclamar y administrar productos, y cierre defensivo de permisos de borrado. |
+| `supabase/migracion-comercial-para-revision.sql` (nuevo) | Migración SQL **solo para revisión** | Usa la columna existente `propietario_id` en `comercios`, un índice no único para permitir varios comercios por cuenta y funciones `SECURITY DEFINER` para reclamar y administrar productos. No modifica permisos de borrado. |
 | `docs/documentacion-panel-comercio.md` (nuevo) | Este documento | Explicación de cambios, permisos y procedimiento de aplicación. |
 
 ## Cómo funciona el acceso privado
@@ -27,10 +27,9 @@ Se incorpora un acceso privado para comercios con las siguientes piezas:
    **SECURITY DEFINER** que compara el código contra la columna
    `codigo_vendedor` **dentro de la base de datos**. El código nunca viaja
    al navegador ni se puede leer por la API pública.
-4. Un único `UPDATE` con las condiciones `auth_user_id IS NULL` y el código
-   correcto hace el reclamo atómico: no se puede reclamar dos veces, y un
-   código incorrecto da exactamente el mismo mensaje genérico que un
-   comercio ya reclamado (sin filtrar información).
+4. Un único `UPDATE` con las condiciones `propietario_id IS NULL` y el código
+   correcto hace el reclamo atómico: cada comercio solo puede vincularse una
+   vez. Una misma cuenta puede administrar varios comercios.
 
 > El teléfono **no** se usa como prueba de titularidad. La única vía para
 > vincular un comercio a un usuario es el código privado validado en el
@@ -47,25 +46,27 @@ devuelve `permission denied`. La migración agrega un
 
 **Administración de productos:** el panel no usa la API REST para escribir:
 usa las funciones `crear_producto()` y `actualizar_producto()`, que
-verifican que el producto o comercio pertenezca al usuario autenticado
-(`auth.uid()`). Un comercio **nunca** alcanza los productos de otro.
+verifican que el producto o comercio pertenezca a alguno de los comercios
+vinculados al usuario autenticado (`propietario_id = auth.uid()`). Una
+cuenta puede administrar varios comercios, pero no alcanza los productos
+de comercios ajenos.
 
 **Sin borrados:**
 
 * El panel no tiene botón de borrado y no existe función de borrado. Un
   producto que ya no se ofrece simplemente se marca como "no disponible".
-* Se detectó durante la revisión que el rol `anon` hoy puede ejecutar
-  `DELETE` sobre `productos` (PostgREST devuelve 204). La migración lo
-  revoca junto con el de `comercios`, como cierre defensivo. Esto no
-  elimina ningún dato: solo evita borrados por error.
+* En una prueba, un `DELETE` sobre un identificador inexistente devolvió
+  HTTP 204. Eso **no demuestra** que el rol `anon` pueda borrar filas
+  existentes: PostgREST también puede devolver 204 cuando la consulta no
+  encuentra filas. Por ese motivo, esta migración no modifica permisos
+  `DELETE` ni afirma haber demostrado ese permiso.
 * Se restringe `EXECUTE` de todas las funciones nuevas al rol
   `authenticated` (`anon` y `PUBLIC` quedan revocados).
 
 **Compatibilidad con lo que ya existe:** la migración no ejecuta ni un
 `UPDATE` ni un `DELETE` sobre filas existentes, no habilita RLS y no cambia
 los permisos actuales del catálogo público ni del formulario de registro.
-Solo agrega: una columna nullable, un índice parcial único, cinco funciones
-y dos `REVOKE` defensivos.
+Agrega un índice no único sobre `propietario_id` y cinco funciones. No agrega columnas, no cambia políticas RLS y no modifica permisos de borrado.
 
 ## Cómo aplicar la migración de forma segura (cuando sea autorizada)
 
@@ -78,8 +79,9 @@ y dos `REVOKE` defensivos.
    envuelto en `BEGIN/COMMIT`: si alguna línea falla, la transacción se
    revierte completa y la base queda como estaba.
 4. Verificar después:
-   - `SELECT auth_user_id, count(*) FROM comercios GROUP BY 1;` → los
-     comercios existentes deben seguir con `auth_user_id` nulo.
+   - `SELECT propietario_id, count(*) FROM public.comercios GROUP BY 1;` → los
+     comercios existentes deben conservar sus valores actuales; la migración
+     no los asigna ni los modifica.
    - El catálogo público (`index.html`) debe seguir cargando los 4
      productos actuales.
    - Intentar `DELETE` de un producto con la clave publicable debe
@@ -91,6 +93,8 @@ y dos `REVOKE` defensivos.
 
 * No se ejecutó SQL en Supabase: la migración está preparada **solo para
   revisión**.
+* La cuenta puede vincular varios comercios; cada comercio conserva un
+  único `propietario_id`.
 * No se tocó la base de datos existente ni se modificó o eliminó ningún
   comercio, producto o dato.
 * No se integró el PR a `main`: queda abierto para la revisión conjunta.
