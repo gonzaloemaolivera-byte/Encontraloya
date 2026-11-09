@@ -21,7 +21,7 @@ Se incorpora un acceso privado para comercios con las siguientes piezas:
    sesión con **correo y contraseña** (Supabase Auth).
 2. Si su usuario aún no tiene comercio vinculado, el panel le muestra la
    lista de comercios **sin titular** (función `comercios_sin_reclamar()`,
-   que devuelve solo nombre y localidad) y le pide el **código privado**
+   que devuelve nombre, localidad y provincia) y le pide el **código privado**
    que le fue entregado.
 3. Al reclamar, se ejecuta `reclamar_comercio()`, una función
    **SECURITY DEFINER** que compara el código contra la columna
@@ -30,6 +30,12 @@ Se incorpora un acceso privado para comercios con las siguientes piezas:
 4. Un único `UPDATE` con las condiciones `propietario_id IS NULL` y el código
    correcto hace el reclamo atómico: cada comercio solo puede vincularse una
    vez. Una misma cuenta puede administrar varios comercios.
+
+**Requisito previo importante:** la migración no genera códigos ni los envía.
+Cada comercio debe tener previamente un `codigo_vendedor` aleatorio, único y
+entregado al titular por un canal directo. Los comercios sin código no aparecen
+en la lista. El alta pública actual no emite ni entrega automáticamente ese
+código; ese proceso debe definirse antes de abrir el panel a comercios reales.
 
 > El teléfono **no** se usa como prueba de titularidad. La única vía para
 > vincular un comercio a un usuario es el código privado validado en el
@@ -94,6 +100,8 @@ Agrega un índice no único sobre `propietario_id` y cinco funciones. No agrega 
 
 * No se ejecutó SQL en Supabase: la migración está preparada **solo para
   revisión**.
+* El alta pública guarda los datos del comercio, pero no genera ni entrega
+  automáticamente el código privado necesario para reclamarlo.
 * La cuenta puede vincular varios comercios; cada comercio conserva un
   único `propietario_id`.
 * No se tocó la base de datos existente ni se modificó o eliminó ningún
