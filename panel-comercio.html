@@ -1,0 +1,510 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#102a43">
+<meta name="description" content="Panel para comercios de Encontralo Ya: publicá tus productos y gestioná su disponibilidad.">
+<title>Encontralo Ya | Panel de comercio</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--ink:#172b4d;--muted:#627d98;--line:#d9e2ec;--paper:#f5f8fb;--white:#fff;--green:#16845b;--shadow:0 12px 32px rgba(16,42,67,.09)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.65;cursor:wait}
+.wrap{width:min(920px,calc(100% - 32px));margin:auto}
+header{background:var(--navy);color:white;padding:17px 0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-size:1.35rem;font-weight:850;letter-spacing:-.5px}
+.brand span{color:#65d6df}
+.tag{font-size:.82rem;color:#d7e7f5}
+.back-link{display:inline-flex;align-items:center;gap:8px;border:1px solid #8fb5d4;border-radius:999px;padding:9px 14px;color:white;background:transparent;font-weight:700;text-decoration:none;font-size:.88rem}
+.back-link:hover{background:rgba(255,255,255,.08)}
+main{padding:30px 0 60px}
+.panel{background:white;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+.panel + .panel{margin-top:18px}
+.panel p{color:var(--muted);margin:6px 0 18px}
+h1{font-size:clamp(1.7rem,4vw,2.4rem);line-height:1.1;letter-spacing:-1px;margin:10px 0 12px;color:var(--navy)}
+h2{font-size:1.3rem;margin:0;color:var(--navy);letter-spacing:-.4px}
+.eyebrow{color:var(--blue);font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:1.2px}
+.intro{padding:10px 0 26px}
+.intro p{color:#486581;max-width:640px;margin:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.full{grid-column:1/-1}
+label{font-size:.85rem;font-weight:750;color:#334e68}
+input,select,textarea{width:100%;border:1px solid #bcccdc;border-radius:9px;padding:11px 12px;background:white;color:var(--ink)}
+textarea{min-height:85px;resize:vertical}
+.primary{background:var(--blue);color:white;border:0;border-radius:10px;padding:12px 18px;font-weight:800}
+.green{background:var(--green);color:white;border:0;border-radius:10px;padding:12px 18px;font-weight:800}
+.form-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px}
+.form-message{font-size:.88rem;color:var(--muted)}
+.form-message.ok{color:var(--green);font-weight:700}
+.form-message.error{color:#a8322d;font-weight:700}
+.summary{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;align-items:start}
+.summary strong{display:block;font-size:1.12rem;color:var(--navy);margin-bottom:6px}
+.summary p{margin:0 0 4px;color:var(--muted);font-size:.93rem}
+.badge{display:inline-block;background:#e5f5f8;color:var(--green);border:1px solid #bfe8d8;border-radius:999px;padding:4px 12px;font-size:.8rem;font-weight:800}
+.badge.paused{background:#f5f8fb;color:var(--muted);border-color:var(--line)}
+.products{display:grid;gap:10px;margin-top:6px}
+.product-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:12px;padding:13px 15px;background:white;flex-wrap:wrap}
+.product-row h3{font-size:1rem;margin:0 0 3px;color:var(--navy)}
+.product-row .meta{font-size:.82rem;color:var(--muted)}
+.price{font-size:1rem;font-weight:850;color:var(--green)}
+.row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.small-btn{display:inline-block;text-align:center;text-decoration:none;border:1px solid var(--blue);color:var(--blue);background:white;border-radius:9px;padding:8px 11px;font-weight:750;font-size:.84rem}
+.small-btn.solid{background:var(--blue);color:white;border-color:var(--blue)}
+.small-btn.paused-state{border-color:var(--green);color:var(--green)}
+.empty{background:white;border:1px dashed #9fb3c8;border-radius:15px;padding:25px;text-align:center;color:var(--muted)}
+.hidden{display:none}
+.hint{font-size:.82rem;color:var(--muted);margin-top:10px}
+.hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+footer{background:var(--navy);color:#d7e7f5;padding:23px 0;font-size:.85rem}
+footer strong{color:white}
+footer a{color:#65d6df}
+@media(max-width:760px){.summary{grid-template-columns:1fr}}
+@media(max-width:520px){.wrap{width:min(100% - 24px,920px)}.tag{display:none}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.panel{padding:17px}.intro{padding:4px 0 20px}}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap top">
+<div>
+<div class="brand">Encontralo <span>Ya</span> · Panel de comercio</div>
+<div class="tag">Gestioná tus productos publicados</div>
+</div>
+<a class="back-link" href="/">Volver al catálogo</a>
+</div>
+</header>
+
+<main class="wrap">
+<section class="intro">
+<div class="eyebrow">Zona de comercios</div>
+<h1>Ingresá con el teléfono de tu comercio</h1>
+<p>Este panel usa el número de WhatsApp o teléfono con el que registraste tu comercio. Ahí podés publicar productos, avisar precios y pausar o reactivar lo que ya cargaste.</p>
+</section>
+
+<section class="panel" id="accessPanel">
+<h2>Acceso al panel</h2>
+<p>Si tu comercio todavía no tiene código de acceso, podés elegir uno la primera vez que ingreses. Después lo vas a necesitar para confirmar cada cambio.</p>
+<form id="accessForm">
+<div class="form-grid">
+<div class="field"><label for="accessPhone">WhatsApp o teléfono *</label><input id="accessPhone" inputmode="tel" maxlength="30" placeholder="Ej.: 11 2345-6789" required autocomplete="tel"></div>
+<div class="field"><label for="accessCode">Código de acceso</label><input id="accessCode" maxlength="40" autocomplete="off" placeholder="Vacío si es tu primera vez"></div>
+<div class="hp" aria-hidden="true"><label for="website">Dejar vacío</label><input id="website" tabindex="-1" autocomplete="off"></div>
+</div>
+<div class="form-foot">
+<button class="primary" id="accessSubmit" type="submit">Ingresar</button>
+<span class="form-message" id="accessMessage" role="status">Buscamos tu comercio por teléfono. Tus datos no se comparten.</span>
+</div>
+</form>
+<p class="hint">¿Todavía no registraste tu comercio? <a href="/">Registralo gratis desde la página principal</a>.</p>
+</section>
+
+<section class="panel hidden" id="dashboard">
+<div class="summary">
+<div>
+<div class="eyebrow">Tu comercio</div>
+<h2 id="bizName" style="margin-top:6px">—</h2>
+<p id="bizDetail">—</p>
+<p id="bizContact">—</p>
+</div>
+<div>
+<span class="badge" id="bizBadge">Panel activo</span>
+<p class="hint" id="bizCodeHint">Tu código de acceso protege este panel. Guardalo y no lo compartas.</p>
+<div class="row-actions">
+<button class="small-btn" id="logoutBtn" type="button">Cerrar sesión</button>
+</div>
+</div>
+</div>
+</section>
+
+<section class="panel hidden" id="publishPanel">
+<h2>Publicar un producto</h2>
+<p>El producto aparece en el catálogo público cuando está marcado como disponible. Los precios los confirma cada comercio por WhatsApp.</p>
+<form id="productForm">
+<div class="form-grid">
+<div class="field"><label for="productName">Nombre del producto *</label><input id="productName" maxlength="120" required placeholder="Ej.: Pintura látex interior 20 L"></div>
+<div class="field"><label for="productCategory">Categoría *</label><select id="productCategory" required><option value="">Elegí una categoría</option><option>Ferretería</option><option>Repuestos</option><option>Limpieza</option><option>Bazar y hogar</option><option>Electricidad</option><option>Construcción</option><option>Alimentos</option><option>Otros</option></select></div>
+<div class="field"><label for="productPrice">Precio (opcional)</label><input id="productPrice" inputmode="decimal" placeholder="Ej.: 12500"></div>
+<div class="field"><label for="productCurrency">Moneda</label><select id="productCurrency"><option value="ARS">Pesos (ARS)</option><option value="USD">Dólares (USD)</option></select></div>
+<div class="field full"><label for="productDescription">Descripción</label><textarea id="productDescription" maxlength="500" placeholder="Detalles útiles: marcas, medidas, stock, etc."></textarea></div>
+</div>
+<div class="form-foot">
+<button class="primary" id="productSubmit" type="submit">Publicar producto</button>
+<span class="form-message" id="productMessage" role="status">El producto se guarda en la base de datos al publicarlo.</span>
+</div>
+</form>
+</section>
+
+<section class="panel hidden" id="listPanel">
+<h2>Tus productos</h2>
+<p>Pausá un producto cuando no tengas stock y reactivalo cuando vuelva. El panel no borra productos: solo los pausa para que dejen de verse en el catálogo.</p>
+<div class="form-foot">
+<button class="primary" id="reloadProducts" type="button">Actualizar lista</button>
+<span class="form-message" id="listMessage" role="status">Cargando tus productos…</span>
+</div>
+<div class="products" id="productList" style="margin-top:14px"></div>
+</section>
+</main>
+
+<footer><div class="wrap"><strong>Encontralo Ya</strong> · Una idea que conecta compradores y comercios.<br>¿Dudas con el panel? <a href="/">Visitá la página principal</a> y contactanos desde ahí.</div></footer>
+
+<script>
+(() => {
+"use strict";
+
+// Clave publicable: puede utilizarse en el navegador.
+// Nunca colocar aquí una clave secret o service_role.
+const SUPABASE_URL = "https://egvchkzktjaitskcqlnr.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_MhdqvUOMFQrImKw0ePCH1g_FU2BpGxj";
+
+const accessForm = document.getElementById("accessForm");
+const accessMessage = document.getElementById("accessMessage");
+const accessSubmit = document.getElementById("accessSubmit");
+const dashboard = document.getElementById("dashboard");
+const publishPanel = document.getElementById("publishPanel");
+const listPanel = document.getElementById("listPanel");
+const productList = document.getElementById("productList");
+const listMessage = document.getElementById("listMessage");
+const productForm = document.getElementById("productForm");
+const productMessage = document.getElementById("productMessage");
+
+let currentBusiness = null;
+
+const headers = {
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  "Content-Type": "application/json"
+};
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  })[char]);
+}
+
+// Devuelve los 10 dígitos nacionales de un teléfono argentino.
+// Acepta 11..., 011..., 54 11... y 54 9 11...
+function normalizeArgentinePhone(value) {
+  let digits = String(value ?? "").replace(/\D/g, "");
+  let national = "";
+
+  if (digits.startsWith("549") && digits.length === 13) {
+    national = digits.slice(3);
+  } else if (digits.startsWith("54") && digits.length === 12) {
+    national = digits.slice(2);
+  } else if (digits.startsWith("0") && digits.length === 11) {
+    national = digits.slice(1);
+  } else if (digits.length === 10) {
+    national = digits;
+  }
+
+  if (!/^[2-9]\d{9}$/.test(national)) return "";
+  if (/^0+$/.test(national)) return "";
+
+  return national;
+}
+
+function money(value, currency) {
+  if (value === null || value === undefined || value === "") {
+    return "Consultar precio";
+  }
+
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "Consultar precio";
+
+  const code = currency || "ARS";
+
+  try {
+    return new Intl.NumberFormat("es-AR", {
+      style:"currency",
+      currency:code,
+      maximumFractionDigits:2
+    }).format(number);
+  } catch {
+    return `${code} ${number.toLocaleString("es-AR")}`;
+  }
+}
+
+function setMessage(node, text, kind) {
+  node.textContent = text;
+  node.classList.remove("ok", "error");
+  if (kind) node.classList.add(kind);
+}
+
+async function supabaseRequest(path, options = {}) {
+  const code = document.getElementById("accessCode").value.trim();
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      ...headers,
+      ...(code ? { "x-panel-codigo": code } : {}),
+      ...(options.headers || {})
+    }
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    const error = new Error(`Supabase respondió ${response.status}: ${detail.slice(0,220)}`);
+    error.status = response.status;
+    error.body = detail;
+    throw error;
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+function showDashboard(business) {
+  currentBusiness = business;
+
+  document.getElementById("bizName").textContent = business.nombre || "Comercio";
+  document.getElementById("bizDetail").textContent = [
+    business.rubro,
+    business.localidad ? business.localidad + (business.provincia ? ", " + business.provincia : "")
+  ].filter(Boolean).join(" · ") || "Comercio registrado en Encontralo Ya";
+  document.getElementById("bizContact").textContent =
+    "Contacto: " + (business.contacto || "—") + " · Teléfono: " + (business.telefono || "—");
+
+  document.getElementById("bizCodeHint").textContent = business.panel_codigo
+    ? "Tu comercio ya tiene código de acceso. Ingresalo arriba para confirmar cambios."
+    : "Tu comercio todavía no tiene código de acceso. Escribí uno arriba y usá «Ingresar» para guardarlo.";
+
+  dashboard.classList.remove("hidden");
+  publishPanel.classList.remove("hidden");
+  listPanel.classList.remove("hidden");
+  loadProducts();
+}
+
+function resetToLogin(message, kind) {
+  currentBusiness = null;
+  dashboard.classList.add("hidden");
+  publishPanel.classList.add("hidden");
+  listPanel.classList.add("hidden");
+  productList.innerHTML = "";
+  if (message) setMessage(accessMessage, message, kind);
+  document.getElementById("accessPhone").focus();
+}
+
+accessForm.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  if (document.getElementById("website").value) return;
+  if (!accessForm.reportValidity()) return;
+
+  const national = normalizeArgentinePhone(document.getElementById("accessPhone").value);
+  const code = document.getElementById("accessCode").value.trim();
+
+  if (!national) {
+    setMessage(accessMessage, "Revisá el teléfono. Ingresá un número argentino válido de 10 dígitos, con o sin prefijo +54.", "error");
+    return;
+  }
+
+  accessSubmit.disabled = true;
+  accessSubmit.textContent = "Buscando…";
+  setMessage(accessMessage, "Buscando tu comercio…");
+
+  try {
+    const rows = await supabaseRequest(
+      "comercios?select=id,nombre,rubro,localidad,provincia,telefono,contacto,panel_codigo&limit=200"
+    );
+
+    const match = (rows || []).find(row => normalizeArgentinePhone(row.telefono) === national);
+
+    if (!match) {
+      setMessage(accessMessage, "No encontramos un comercio registrado con ese teléfono. Registrate gratis desde la página principal y volvé acá.", "error");
+      return;
+    }
+
+    if (match.panel_codigo && !code) {
+      setMessage(accessMessage, "Tu comercio ya tiene código de acceso. Escribilo en el campo «Código de acceso» y volvé a ingresar.", "error");
+      return;
+    }
+
+    if (!match.panel_codigo && !code) {
+      setMessage(accessMessage, "Tu comercio todavía no tiene código. Elegí un código de acceso en el campo de arriba e ingresá de nuevo para guardarlo.", "error");
+      return;
+    }
+
+    if (!match.panel_codigo && code) {
+      await supabaseRequest(`comercios?id=eq.${encodeURIComponent(match.id)}`, {
+        method:"PATCH",
+        headers:{ Prefer:"return=minimal" },
+        body: JSON.stringify({ panel_codigo: code })
+      });
+    }
+
+    accessForm.reset();
+    showDashboard(match);
+    setMessage(accessMessage, "");
+  } catch (error) {
+    console.error(error);
+    setMessage(
+      accessMessage,
+      error.status === 401 || error.status === 403
+        ? "El código de acceso no coincide o el panel no está habilitado todavía. Revisá el código o consultanos."
+        : (error.message || "No pudimos validar tus datos. Intentá nuevamente."),
+      "error"
+    );
+  } finally {
+    accessSubmit.disabled = false;
+    accessSubmit.textContent = "Ingresar";
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  resetToLogin("Sesión cerrada. Podés volver a ingresar cuando quieras.", "ok");
+  document.getElementById("accessPhone").value = "";
+  document.getElementById("accessCode").value = "";
+});
+
+function renderProducts(products) {
+  if (!products.length) {
+    productList.innerHTML =
+      '<div class="empty">Todavía no publicaste productos. Cargá el primero con el formulario de arriba.</div>';
+    return;
+  }
+
+  productList.innerHTML = products.map(product => {
+    const available = product.disponible !== false;
+
+    return `<div class="product-row">
+      <div>
+        <h3>${escapeHTML(product.nombre || "Producto")}</h3>
+        <div class="meta">${escapeHTML(product.categoria || "Sin categoría")}${product.descripcion ? " · " + escapeHTML(product.descripcion) : ""}</div>
+      </div>
+      <div class="row-actions">
+        <span class="price">${escapeHTML(money(product.precio, product.moneda))}</span>
+        <span class="badge${available ? "" : " paused"}">${available ? "Disponible" : "Pausado"}</span>
+        <button class="small-btn${available ? " solid" : " paused-state"}" data-toggle-id="${escapeHTML(product.id)}" data-next="${available ? "false" : "true"}" type="button">${available ? "Pausar" : "Reactivar"}</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function loadProducts() {
+  if (!currentBusiness) return;
+
+  setMessage(listMessage, "Cargando tus productos…");
+
+  try {
+    const products = await supabaseRequest(
+      `productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,actualizado_en&comercio_id=eq.${encodeURIComponent(currentBusiness.id)}&order=nombre.asc&limit=200`
+    );
+
+    setMessage(listMessage, `${(products || []).length} producto(s) cargado(s) de tu comercio.`, "ok");
+    renderProducts(products || []);
+  } catch (error) {
+    console.error(error);
+    setMessage(listMessage, "No pudimos cargar tus productos. Revisá la conexión e intentá nuevamente.", "error");
+  }
+}
+
+document.getElementById("reloadProducts").addEventListener("click", loadProducts);
+
+productList.addEventListener("click", async event => {
+  const button = event.target.closest("button[data-toggle-id]");
+  if (!button || !currentBusiness) return;
+
+  const id = button.dataset.toggleId;
+  const nextValue = button.dataset.next === "true";
+
+  button.disabled = true;
+  setMessage(listMessage, "Guardando el cambio…");
+
+  try {
+    await supabaseRequest(`productos?id=eq.${encodeURIComponent(id)}`, {
+      method:"PATCH",
+      headers:{ Prefer:"return=minimal" },
+      body: JSON.stringify({
+        disponible: nextValue,
+        actualizado_en: new Date().toISOString()
+      })
+    });
+
+    setMessage(listMessage, nextValue ? "Producto reactivado: vuelve a verse en el catálogo." : "Producto pausado: dejó de verse en el catálogo.", "ok");
+    await loadProducts();
+  } catch (error) {
+    console.error(error);
+    setMessage(
+      listMessage,
+      error.status === 401 || error.status === 403
+        ? "No pudimos guardar el cambio: el código de acceso no coincide o el panel no está habilitado todavía."
+        : (error.message || "No se pudo guardar el cambio. Intentá nuevamente."),
+      "error"
+    );
+    button.disabled = false;
+  }
+});
+
+productForm.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  if (document.getElementById("website").value) return;
+  if (!productForm.reportValidity()) return;
+  if (!currentBusiness) {
+    setMessage(productMessage, "Primero ingresá al panel con el teléfono de tu comercio.", "error");
+    return;
+  }
+
+  const priceRaw = document.getElementById("productPrice").value.trim().replace(",", ".");
+  const payload = {
+    comercio_id: currentBusiness.id,
+    nombre: document.getElementById("productName").value.trim(),
+    categoria: document.getElementById("productCategory").value,
+    precio: priceRaw === "" ? null : Number(priceRaw),
+    moneda: document.getElementById("productCurrency").value,
+    descripcion: document.getElementById("productDescription").value.trim() || null,
+    disponible: true
+  };
+
+  if (payload.nombre.length < 2) {
+    setMessage(productMessage, "Revisá el nombre del producto.", "error");
+    return;
+  }
+
+  if (payload.precio !== null && !Number.isFinite(payload.precio)) {
+    setMessage(productMessage, "Revisá el precio: usá solo números, con punto o coma para los centavos.", "error");
+    return;
+  }
+
+  const submit = document.getElementById("productSubmit");
+  submit.disabled = true;
+  submit.textContent = "Publicando…";
+  setMessage(productMessage, "Guardando el producto en la base de datos…");
+
+  try {
+    await supabaseRequest("productos", {
+      method:"POST",
+      headers:{ Prefer:"return=minimal" },
+      body: JSON.stringify(payload)
+    });
+
+    productForm.reset();
+    setMessage(productMessage, "¡Producto publicado! Ya está disponible en el catálogo público.", "ok");
+    await loadProducts();
+  } catch (error) {
+    console.error(error);
+    setMessage(
+      productMessage,
+      error.status === 401 || error.status === 403
+        ? "No se pudo publicar: el código de acceso no coincide o el panel no está habilitado todavía."
+        : (error.message || "No se pudo publicar el producto. Intentá nuevamente."),
+      "error"
+    );
+  } finally {
+    submit.disabled = false;
+    submit.textContent = "Publicar producto";
+  }
+});
+})();
+</script>
+</body>
+</html>

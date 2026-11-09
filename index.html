@@ -20,7 +20,8 @@ header{background:var(--navy);color:white;padding:17px 0}
 .brand{font-size:1.35rem;font-weight:850;letter-spacing:-.5px}
 .brand span{color:#65d6df}
 .tag{font-size:.82rem;color:#d7e7f5}
-.register-link{border:1px solid #8fb5d4;border-radius:999px;padding:9px 14px;color:white;background:transparent;font-weight:700}
+.register-link{border:1px solid #8fb5d4;border-radius:999px;padding:9px 14px;color:white;background:transparent;font-weight:700;text-decoration:none}
+.panel-link{margin-right:10px;border:1px solid #65d6df;border-radius:999px;padding:9px 14px;color:#65d6df;background:transparent;font-weight:700;text-decoration:none}
 .hero{padding:44px 0 34px;background:linear-gradient(135deg,#e5f5f8,#f5f8fb 70%)}
 .hero-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:28px;align-items:center}
 .eyebrow{color:var(--blue);font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:1.2px}
@@ -73,6 +74,7 @@ footer strong{color:white}
 <div class="brand">Encontralo <span>Ya</span></div>
 <div class="tag">Una idea que conecta compradores y comercios</div>
 </div>
+<a class="panel-link" href="/panel-comercio.html">Panel de comercios</a>
 <button class="register-link" id="goRegister" type="button">Sumá tu comercio</button>
 </div>
 </header>
@@ -138,7 +140,7 @@ footer strong{color:white}
 </section>
 </main>
 
-<footer><div class="wrap"><strong>Encontralo Ya</strong> · Una idea que conecta compradores y comercios.<br>La disponibilidad y los precios deben ser confirmados por cada comercio.</div></footer>
+<footer><div class="wrap"><strong>Encontralo Ya</strong> · Una idea que conecta compradores y comercios.<br>¿Tenés un comercio registrado? <a href="/panel-comercio.html" style="color:#65d6df">Ingresá al panel</a> para gestionar tus productos.<br>La disponibilidad y los precios deben ser confirmados por cada comercio.</div></footer>
 
 <script>
 (() => {
