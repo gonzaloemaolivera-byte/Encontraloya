@@ -57,7 +57,7 @@ El hash debe calcularse como SHA-256 sobre el token normalizado a minúsculas y 
 
 La migración crea dos tablas en el esquema `private`, agrega un índice no único sobre `propietario_id`, crea/actualiza cinco funciones y limpia la columna antigua `codigo_vendedor`. No modifica filas de productos ni asigna propietarios a comercios existentes. Sí limpia la columna obsoleta `codigo_vendedor`, invalida tokens débiles y agrega un CHECK que obliga a mantenerla en NULL. Los tokens antiguos que no cumplan el formato nuevo se invalidan.
 
-Antes de ejecutarla se debe confirmar que la versión de PostgreSQL de Supabase soporta las funciones SHA-256 integradas (`pg_catalog.sha256`) y que el usuario que ejecuta la migración puede crear tablas, índices, funciones y cambiar privilegios. No se requiere habilitar extensiones externas. La migración también cambia la vista interna `encontralo_revision_telefonos_v1` a `security_invoker` y revoca su acceso a `PUBLIC`, `anon` y `authenticated`, porque no forma parte del catálogo público. Fija además el `search_path` de las dos funciones de normalización existentes. El test automatizado verifica estos permisos, el reclamo de un solo uso, el bloqueo de intentos, el aislamiento entre cuentas, la creación/edición de productos y el alta pública.
+Antes de ejecutarla se debe confirmar que la versión de PostgreSQL de Supabase soporta las funciones SHA-256 integradas (`pg_catalog.sha256`) y que el usuario que ejecuta la migración puede crear tablas, índices, funciones y cambiar privilegios. No se requiere habilitar extensiones externas. La migración también cambia la vista interna `encontralo_revision_telefonos_v1` a `security_invoker` y revoca su acceso a `PUBLIC`, `anon` y `authenticated`, porque no forma parte del catálogo público. Fija además el `search_path` de las dos funciones de normalización existentes. El test automatizado verifica estos permisos, la emisión y reemisión administrativa, el reclamo de un solo uso, el bloqueo de intentos, el aislamiento entre cuentas, la creación/edición de productos y el alta pública.
 
 ## Plan de prueba obligatorio
 
@@ -80,6 +80,6 @@ También se debe probar expiración y renovación de sesión, errores de red y f
 - No se ejecutó SQL en Supabase.
 - No se modificaron datos reales ni políticas existentes de RLS de las tablas principales.
 - No se fusionó el PR ni se desplegó Netlify.
-- La emisión y entrega automatizada de tokens, el monitoreo antiabuso por IP y la recuperación de titularidad siguen pendientes.
-- El asesor de seguridad de la base real informa que la protección de contraseñas filtradas de Supabase Auth está desactivada. Es un ajuste independiente de esta migración y debe activarse en Auth antes de abrir el registro de comercios a escala.
+- La entrega automática por correo de tokens, el monitoreo antiabuso por IP y la recuperación de titularidad siguen pendientes. La emisión administrativa manual ya está incluida y se prueba en PostgreSQL.
+- El asesor de seguridad de la base real informa que la protección de contraseñas filtradas de Supabase Auth está desactivada. La documentación vigente de Supabase indica que esta función está disponible en Pro y superiores; el proyecto Encontralo Ya está en Free. No se puede activar sin cambiar de plan. No se realizó ni se hará una actualización paga sin tu aprobación explícita.
 - Los códigos antiguos se invalidan; antes de habilitar el panel se deberán emitir y entregar nuevos tokens de 256 bits por un proceso administrativo seguro.
