@@ -253,15 +253,24 @@ async function authFetch(path, body, extraHeaders) {
   return response;
 }
 
-async function apiFetch(path, accessToken) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    method: "POST",
+async function authenticatedGet(url) {
+  const send = () => fetch(url, {
     headers: {
       apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json"
+      Authorization: `Bearer ${session?.access_token || ""}`
     }
   });
+
+  let response = await send();
+  if (response.status === 401 && await refreshAccessToken()) {
+    response = await send();
+  }
+  return response;
+}
+
+// Las funciones RPC consultadas aquí son STABLE y admiten GET sin cuerpo.
+async function apiFetch(path) {
+  const response = await authenticatedGet(`${SUPABASE_URL}/rest/v1/${path}`);
   const detail = await response.json().catch(() => ({}));
   return { ok: response.ok, status: response.status, data: detail };
 }
@@ -435,7 +444,7 @@ $("logoutBtn").addEventListener("click", async () => {
 
 // Después de iniciar sesión: ¿el usuario ya tiene comercio reclamado?
 async function afterAuth() {
-  const result = await apiFetch("rpc/datos_del_comercio", session.access_token);
+  const result = await apiFetch("rpc/datos_del_comercio");
 
   if (!result.ok) {
     setMessage(authMessage,
@@ -465,7 +474,7 @@ async function loadComerciosSinReclamar(selectId, messageId) {
   const select = $(selectId);
   if (!select || !session?.access_token) return;
 
-  const result = await apiFetch("rpc/comercios_sin_reclamar", session.access_token);
+  const result = await apiFetch("rpc/comercios_sin_reclamar");
   select.replaceChildren();
 
   if (!result.ok || !Array.isArray(result.data) || !result.data.length) {
@@ -653,14 +662,8 @@ async function loadMisProductos() {
   grid.innerHTML = "";
 
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=nombre.asc`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${session.access_token || SUPABASE_ANON_KEY}`
-        }
-      }
+    const response = await authenticatedGet(
+      `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=nombre.asc`
     );
 
     if (!response.ok) {
@@ -701,14 +704,8 @@ $("productsGrid").addEventListener("click", event => {
   const button = event.target.closest("button[data-edit]");
   if (!button) return;
 
-  fetch(
-    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible&id=eq.${encodeURIComponent(button.dataset.edit)}`,
-    {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
-      }
-    }
+  authenticatedGet(
+    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible&id=eq.${encodeURIComponent(button.dataset.edit)}`
   )
     .then(response => response.json())
     .then(rows => {
