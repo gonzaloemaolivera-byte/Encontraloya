@@ -118,6 +118,12 @@ AS $function$
   INNER JOIN private.comercio_codigos_reclamo AS k
     ON k.comercio_id = c.id
   WHERE c.propietario_id IS NULL
+    AND EXISTS (
+      SELECT 1
+      FROM auth.users AS u
+      WHERE u.id = auth.uid()
+        AND u.email_confirmed_at IS NOT NULL
+    )
   ORDER BY c.nombre;
 $function$;
 
@@ -225,27 +231,27 @@ BEGIN
     END IF;
   END IF;
 
-  INSERT INTO private.comercio_reclamo_intentos
+  INSERT INTO private.comercio_reclamo_intentos AS a
     (comercio_id, usuario_id, intentos, ventana_inicio, bloqueado_hasta)
   VALUES
     (p_comercio_id, v_uid, 1, pg_catalog.now(), NULL)
   ON CONFLICT (comercio_id, usuario_id) DO UPDATE
   SET intentos = CASE
-        WHEN private.comercio_reclamo_intentos.ventana_inicio
+        WHEN a.ventana_inicio
              < pg_catalog.now() - interval '15 minutes' THEN 1
-        WHEN private.comercio_reclamo_intentos.intentos >= 5 THEN 5
-        ELSE private.comercio_reclamo_intentos.intentos + 1
+        WHEN a.intentos >= 5 THEN 5
+        ELSE a.intentos + 1
       END,
       ventana_inicio = CASE
-        WHEN private.comercio_reclamo_intentos.ventana_inicio
+        WHEN a.ventana_inicio
              < pg_catalog.now() - interval '15 minutes' THEN pg_catalog.now()
-        ELSE private.comercio_reclamo_intentos.ventana_inicio
+        ELSE a.ventana_inicio
       END,
       bloqueado_hasta = CASE
         WHEN CASE
-          WHEN private.comercio_reclamo_intentos.ventana_inicio
+          WHEN a.ventana_inicio
                < pg_catalog.now() - interval '15 minutes' THEN 1
-          ELSE private.comercio_reclamo_intentos.intentos + 1
+          ELSE a.intentos + 1
         END >= 5
         THEN pg_catalog.now() + interval '30 minutes'
         ELSE NULL
