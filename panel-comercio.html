@@ -92,7 +92,7 @@ footer strong{color:white}
 <section class="card hidden" id="claimCard">
 <h2>Reclamá tu comercio</h2>
 <p class="sub">Tu cuenta todavía no está vinculada a un comercio. Elegilo en la lista y validá el código privado que te entregamos por un canal directo.</p>
-<p class="info">El código se valida <strong>en el servidor</strong> contra la columna protegida <code>codigo_vendedor</code>. Nunca se muestra en el navegador y el teléfono, por sí solo, no sirve como prueba de titularidad.</p>
+<p class="info">El código se valida <strong>en el servidor</strong> comparando su hash privado. El token no se almacena en texto plano ni se devuelve al navegador. El teléfono, por sí solo, no sirve como prueba de titularidad.</p>
 <form id="claimForm">
 <div class="form-grid">
 <div class="field full"><label for="claimComercio">Comercio a reclamar *</label><select id="claimComercio" required><option value="">Cargando comercios disponibles…</option></select></div>
