@@ -19,7 +19,7 @@
 5. Los intentos incorrectos se limitan a cinco por cuenta y comercio cada 15 minutos, con bloqueo temporal de 30 minutos.
 6. El código viaja desde el navegador a Supabase por HTTPS para su validación, pero no se devuelve en la respuesta ni se persiste en el navegador.
 
-La migración copia únicamente códigos preexistentes que ya tengan 64 caracteres hexadecimales. Si hubiera duplicados, conserva solo uno. Los códigos antiguos más cortos o débiles se invalidan; deberán emitirse nuevamente. La columna pública antigua se limpia y recibe una restricción CHECK para impedir que vuelva a almacenar texto plano. También limpia `comercios.codigo_vendedor` para que ningún token permanezca en la tabla pública.
+La migración invalida todos los códigos preexistentes, porque su entropía no puede demostrarse por su longitud. Cada titular deberá recibir un token nuevo generado criptográficamente. La columna pública antigua se limpia y recibe una restricción CHECK para impedir que vuelva a almacenar texto plano. También limpia `comercios.codigo_vendedor` para que ningún token permanezca en la tabla pública.
 
 **Importante:** el límite se aplica por cuenta y comercio. No reemplaza un control de abuso por IP/WAF, por lo que antes de una apertura masiva conviene agregar monitoreo y protección perimetral.
 
