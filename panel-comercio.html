@@ -96,7 +96,7 @@ footer strong{color:white}
 <form id="claimForm">
 <div class="form-grid">
 <div class="field full"><label for="claimComercio">Comercio a reclamar *</label><select id="claimComercio" required><option value="">Cargando comercios disponibles…</option></select></div>
-<div class="field full"><label for="claimCode">Código privado *</label><input id="claimCode" required minlength="6" maxlength="40" autocomplete="off" placeholder="Se valida en el servidor"></div>
+<div class="field full"><label for="claimCode">Código privado *</label><input id="claimCode" type="text" required minlength="64" maxlength="64" pattern="[A-Fa-f0-9]{64}" inputmode="text" autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="Token de 64 caracteres hexadecimales"></div>
 </div>
 <div class="form-foot">
 <button class="primary" id="claimSubmit" type="submit">Validar código y reclamar</button>
@@ -126,7 +126,7 @@ footer strong{color:white}
 <form id="claimMoreForm">
 <div class="form-grid">
 <div class="field full"><label for="claimMoreComercio">Comercio *</label><select id="claimMoreComercio" required><option value="">Cargando comercios disponibles…</option></select></div>
-<div class="field full"><label for="claimMoreCode">Código privado *</label><input id="claimMoreCode" required minlength="6" maxlength="40" autocomplete="off"></div>
+<div class="field full"><label for="claimMoreCode">Código privado *</label><input id="claimMoreCode" type="text" required minlength="64" maxlength="64" pattern="[A-Fa-f0-9]{64}" inputmode="text" autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="Token de 64 caracteres hexadecimales"></div>
 </div>
 <div class="form-foot">
 <button class="primary" id="claimMoreSubmit" type="submit">Vincular otro comercio</button>
@@ -259,6 +259,24 @@ async function authenticatedGet(url) {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${session?.access_token || ""}`
     }
+  });
+
+  let response = await send();
+  if (response.status === 401 && await refreshAccessToken()) {
+    response = await send();
+  }
+  return response;
+}
+
+async function authenticatedRpc(name, body) {
+  const send = () => fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token || ""}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
   });
 
   let response = await send();
@@ -512,17 +530,16 @@ function bindClaimForm(formId, selectId, codeId, submitId, messageId) {
     setMessage($(messageId), "Validando el código en el servidor…");
 
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/reclamar_comercio`, {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          p_comercio_id: $(selectId).value,
-          p_codigo: $(codeId).value.trim()
-        })
+      const codigo = $(codeId).value.trim();
+      if (!/^[a-fA-F0-9]{64}$/.test(codigo)) {
+        setMessage($(messageId),
+          "El código debe tener exactamente 64 caracteres hexadecimales.", "error");
+        return;
+      }
+
+      const response = await authenticatedRpc("reclamar_comercio", {
+        p_comercio_id: $(selectId).value,
+        p_codigo: codigo
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -606,15 +623,7 @@ $("productForm").addEventListener("submit", async event => {
 
     const fn = editando ? "actualizar_producto" : "crear_producto";
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${session.access_token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(cuerpo)
-    });
+    const response = await authenticatedRpc(fn, cuerpo);
 
     const data = await response.json().catch(() => ({}));
     const resultado = Array.isArray(data) ? data[0] : data;
