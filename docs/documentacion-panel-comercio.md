@@ -1,109 +1,83 @@
 # Panel del comercio — Documentación para revisión
 
-**Estado: borrador para revisión. Nada de esto se ejecutó en Supabase ni se
-publicó en producción.** El merge del Pull Request queda pendiente de la
-autorización de Gonzalo.
+**Estado: borrador técnico. La migración no se ejecutó en Supabase y el panel no se publicó en producción.** El PR #4 permanece pendiente de revisión y pruebas.
 
-## Qué cambia
+## Qué incorpora
 
-Se incorpora un acceso privado para comercios con las siguientes piezas:
+- Acceso con Supabase Auth (correo y contraseña).
+- Vinculación de uno o varios comercios por cuenta.
+- Publicación y edición de productos propios.
+- Funciones SQL `SECURITY DEFINER` con `search_path` vacío y permisos de ejecución limitados a usuarios autenticados.
+- Almacenamiento privado de hashes de códigos de titularidad y límites de intentos.
 
-| Archivo | Qué es | Qué incorpora |
-|---|---|---|
-| `panel-comercio.html` (nuevo) | Página privada para comercios | Inicio de sesión con **Supabase Auth (correo y contraseña)**, reclamo del comercio con código privado y publicación/edición de productos propios. Usa la misma paleta azul (`#102a43`, `#1769aa`) y verde (`#16845b`) del sitio. |
-| `index.html` (3 líneas) | Sitio público | Solo agrega el enlace **"Panel del comercio"** en el encabezado. El catálogo, la búsqueda y el formulario de registro quedan intactos, con el mismo diseño. |
-| `supabase/migracion-comercial-para-revision.sql` (nuevo) | Migración SQL **solo para revisión** | Usa la columna existente `propietario_id` en `comercios`, un índice no único para permitir varios comercios por cuenta y funciones `SECURITY DEFINER` para reclamar y administrar productos. No modifica permisos de borrado. |
-| `docs/documentacion-panel-comercio.md` (nuevo) | Este documento | Explicación de cambios, permisos y procedimiento de aplicación. |
+## Seguridad del código de titularidad
 
-## Cómo funciona el acceso privado
+1. Cada comercio recibe un token aleatorio de **32 bytes (256 bits)**, representado por 64 caracteres hexadecimales.
+2. El token se entrega al titular por un canal directo. No se genera ni se muestra en la web pública.
+3. La base almacena únicamente el hash SHA-256 del token en `comercio_codigos_reclamo`; no guarda el token en texto plano.
+4. La función `reclamar_comercio()` compara el hash dentro de PostgreSQL, vincula el comercio una sola vez y elimina el hash después del reclamo exitoso.
+5. Los intentos incorrectos se limitan a cinco por cuenta y comercio cada 15 minutos, con bloqueo temporal de 30 minutos.
+6. El código viaja desde el navegador a Supabase por HTTPS para su validación, pero no se devuelve en la respuesta ni se persiste en el navegador.
 
-1. El comerciante entra a `panel-comercio.html` y crea una cuenta o inicia
-   sesión con **correo y contraseña** (Supabase Auth).
-2. Si su usuario aún no tiene comercio vinculado, el panel le muestra la
-   lista de comercios **sin titular** (función `comercios_sin_reclamar()`,
-   que devuelve nombre, localidad y provincia) y le pide el **código privado**
-   que le fue entregado.
-3. Al reclamar, se ejecuta `reclamar_comercio()`, una función
-   **SECURITY DEFINER** que compara el código contra la columna
-   `codigo_vendedor` **dentro de la base de datos**. El código nunca viaja
-   al navegador ni se puede leer por la API pública.
-4. Un único `UPDATE` con las condiciones `propietario_id IS NULL` y el código
-   correcto hace el reclamo atómico: cada comercio solo puede vincularse una
-   vez. Una misma cuenta puede administrar varios comercios.
+La migración copia únicamente códigos preexistentes que ya tengan 64 caracteres hexadecimales. Los códigos antiguos más cortos o débiles se invalidan; deberán emitirse nuevamente. También limpia `comercios.codigo_vendedor` para que ningún token permanezca en la tabla pública.
 
-**Requisito previo importante:** la migración no genera códigos ni los envía.
-Cada comercio debe tener previamente un `codigo_vendedor` aleatorio, único y
-entregado al titular por un canal directo. Los comercios sin código no aparecen
-en la lista. El alta pública actual no emite ni entrega automáticamente ese
-código; ese proceso debe definirse antes de abrir el panel a comercios reales.
+**Importante:** el límite se aplica por cuenta y comercio. No reemplaza un control de abuso por IP/WAF, por lo que antes de una apertura masiva conviene agregar monitoreo y protección perimetral.
 
-> El teléfono **no** se usa como prueba de titularidad. La única vía para
-> vincular un comercio a un usuario es el código privado validado en el
-> servidor.
+## Provisionamiento de tokens
 
-## Permisos y seguridad
+El proceso operativo de emisión y entrega todavía debe implementarse. Como procedimiento administrativo temporal:
 
-**Columna `codigo_vendedor` (protección respetada):** la lectura
-pública de `comercios` usa permisos por columna y `codigo_vendedor` no está
-incluido. La función de reclamo compara el código dentro de la base y nunca
-lo devuelve al navegador. Esta migración no cambia los permisos SELECT que
-ya existen.
+1. Generar un token con un generador criptográficamente seguro, por ejemplo `openssl rand -hex 32`, en un equipo administrativo confiable.
+2. Calcular su SHA-256 localmente y guardar solo los 32 bytes del hash en `public.comercio_codigos_reclamo`.
+3. Enviar el token original al titular por un canal directo y confiable.
+4. No incluir el token en tickets, logs, repositorios, analítica ni mensajes públicos.
 
-**Administración de productos:** el panel no usa la API REST para escribir:
-usa las funciones `crear_producto()` y `actualizar_producto()`, que
-verifican que el producto o comercio pertenezca a alguno de los comercios
-vinculados al usuario autenticado (`propietario_id = auth.uid()`). Una
-cuenta puede administrar varios comercios, pero no alcanza los productos
-de comercios ajenos.
+Ejemplo de inserción administrativa (reemplazar los valores localmente; nunca guardar el token en el repositorio):
 
-**Sin borrados:**
+```sql
+INSERT INTO public.comercio_codigos_reclamo (comercio_id, codigo_hash)
+VALUES (
+  '<UUID-DEL-COMERCIO>'::uuid,
+  pg_catalog.decode('<HASH-SHA256-EN-64-CARACTERES-HEX>', 'hex')
+);
+```
 
-* El panel no tiene botón de borrado y no existe función de borrado. Un
-  producto que ya no se ofrece simplemente se marca como "no disponible".
-* En una prueba, un `DELETE` sobre un identificador inexistente devolvió
-  HTTP 204. Eso **no demuestra** que el rol `anon` pueda borrar filas
-  existentes: PostgREST también puede devolver 204 cuando la consulta no
-  encuentra filas. Por ese motivo, esta migración no modifica permisos
-  `DELETE` ni afirma haber demostrado ese permiso.
-* Se restringe `EXECUTE` de todas las funciones nuevas al rol
-  `authenticated` (`anon` y `PUBLIC` quedan revocados).
+El hash debe calcularse sobre el token normalizado a minúsculas y codificado en UTF-8. La restricción única impide reutilizar el mismo token en dos comercios. La inserción debe hacerse con una cuenta administrativa confiable; no se debe conceder este permiso al navegador ni a usuarios autenticados.
 
-**Compatibilidad con lo que ya existe:** la migración no ejecuta ni un
-`UPDATE` ni un `DELETE` sobre filas existentes, no habilita RLS y no cambia
-los permisos actuales del catálogo público ni del formulario de registro.
-Agrega un índice no único sobre `propietario_id` y cinco funciones. No agrega columnas, no cambia políticas RLS y no modifica permisos de borrado.
+## Permisos y datos
 
-## Cómo aplicar la migración de forma segura (cuando sea autorizada)
+- Las tablas privadas de códigos e intentos tienen RLS activado y no conceden permisos a `PUBLIC`, `anon` ni `authenticated`. Las funciones `SECURITY DEFINER` las consultan con privilegios de su propietario.
+- `comercios_sin_reclamar()` devuelve solo identificador y datos comerciales básicos; nunca el hash ni el token.
+- `datos_del_comercio()` devuelve únicamente los comercios cuyo `propietario_id` coincide con `auth.uid()`.
+- `crear_producto()` y `actualizar_producto()` comprueban la titularidad antes de insertar o modificar.
+- Una cuenta puede administrar varios comercios; cada comercio conserva un único `propietario_id`.
+- No se incorpora una función de borrado ni se cambian permisos DELETE.
 
-1. **No ejecutar en producción directamente.** Probar primero en un
-   proyecto de Supabase de prueba (o un branch de base de datos) con una
-   copia de los datos.
-2. Hacer un **respaldo** previo: en el dashboard, *Database → Backups*, o
-   con `pg_dump` desde una conexión directa.
-3. Ejecutar el script completo desde el **SQL Editor** del proyecto. Está
-   envuelto en `BEGIN/COMMIT`: si alguna línea falla, la transacción se
-   revierte completa y la base queda como estaba.
-4. Verificar después:
-   - `SELECT propietario_id, count(*) FROM public.comercios GROUP BY 1;` → los
-     comercios existentes deben conservar sus valores actuales; la migración
-     no los asigna ni los modifica.
-   - El catálogo público (`index.html`) debe seguir cargando los 4
-     productos actuales.
-   - Confirmar que el catálogo público siga leyendo los productos y
-     que cada función del panel responda solo con una sesión autenticada.
-   - Probar los límites de acceso con cuentas de prueba distintas antes
-     de habilitar el panel a comercios reales.
-5. Recién después del deploy del panel, entregar los códigos privados a
-   cada titular por un canal directo (nunca por la web pública).
+## Compatibilidad y efecto de la migración
 
-## Qué NO incluye este cambio
+La migración crea dos tablas privadas, agrega un índice no único sobre `propietario_id`, crea/actualiza cinco funciones y limpia la columna antigua `codigo_vendedor`. No modifica filas de productos ni asigna propietarios a comercios existentes. Los tokens antiguos que no cumplan el formato nuevo se invalidan.
 
-* No se ejecutó SQL en Supabase: la migración está preparada **solo para
-  revisión**.
-* El alta pública guarda los datos del comercio, pero no genera ni entrega
-  automáticamente el código privado necesario para reclamarlo.
-* La cuenta puede vincular varios comercios; cada comercio conserva un
-  único `propietario_id`.
-* No se tocó la base de datos existente ni se modificó o eliminó ningún
-  comercio, producto o dato.
-* No se integró el PR a `main`: queda abierto para la revisión conjunta.
+Antes de ejecutarla se debe confirmar que la versión de PostgreSQL de Supabase soporta las funciones SHA-256 integradas (`pg_catalog.sha256`) y que el usuario que ejecuta la migración puede crear tablas, índices, funciones y cambiar privilegios. No se requiere habilitar extensiones externas.
+
+## Plan de prueba obligatorio
+
+Antes de producción, usar un proyecto Supabase de prueba y comprobar:
+
+1. Un usuario sin sesión no puede ejecutar las funciones privadas.
+2. Un usuario autenticado puede ver la lista de comercios pendientes, pero no leer las tablas privadas ni sus hashes.
+3. Una clave incorrecta no vincula el comercio y activa el límite después de cinco intentos.
+4. Una clave válida vincula un comercio una sola vez y queda inutilizable luego del reclamo.
+5. Un segundo usuario no puede reclamar un comercio ya vinculado.
+6. Un usuario propietario puede crear y editar productos de sus comercios.
+7. Otro usuario no puede editar productos ajenos, ni siquiera cambiando IDs manualmente.
+8. La lectura pública del catálogo sigue funcionando y no expone `codigo_vendedor`, hashes ni intentos.
+9. El formulario público de alta y los cuatro productos actuales permanecen intactos.
+
+También se debe probar expiración y renovación de sesión, errores de red y formularios desde iPhone.
+
+## Fuera de alcance por ahora
+
+- No se ejecutó SQL en Supabase.
+- No se modificaron datos reales ni políticas existentes de RLS de las tablas principales.
+- No se fusionó el PR ni se desplegó Netlify.
+- La emisión y entrega automatizada de tokens, el monitoreo antiabuso por IP y la recuperación de titularidad siguen pendientes.
