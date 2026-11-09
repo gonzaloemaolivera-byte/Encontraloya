@@ -1,6 +1,13 @@
 name: Prueba de migración comercial
 
 on:
+  push:
+    branches:
+      - "agent-para-revisin-658c"
+    paths:
+      - "supabase/migracion-comercial-para-revision.sql"
+      - "supabase/tests/**"
+      - ".github/workflows/prueba-migracion-comercial.yml"
   pull_request:
     paths:
       - "supabase/migracion-comercial-para-revision.sql"
