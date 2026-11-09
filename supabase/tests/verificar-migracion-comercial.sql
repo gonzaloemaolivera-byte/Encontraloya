@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
 
--- La migración debe preservar los registros existentes.
+-- La migración debe preservar los registros existentes y cerrar accesos antiguos.
 DO $$
 BEGIN
   IF (SELECT count(*) FROM public.comercios) <> 7 THEN
@@ -23,6 +23,12 @@ BEGIN
   IF has_function_privilege('anon', 'public.vincular_comercio(text)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.vincular_comercio(text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'La RPC heredada sigue ejecutable';
+  END IF;
+  IF has_function_privilege('anon', 'public.generar_codigo_vendedor()', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.generar_codigo_vendedor()', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.generar_codigo_vinculacion()', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.generar_codigo_vinculacion()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Una función de disparador heredada sigue ejecutable';
   END IF;
   IF has_table_privilege('anon', 'private.comercio_codigos_reclamo', 'SELECT')
      OR has_table_privilege('authenticated', 'private.comercio_codigos_reclamo', 'SELECT')
@@ -47,27 +53,22 @@ BEGIN
      OR NOT has_function_privilege('authenticated', 'public.reclamar_comercio(uuid,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Los permisos de reclamar_comercio no son correctos';
   END IF;
-END;
-$$;
-
--- Solo el propietario administrativo puede emitir tokens; ningún rol API.
-DO $
-BEGIN
   IF has_function_privilege('anon', 'private.emitir_codigo_reclamo(uuid)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'private.emitir_codigo_reclamo(uuid)', 'EXECUTE')
      OR has_function_privilege('service_role', 'private.emitir_codigo_reclamo(uuid)', 'EXECUTE') THEN
     RAISE EXCEPTION 'La función administrativa de emisión quedó expuesta';
   END IF;
 END;
-$;
+$$;
 
--- El token se devuelve una vez, pero solo se persiste su hash privado.
+-- La emisión administrativa genera 32 bytes aleatorios, devuelve el token
+-- una sola vez y almacena solo su SHA-256. La reemisión invalida el anterior.
 CREATE TEMP TABLE token_emitido AS
 SELECT private.emitir_codigo_reclamo(
   (SELECT id FROM public.comercios WHERE nombre = 'Comercio 7')
 ) AS token;
 
-DO $
+DO $$
 DECLARE
   v_token text;
   v_comercio uuid;
@@ -79,179 +80,21 @@ BEGIN
     FROM private.comercio_codigos_reclamo
     WHERE comercio_id = v_comercio;
 
-  IF v_token !~ '^[0-9a-f]{64}INSERT INTO private.comercio_codigos_reclamo (comercio_id, codigo_hash)
-SELECT id, pg_catalog.sha256(pg_catalog.convert_to(pg_catalog.repeat('a', 64), 'UTF8'))
-FROM public.comercios WHERE nombre = 'Comercio 1';
-
-INSERT INTO private.comercio_codigos_reclamo (comercio_id, codigo_hash)
-SELECT id, pg_catalog.sha256(pg_catalog.convert_to(pg_catalog.repeat('b', 64), 'UTF8'))
-FROM public.comercios WHERE nombre = 'Comercio 2';
-
--- Una cuenta sin correo confirmado no puede enumerar comercios reclamables.
-SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', false);
-SET ROLE authenticated;
-DO $$
-BEGIN
-  IF (SELECT count(*) FROM public.comercios_sin_reclamar()) <> 0 THEN
-    RAISE EXCEPTION 'Una cuenta sin confirmar pudo listar comercios';
-  END IF;
-END;
-$$;
-RESET ROLE;
-
--- La cuenta confirmada ve solo los comercios pendientes con hash provisionado.
-SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
-SET ROLE authenticated;
-DO $$
-DECLARE
-  v_comercio uuid;
-  v_resultado jsonb;
-  v_producto uuid;
-  v_i integer;
-BEGIN
-  IF (SELECT count(*) FROM public.comercios_sin_reclamar()) <> 2 THEN
-    RAISE EXCEPTION 'La lista de comercios pendientes no coincide';
-  END IF;
-
-  SELECT id INTO v_comercio FROM public.comercios WHERE nombre = 'Comercio 1';
-
-  v_resultado := public.reclamar_comercio(v_comercio, pg_catalog.repeat('a', 64));
-  IF v_resultado->>'ok' <> 'true' THEN
-    RAISE EXCEPTION 'No se pudo reclamar con un código válido: %', v_resultado;
-  END IF;
-
-  v_resultado := public.reclamar_comercio(v_comercio, pg_catalog.repeat('a', 64));
-  IF v_resultado->>'ok' <> 'false' THEN
-    RAISE EXCEPTION 'El código pudo reutilizarse';
-  END IF;
-
-  IF (SELECT count(*) FROM public.datos_del_comercio()) <> 1 THEN
-    RAISE EXCEPTION 'La cuenta no ve su comercio vinculado';
-  END IF;
-
-  v_resultado := public.crear_producto(
-    v_comercio, 'Producto del titular', 'Descripción', 'Ferretería', 123.45, 'ARS', true
-  );
-  IF v_resultado->>'ok' <> 'true' THEN
-    RAISE EXCEPTION 'El titular no pudo crear su producto: %', v_resultado;
-  END IF;
-  v_producto := (v_resultado->>'id')::uuid;
-
-  v_resultado := public.actualizar_producto(
-    v_producto, 'Producto editado', 'Descripción editada', 'Ferretería', 150, 'ARS', true
-  );
-  IF v_resultado->>'ok' <> 'true' THEN
-    RAISE EXCEPTION 'El titular no pudo editar su producto: %', v_resultado;
-  END IF;
-
-  SELECT id INTO v_comercio FROM public.comercios WHERE nombre = 'Comercio 2';
-  FOR v_i IN 1..5 LOOP
-    v_resultado := public.reclamar_comercio(v_comercio, pg_catalog.repeat('c', 64));
-  END LOOP;
-  IF v_resultado->>'mensaje' NOT LIKE 'Se alcanzó el límite de intentos%' THEN
-    RAISE EXCEPTION 'No se activó el bloqueo al quinto intento: %', v_resultado;
-  END IF;
-  v_resultado := public.reclamar_comercio(v_comercio, pg_catalog.repeat('b', 64));
-  IF v_resultado->>'mensaje' NOT LIKE 'Se alcanzó el límite de intentos%' THEN
-    RAISE EXCEPTION 'El bloqueo no impidió un intento posterior';
-  END IF;
-END;
-$$;
-RESET ROLE;
-
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM private.comercio_codigos_reclamo k
-    JOIN public.comercios c ON c.id = k.comercio_id
-    WHERE c.nombre = 'Comercio 1'
-  ) THEN
-    RAISE EXCEPTION 'El hash no se consumió después del reclamo';
-  END IF;
-END;
-$$;
-
--- Otra cuenta no puede editar productos ni reclamar un comercio ya asignado.
-SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false);
-SET ROLE authenticated;
-DO $$
-DECLARE
-  v_comercio uuid;
-  v_producto uuid;
-  v_resultado jsonb;
-BEGIN
-  SELECT id INTO v_comercio FROM public.comercios WHERE nombre = 'Comercio 1';
-  SELECT id INTO v_producto FROM public.productos WHERE nombre = 'Producto editado';
-
-  v_resultado := public.reclamar_comercio(v_comercio, pg_catalog.repeat('a', 64));
-  IF v_resultado->>'ok' <> 'false' THEN
-    RAISE EXCEPTION 'Una segunda cuenta reclamó un comercio asignado';
-  END IF;
-
-  v_resultado := public.actualizar_producto(
-    v_producto, 'Intento ajeno', '', 'Otros', 1, 'ARS', true
-  );
-  IF v_resultado->>'ok' <> 'false' THEN
-    RAISE EXCEPTION 'Una segunda cuenta pudo editar un producto ajeno';
-  END IF;
-END;
-$$;
-RESET ROLE;
-
--- El catálogo público sigue leyendo productos existentes.
-SET ROLE anon;
-DO $$
-BEGIN
-  IF (SELECT count(*) FROM public.productos) <> 5 THEN
-    RAISE EXCEPTION 'La lectura pública del catálogo dejó de funcionar';
-  END IF;
-END;
-$$;
-
--- El alta pública sigue funcionando y ya no dispara la generación de códigos viejos.
-DO $$
-DECLARE
-  v_codigo text;
-BEGIN
-  INSERT INTO public.comercios (nombre, rubro, localidad, provincia, telefono)
-  VALUES ('Nuevo registro de prueba', 'Otros', 'Moreno', 'Buenos Aires', '1122223333')
-  RETURNING codigo_vendedor INTO v_codigo;
-
-  IF v_codigo IS NOT NULL THEN
-    RAISE EXCEPTION 'El alta pública volvió a generar codigo_vendedor';
-  END IF;
-END;
-$$;
-RESET ROLE;
-
--- El test termina con 8 comercios y 5 productos; ningún dato real está involucrado.
-DO $$
-BEGIN
-  IF (SELECT count(*) FROM public.comercios) <> 8 THEN
-    RAISE EXCEPTION 'Cantidad final de comercios inesperada';
-  END IF;
-  IF (SELECT count(*) FROM public.productos) <> 5 THEN
-    RAISE EXCEPTION 'Cantidad final de productos inesperada';
-  END IF;
-  RAISE NOTICE 'OK: migración comercial, permisos, reclamo, bloqueo, catálogo y alta pública';
-END;
-$$;
- THEN
+  IF v_token !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'El token emitido no tiene 256 bits en formato hexadecimal';
   END IF;
   IF v_hash IS DISTINCT FROM pg_catalog.sha256(pg_catalog.convert_to(v_token, 'UTF8')) THEN
     RAISE EXCEPTION 'El hash almacenado no corresponde al token emitido';
   END IF;
 END;
-$;
+$$;
 
--- La reemisión invalida el token anterior y deja un solo hash activo.
 CREATE TEMP TABLE token_reemitido AS
 SELECT private.emitir_codigo_reclamo(
   (SELECT id FROM public.comercios WHERE nombre = 'Comercio 7')
 ) AS token;
 
-DO $
+DO $$
 DECLARE
   v_token text;
   v_comercio uuid;
@@ -267,14 +110,14 @@ BEGIN
     RAISE EXCEPTION 'La reemisión no reemplazó el hash anterior';
   END IF;
 END;
-$;
+$$;
 
 DELETE FROM private.comercio_codigos_reclamo
 WHERE comercio_id = (SELECT id FROM public.comercios WHERE nombre = 'Comercio 7');
 DROP TABLE pg_temp.token_emitido;
 DROP TABLE pg_temp.token_reemitido;
 
--- Las dos cuentas de prueba reciben códigos aleatorios de 256 bits.
+-- Dos comercios reciben hashes de tokens ficticios para probar el reclamo.
 INSERT INTO private.comercio_codigos_reclamo (comercio_id, codigo_hash)
 SELECT id, pg_catalog.sha256(pg_catalog.convert_to(pg_catalog.repeat('a', 64), 'UTF8'))
 FROM public.comercios WHERE nombre = 'Comercio 1';
@@ -295,7 +138,7 @@ END;
 $$;
 RESET ROLE;
 
--- La cuenta confirmada ve solo los comercios pendientes con hash provisionado.
+-- La cuenta confirmada puede reclamar, crear y editar sus propios productos.
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
 SET ROLE authenticated;
 DO $$
@@ -367,7 +210,7 @@ BEGIN
 END;
 $$;
 
--- Otra cuenta no puede editar productos ni reclamar un comercio ya asignado.
+-- Otra cuenta no puede reclamar un comercio asignado ni editar productos ajenos.
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false);
 SET ROLE authenticated;
 DO $$
@@ -394,7 +237,7 @@ END;
 $$;
 RESET ROLE;
 
--- El catálogo público sigue leyendo productos existentes.
+-- El catálogo público sigue leyendo los productos existentes.
 SET ROLE anon;
 DO $$
 BEGIN
@@ -404,7 +247,7 @@ BEGIN
 END;
 $$;
 
--- El alta pública sigue funcionando y ya no dispara la generación de códigos viejos.
+-- El alta pública sigue funcionando y no genera códigos heredados.
 DO $$
 DECLARE
   v_codigo text;
@@ -420,7 +263,6 @@ END;
 $$;
 RESET ROLE;
 
--- El test termina con 8 comercios y 5 productos; ningún dato real está involucrado.
 DO $$
 BEGIN
   IF (SELECT count(*) FROM public.comercios) <> 8 THEN
@@ -429,6 +271,6 @@ BEGIN
   IF (SELECT count(*) FROM public.productos) <> 5 THEN
     RAISE EXCEPTION 'Cantidad final de productos inesperada';
   END IF;
-  RAISE NOTICE 'OK: migración comercial, permisos, reclamo, bloqueo, catálogo y alta pública';
+  RAISE NOTICE 'OK: migración, emisión de tokens, permisos, reclamo, bloqueo, catálogo y alta pública';
 END;
 $$;
