@@ -4,7 +4,7 @@
 
 ## Qué incorpora
 
-- Acceso con Supabase Auth (correo y contraseña).
+- Acceso con Supabase Auth (correo y contraseña). El formulario de alta del panel exige 12 caracteres como mínimo y al menos una mayúscula, una minúscula, un número y un símbolo; esta validación del navegador complementa, pero no sustituye, la política que debe configurarse en Auth.
 - Vinculación de uno o varios comercios por cuenta.
 - Publicación y edición de productos propios.
 - Funciones SQL `SECURITY DEFINER` con `search_path` vacío y permisos de ejecución limitados a usuarios autenticados.
@@ -81,5 +81,5 @@ También se debe probar expiración y renovación de sesión, errores de red y f
 - No se modificaron datos reales ni políticas existentes de RLS de las tablas principales.
 - No se fusionó el PR ni se desplegó Netlify.
 - La entrega automática por correo de tokens, el monitoreo antiabuso por IP y la recuperación de titularidad siguen pendientes. La emisión administrativa manual ya está incluida y se prueba en PostgreSQL.
-- El asesor de seguridad de la base real informa que la protección de contraseñas filtradas de Supabase Auth está desactivada. La documentación vigente de Supabase indica que esta función está disponible en Pro y superiores; el proyecto Encontralo Ya está en Free. No se puede activar sin cambiar de plan. No se realizó ni se hará una actualización paga sin tu aprobación explícita.
+- El asesor de seguridad de la base real informa que la protección de contraseñas filtradas de Supabase Auth está desactivada. Supabase la reserva para Pro y superiores; el proyecto está en Free, por lo que no se puede activar sin cambiar de plan. No se realizó ni se hará una actualización paga sin tu aprobación explícita. La longitud mínima y los requisitos de caracteres sí pueden configurarse en Auth en el plan Free y deben fijarse allí para que también se apliquen a clientes que no usen este formulario.
 - Los códigos antiguos se invalidan; antes de habilitar el panel se deberán emitir y entregar nuevos tokens de 256 bits por un proceso administrativo seguro.
