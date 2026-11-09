@@ -81,4 +81,5 @@ También se debe probar expiración y renovación de sesión, errores de red y f
 - No se modificaron datos reales ni políticas existentes de RLS de las tablas principales.
 - No se fusionó el PR ni se desplegó Netlify.
 - La emisión y entrega automatizada de tokens, el monitoreo antiabuso por IP y la recuperación de titularidad siguen pendientes.
+- El asesor de seguridad de la base real informa que la protección de contraseñas filtradas de Supabase Auth está desactivada. Es un ajuste independiente de esta migración y debe activarse en Auth antes de abrir el registro de comercios a escala.
 - Los códigos antiguos se invalidan; antes de habilitar el panel se deberán emitir y entregar nuevos tokens de 256 bits por un proceso administrativo seguro.
