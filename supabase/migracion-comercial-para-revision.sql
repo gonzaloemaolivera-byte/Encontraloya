@@ -7,6 +7,10 @@
 --
 -- Permite que una cuenta de Supabase Auth administre VARIOS comercios.
 -- Cada comercio sigue teniendo un solo propietario_id.
+-- IMPORTANTE: esta migración NO genera ni entrega códigos privados.
+-- Antes de habilitar reclamos, cada comercio debe tener codigo_vendedor
+-- cargado con un valor aleatorio, único y entregado al titular por un canal
+-- directo. Los comercios sin código no aparecerán en el selector de reclamo.
 -- ============================================================================
 
 BEGIN;
@@ -16,7 +20,8 @@ CREATE INDEX IF NOT EXISTS comercios_propietario_id_idx
   ON public.comercios (propietario_id)
   WHERE propietario_id IS NOT NULL;
 
--- Lista solo los comercios todavía no reclamados. Nunca devuelve el código.
+-- Lista solo los comercios todavía no reclamados y con código provisionado.
+-- Devuelve nombre/localidad/provincia, nunca el código privado.
 CREATE OR REPLACE FUNCTION public.comercios_sin_reclamar()
 RETURNS TABLE (id uuid, nombre text, localidad text, provincia text)
 LANGUAGE sql
@@ -134,7 +139,7 @@ BEGIN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'mensaje', 'Iniciá sesión para publicar productos.');
   END IF;
 
-  IF NOT EXISTS (
+  IF p_comercio_id IS NULL OR NOT EXISTS (
     SELECT 1
     FROM public.comercios AS c
     WHERE c.id = p_comercio_id
@@ -272,3 +277,5 @@ COMMIT;
 -- * No cambia políticas RLS ni permisos DELETE/SELECT de las tablas.
 -- * No crea auth_user_id: usa public.comercios.propietario_id.
 -- * Una misma cuenta puede administrar varios comercios.
+-- * Los códigos privados deben provisionarse y entregarse por un proceso
+--   separado antes de que los titulares puedan reclamar sus comercios.
