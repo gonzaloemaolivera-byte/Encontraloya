@@ -32,6 +32,21 @@ REVOKE EXECUTE ON FUNCTION public.vincular_comercio(text) FROM PUBLIC, anon, aut
 REVOKE EXECUTE ON FUNCTION public.generar_codigo_vendedor() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.generar_codigo_vinculacion() FROM PUBLIC, anon, authenticated;
 
+-- La vista de revisión de teléfonos no es parte del catálogo público. Hoy
+-- concede privilegios amplios a anon/authenticated y usa permisos del dueño.
+-- Se conserva para administración, pero se fuerza SECURITY INVOKER y se
+-- retira todo acceso API a roles públicos/autenticados.
+ALTER VIEW public.encontralo_revision_telefonos_v1
+  SET (security_invoker = true);
+REVOKE ALL ON TABLE public.encontralo_revision_telefonos_v1
+  FROM PUBLIC, anon, authenticated;
+
+-- Estas funciones de normalización no necesitan un search_path mutable.
+ALTER FUNCTION public.encontralo_normalizar_telefono_v1(text)
+  SET search_path = '';
+ALTER FUNCTION public.telefono_argentino_clave(text)
+  SET search_path = '';
+
 -- Índice no único: un mismo usuario puede tener muchos comercios.
 CREATE INDEX IF NOT EXISTS comercios_propietario_id_idx
   ON public.comercios (propietario_id)
