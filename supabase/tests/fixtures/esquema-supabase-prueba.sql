@@ -5,6 +5,8 @@ CREATE ROLE service_role NOLOGIN;
 
 CREATE SCHEMA auth;
 CREATE SCHEMA private;
+CREATE SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 CREATE TABLE auth.users (
   id uuid PRIMARY KEY,
