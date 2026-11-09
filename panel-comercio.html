@@ -79,7 +79,7 @@ footer strong{color:white}
 <form id="authForm">
 <div class="form-grid">
 <div class="field full"><label for="authEmail">Correo electrónico *</label><input id="authEmail" type="email" required autocomplete="email" maxlength="120"></div>
-<div class="field full"><label for="authPassword">Contraseña *</label><input id="authPassword" type="password" required minlength="8" autocomplete="current-password" placeholder="Mínimo 8 caracteres"></div>
+<div class="field full"><label for="authPassword">Contraseña *</label><input id="authPassword" type="password" required minlength="8" autocomplete="current-password" placeholder="Al crear cuenta: 12+ caracteres, mayúscula, minúscula, número y símbolo"></div>
 </div>
 <div class="form-foot">
 <button class="primary" id="authSubmit" type="submit">Iniciar sesión</button>
@@ -397,6 +397,23 @@ function setMode(next) {
 authForm.addEventListener("submit", async event => {
   event.preventDefault();
   if (!authForm.reportValidity()) return;
+
+  if (mode === "signup") {
+    const password = authPassword.value;
+    const strongPassword = password.length >= 12
+      && /[a-z]/.test(password)
+      && /[A-Z]/.test(password)
+      && /[0-9]/.test(password)
+      && /[^A-Za-z0-9]/.test(password);
+
+    if (!strongPassword) {
+      setMessage(authMessage,
+        "Para crear la cuenta usá al menos 12 caracteres, con mayúscula, minúscula, número y símbolo.",
+        "error");
+      authPassword.focus();
+      return;
+    }
+  }
 
   authSubmit.disabled = true;
   setMessage(authMessage, mode === "login" ? "Verificando credenciales…" : "Creando cuenta…");
