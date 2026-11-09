@@ -493,6 +493,14 @@ GRANT EXECUTE ON FUNCTION public.datos_del_comercio() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.crear_producto(uuid, text, text, text, numeric, text, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.actualizar_producto(uuid, text, text, text, numeric, text, boolean) TO authenticated;
 
+-- service_role tampoco necesita invocar las RPC del panel. La API pública
+-- solo debe permitir estas operaciones al usuario autenticado de la cuenta.
+REVOKE EXECUTE ON FUNCTION public.comercios_sin_reclamar() FROM service_role;
+REVOKE EXECUTE ON FUNCTION public.reclamar_comercio(uuid, text) FROM service_role;
+REVOKE EXECUTE ON FUNCTION public.datos_del_comercio() FROM service_role;
+REVOKE EXECUTE ON FUNCTION public.crear_producto(uuid, text, text, text, numeric, text, boolean) FROM service_role;
+REVOKE EXECUTE ON FUNCTION public.actualizar_producto(uuid, text, text, text, numeric, text, boolean) FROM service_role;
+
 COMMIT;
 
 -- IMPORTANTE:
