@@ -148,6 +148,13 @@ Deno.serve(async (req: Request) => {
     const { data: commission, error: commissionError } = await admin.from("comisiones")
       .select("importe_comision").eq("pedido_id", orderId).maybeSingle();
     if (commissionError) throw commissionError;
+    const { data: previousPayment, error: previousPaymentError } = await admin.from("pagos")
+      .select("estado").eq("proveedor", "mercado_pago").eq("referencia_externa", String(payment.id)).maybeSingle();
+    if (previousPaymentError) throw previousPaymentError;
+    // No permitir que una notificación atrasada reabra un pago ya aprobado o reembolsado.
+    if (previousPayment?.estado === "reembolsado" && paymentState !== "reembolsado") return reply(200, "ok");
+    if (previousPayment?.estado === "aprobado" && paymentState !== "aprobado" && paymentState !== "reembolsado") return reply(200, "ok");
+
     const paymentIdempotency = "mp-payment-" + String(payment.id);
     const { error: saveError } = await admin.from("pagos").upsert({
       pedido_id: orderId,
