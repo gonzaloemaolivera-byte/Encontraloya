@@ -19,7 +19,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const state = randomState();
-    const { error: stateError } = await admin.from("mercado_pago_oauth_states").insert({
+    const { error: stateError } = await admin.from("mercado_pago_oauth_states_privado").insert({
       state_hash: await sha256Hex(state),
       comercio_id: comercioId,
       propietario_id: user.id,
