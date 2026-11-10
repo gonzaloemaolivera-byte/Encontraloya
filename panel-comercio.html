@@ -54,6 +54,14 @@ footer{background:var(--navy);color:#d7e7f5;padding:23px 0;font-size:.85rem}
 footer strong{color:white}
 .hidden{display:none}
 @media(max-width:640px){.form-grid{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.card{padding:17px}}
+
+.order-card{border:1px solid var(--line);border-radius:14px;padding:15px;margin:10px 0;background:#fff}
+.order-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.order-head strong{color:var(--navy)}
+.order-state{display:inline-block;background:#fff4d6;color:#775500;border-radius:999px;padding:4px 9px;font-size:.76rem;font-weight:800}
+.order-items{padding-left:18px;margin:10px 0;color:#486581;font-size:.88rem}
+.order-total{font-weight:850;color:var(--green);margin-top:8px}
+
 </style>
 </head>
 <body>
@@ -157,6 +165,16 @@ footer strong{color:white}
 <span class="form-message" id="claimMoreMessage" role="status"></span>
 </div>
 </form>
+</section>
+
+
+<section class="card" style="max-width:none" id="ordersCard">
+  <div class="form-foot" style="justify-content:space-between;margin-top:0">
+    <div><h2>Pedidos recibidos</h2><p class="sub">Pedidos enviados por compradores a este comercio.</p></div>
+    <button class="ghost" id="reloadOrders" type="button">Actualizar pedidos</button>
+  </div>
+  <div id="ordersStatus" role="status" style="color:var(--muted);font-size:.9rem;padding:8px 0">Cargando pedidos…</div>
+  <div id="ordersList"></div>
 </section>
 
 <section class="card">
@@ -379,6 +397,7 @@ function showComercioView() {
   comercioView.classList.remove("hidden");
   renderComercio();
   loadComerciosSinReclamar("claimMoreComercio", "claimMoreMessage");
+  loadMisPedidos();
   loadMisProductos();
 }
 
@@ -722,6 +741,59 @@ $("shopSelect").addEventListener("change", () => {
   renderComercio();
   loadMisProductos();
 });
+
+
+function fechaPedido(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("es-AR", {dateStyle:"medium",timeStyle:"short"});
+}
+
+async function loadMisPedidos() {
+  if (!comercio) return;
+  const status = $("ordersStatus");
+  const list = $("ordersList");
+  status.textContent = "Buscando pedidos…";
+  list.innerHTML = "";
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/pedidos?select=id,numero_pedido,estado,subtotal,total,comprador_nombre,comprador_email,comprador_telefono,direccion_entrega,notas,creado_at,pedido_productos(nombre_producto,cantidad,precio_unitario,subtotal)&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=creado_at.desc&limit=50`;
+    const response = await authenticatedGet(url);
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`Supabase respondió ${response.status}: ${detail.slice(0,180)}`);
+    }
+    const orders = await response.json();
+    if (!orders.length) {
+      status.textContent = "Todavía no recibiste pedidos.";
+      list.innerHTML = '<div class="empty">Cuando un comprador envíe un pedido a tu comercio, va a aparecer acá.</div>';
+      return;
+    }
+    status.textContent = `${orders.length} pedido(s) recibido(s).`;
+    list.innerHTML = orders.map(order => {
+      const items = Array.isArray(order.pedido_productos) ? order.pedido_productos : [];
+      const itemsHtml = items.map(item =>
+        `<li>${escapeHTML(item.nombre_producto)} — ${escapeHTML(item.cantidad)} × ${escapeHTML(money(item.precio_unitario,"ARS"))} = ${escapeHTML(money(item.subtotal,"ARS"))}</li>`
+      ).join("");
+      return `<article class="order-card">
+        <div class="order-head">
+          <div><strong>Pedido #${escapeHTML(order.numero_pedido)}</strong><div class="meta">${escapeHTML(fechaPedido(order.creado_at))}</div></div>
+          <span class="order-state">${escapeHTML(order.estado)}</span>
+        </div>
+        <ul class="order-items">${itemsHtml}</ul>
+        <div class="meta">Comprador: ${escapeHTML(order.comprador_nombre || "No informado")} · Teléfono: ${escapeHTML(order.comprador_telefono || "No informado")}</div>
+        ${order.comprador_email ? `<div class="meta">Correo: ${escapeHTML(order.comprador_email)}</div>` : ""}
+        ${order.direccion_entrega ? `<div class="meta">Entrega: ${escapeHTML(order.direccion_entrega)}</div>` : ""}
+        ${order.notas ? `<div class="meta">Aclaraciones: ${escapeHTML(order.notas)}</div>` : ""}
+        <div class="order-total">Total del pedido: ${escapeHTML(money(order.total,"ARS"))}</div>
+      </article>`;
+    }).join("");
+  } catch (error) {
+    console.error(error);
+    status.textContent = "No pudimos cargar los pedidos. Verificá los permisos y volvé a intentar.";
+  }
+}
+
+$("reloadOrders").addEventListener("click", loadMisPedidos);
 
 // ---------- Productos ----------
 
