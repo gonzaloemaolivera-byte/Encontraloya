@@ -55,3 +55,8 @@ Supabase provee `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY
 6. Probar aprobado, pendiente, cancelado/rechazado y reembolso; comprobar el reparto real del `marketplace_fee`.
 7. Revisar idempotencia, permisos, registros y reintentos.
 8. Solo después de aprobar todas las pruebas, preparar credenciales productivas y un despliegue controlado.
+
+
+## Flujo Checkout Pro Split 1:1 confirmado
+
+Usar Preferences API (`POST /checkout/preferences`), `marketplace_fee` y el Access Token OAuth del vendedor. La notificación configurada para este flujo es `payment`; el webhook consulta `GET /v1/payments/{id}` con el token del vendedor. La implementación de Orders API queda fuera del flujo activo mientras Mercado Pago no confirme oficialmente su compatibilidad para este caso.
