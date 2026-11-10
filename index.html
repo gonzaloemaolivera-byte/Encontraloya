@@ -536,12 +536,19 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) throw new Error(result.mensaje || "No pudimos registrar el pedido.");
     message.textContent = "Pedido registrado. Preparando el pago seguro…";
-    const paymentResponse = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-preference`, {
-      method:"POST",
-      headers:{apikey:SUPABASE_ANON_KEY,"Content-Type":"application/json"},
-      body:JSON.stringify({pedido_id:result.pedido_id})
-    });
-    const payment = await paymentResponse.json().catch(() => ({}));
+    let paymentResponse = null;
+    let payment = {};
+    try {
+      paymentResponse = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-preference`, {
+        method:"POST",
+        headers:{apikey:SUPABASE_ANON_KEY,"Content-Type":"application/json"},
+        body:JSON.stringify({pedido_id:result.pedido_id})
+      });
+      payment = await paymentResponse.json().catch(() => ({}));
+    } catch (paymentError) {
+      console.error("No se pudo iniciar el checkout después de registrar el pedido:", paymentError);
+      payment = { mensaje: "El pedido quedó registrado, pero no pudimos conectar con Mercado Pago." };
+    }
     cart = {comercio_id:null,items:[]};
     renderCart();
     form.reset();
@@ -562,7 +569,7 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
     message.className = "form-message error";
   } finally {
     submit.disabled = cart.items.length === 0;
-    submit.textContent = "Enviar pedido al comercio";
+    submit.textContent = "Enviar pedido y pagar online";
   }
 });
 
