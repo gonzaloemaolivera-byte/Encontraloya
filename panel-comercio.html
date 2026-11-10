@@ -774,10 +774,30 @@ async function loadMisPedidos() {
       const itemsHtml = items.map(item =>
         `<li>${escapeHTML(item.nombre_producto)} — ${escapeHTML(item.cantidad)} × ${escapeHTML(money(item.precio_unitario,"ARS"))} = ${escapeHTML(money(item.subtotal,"ARS"))}</li>`
       ).join("");
+      const stateLabels = {
+        pendiente: "Pendiente",
+        confirmado: "Confirmado",
+        preparando: "En preparación",
+        listo: "Listo",
+        enviado: "Enviado",
+        completado: "Entregado",
+        cancelado: "Cancelado",
+        reembolsado: "Reembolsado"
+      };
+      const actions = {
+        pendiente: [["confirmado","Aceptar pedido"],["cancelado","Rechazar pedido"]],
+        confirmado: [["preparando","Comenzar preparación"],["cancelado","Cancelar pedido"]],
+        preparando: [["listo","Marcar como listo"],["cancelado","Cancelar pedido"]],
+        listo: [["enviado","Marcar como enviado"],["completado","Marcar como entregado"]],
+        enviado: [["completado","Marcar como entregado"]]
+      }[order.estado] || [];
+      const actionHtml = actions.length
+        ? `<div class="form-foot order-actions">${actions.map(([state,label]) => `<button class="ghost" type="button" data-order-id="${escapeHTML(order.id)}" data-next-state="${state}">${label}</button>`).join("")}</div>`
+        : "";
       return `<article class="order-card">
         <div class="order-head">
           <div><strong>Pedido #${escapeHTML(order.numero_pedido)}</strong><div class="meta">${escapeHTML(fechaPedido(order.creado_at))}</div></div>
-          <span class="order-state">${escapeHTML(order.estado)}</span>
+          <span class="order-state">${escapeHTML(stateLabels[order.estado] || order.estado)}</span>
         </div>
         <ul class="order-items">${itemsHtml}</ul>
         <div class="meta">Comprador: ${escapeHTML(order.comprador_nombre || "No informado")} · Teléfono: ${escapeHTML(order.comprador_telefono || "No informado")}</div>
@@ -785,6 +805,7 @@ async function loadMisPedidos() {
         ${order.direccion_entrega ? `<div class="meta">Entrega: ${escapeHTML(order.direccion_entrega)}</div>` : ""}
         ${order.notas ? `<div class="meta">Aclaraciones: ${escapeHTML(order.notas)}</div>` : ""}
         <div class="order-total">Total del pedido: ${escapeHTML(money(order.total,"ARS"))}</div>
+        ${actionHtml}
       </article>`;
     }).join("");
   } catch (error) {
@@ -794,6 +815,58 @@ async function loadMisPedidos() {
 }
 
 $("reloadOrders").addEventListener("click", loadMisPedidos);
+
+$("ordersList").addEventListener("click", async event => {
+  const button = event.target.closest("button[data-order-id][data-next-state]");
+  if (!button || !comercio || !session?.access_token) return;
+
+  const nextState = button.dataset.nextState;
+  const pedidoId = button.dataset.orderId;
+  const labels = {
+    confirmado: "Aceptar pedido",
+    preparando: "Comenzar preparación",
+    listo: "Marcar como listo",
+    enviado: "Marcar como enviado",
+    completado: "Marcar como entregado",
+    cancelado: "Cancelar pedido"
+  };
+  const actionLabel = labels[nextState] || "Actualizar pedido";
+  if (!window.confirm(`${actionLabel} #${pedidoId.slice(0,8)}?`)) return;
+
+  const card = button.closest(".order-card");
+  card?.querySelectorAll("button").forEach(item => item.disabled = true);
+
+  try {
+    const send = () => fetch(`${SUPABASE_URL}/functions/v1/actualizar-estado-pedido`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        pedido_id: pedidoId,
+        comercio_id: comercio.id,
+        nuevo_estado: nextState
+      })
+    });
+
+    let response = await send();
+    if (response.status === 401 && await refreshAccessToken()) response = await send();
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.ok) {
+      window.alert(data.mensaje || "No pudimos actualizar el pedido. Volvé a intentarlo.");
+      return;
+    }
+    await loadMisPedidos();
+  } catch (error) {
+    console.error(error);
+    window.alert("No pudimos conectar con el servidor. Intentá nuevamente.");
+  } finally {
+    if (button.isConnected) card?.querySelectorAll("button").forEach(item => item.disabled = false);
+  }
+});
 
 // ---------- Productos ----------
 
