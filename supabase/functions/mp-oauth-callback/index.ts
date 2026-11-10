@@ -2,8 +2,7 @@ import { adminClient, corsHeaders, encryptToken, requiredEnv, sha256Hex } from "
 
 function redirect(path: string) {
   const base = requiredEnv("SITE_URL");
-  const url = new URL(path, base);
-  return Response.redirect(url.toString(), 303);
+  return Response.redirect(new URL(path, base).toString(), 303);
 }
 
 Deno.serve(async (req: Request) => {
@@ -19,28 +18,25 @@ Deno.serve(async (req: Request) => {
     const admin = adminClient();
     const stateHash = await sha256Hex(state);
     const { data: pending, error: stateError } = await admin
-      .from("mercado_pago_oauth_states")
+      .from("mercado_pago_oauth_states_privado")
       .select("comercio_id, propietario_id, expira_at, usado_at")
       .eq("state_hash", stateHash).maybeSingle();
     if (stateError || !pending || pending.usado_at || new Date(pending.expira_at).getTime() < Date.now()) {
       return redirect("/panel-comercio.html?mp=state_error");
     }
     const { data: claimed, error: claimError } = await admin
-      .from("mercado_pago_oauth_states")
+      .from("mercado_pago_oauth_states_privado")
       .update({ usado_at: new Date().toISOString() })
       .eq("state_hash", stateHash).is("usado_at", null).gt("expira_at", new Date().toISOString())
       .select("comercio_id, propietario_id").maybeSingle();
     if (claimError || !claimed) return redirect("/panel-comercio.html?mp=state_error");
 
-    const clientId = requiredEnv("MP_CLIENT_ID");
-    const clientSecret = requiredEnv("MP_CLIENT_SECRET");
-    const redirectUri = requiredEnv("MP_REDIRECT_URI");
     const form = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: requiredEnv("MP_CLIENT_ID"),
+      client_secret: requiredEnv("MP_CLIENT_SECRET"),
       grant_type: "authorization_code",
       code,
-      redirect_uri: redirectUri,
+      redirect_uri: requiredEnv("MP_REDIRECT_URI"),
       state,
     });
     const response = await fetch("https://api.mercadopago.com/oauth/token", {
@@ -55,7 +51,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const expiresAt = new Date(Date.now() + Number(credentials.expires_in || 15552000) * 1000).toISOString();
-    const { error: saveError } = await admin.schema("private").from("mercado_pago_tokens").upsert({
+    const { error: saveError } = await admin.from("mercado_pago_tokens_privado").upsert({
       comercio_id: claimed.comercio_id,
       usuario_mercado_pago_id: String(credentials.user_id),
       access_token_enc: await encryptToken(String(credentials.access_token)),
