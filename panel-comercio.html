@@ -614,12 +614,15 @@ $("newCommerceForm").addEventListener("submit", async event => {
     return;
   }
 
+  const rubroElegido = obtenerRubro("newCommerceType", "newCommerceSpecialty", "newCommerceOther");
+  if (!rubroElegido) {
+    setMessage($("newCommerceMessage"), "Elegí un rubro y, si seleccionaste Otros, especificá cuál.", "error");
+    return;
+  }
+
   const submit = $("newCommerceSubmit");
   submit.disabled = true;
   setMessage($("newCommerceMessage"), "Registrando tu comercio de forma segura…");
-
-  const rubroElegido = obtenerRubro("newCommerceType", "newCommerceSpecialty", "newCommerceOther");
-  if (!rubroElegido) { setMessage($("newCommerceMessage"), "Elegí un rubro y, si seleccionaste Otros, especificá cuál.", "error"); return; }
 
   const payload = {
     nombre: $("newCommerceName").value.trim(),
