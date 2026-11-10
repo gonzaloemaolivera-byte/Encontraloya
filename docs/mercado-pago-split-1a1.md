@@ -23,7 +23,7 @@ Configurar desde Supabase Dashboard → Edge Functions → Secrets (no en el fro
 - `MP_CLIENT_ID`: APP_ID de la aplicación.
 - `MP_CLIENT_SECRET`: SECRET_KEY de la aplicación.
 - `MP_REDIRECT_URI`: la URL de callback indicada arriba.
-- `MP_TOKEN_ENCRYPTION_KEY`: clave aleatoria de 32 bytes codificada en Base64URL.
+- `MP_TOKEN_ENCRYPTION_KEY`: clave aleatoria de 32 bytes codificada en Base64URL.\n- `MP_WEBHOOK_SECRET`: firma secreta generada en la sección Webhooks de la aplicación Mercado Pago.
 - `SITE_URL`: `https://genuine-nasturtium-f4db10.netlify.app`.
 
 Supabase ya proporciona `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` a las Edge Functions. No copiar ni publicar la clave service_role.
