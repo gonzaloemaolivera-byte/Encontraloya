@@ -78,6 +78,24 @@ footer{background:var(--navy);color:#d7e7f5;padding:23px 0;font-size:.85rem}
 footer strong{color:white}
 @media(max-width:760px){.hero-grid{grid-template-columns:1fr}.hero-note{display:none}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.access-grid{grid-template-columns:1fr}.access-card{min-height:132px}.wrap{width:min(100% - 24px,1120px)}.tag{display:none}.register-link{font-size:.8rem;padding:8px 10px}.hero{padding:34px 0 26px}.searchbox{flex-direction:column}.searchbox .primary{width:100%}.grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.panel{padding:17px}}
+
+.hidden{display:none!important}
+.cart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:14px 0 20px;padding:15px 17px;background:#eaf4fa;border:1px solid #c8dce9;border-radius:14px}
+.cart-toolbar strong{color:var(--navy)}
+.cart-count{font-size:.88rem;color:var(--muted)}
+.cart-btn{background:var(--green);color:white;border:0;border-radius:10px;padding:11px 16px;font-weight:800}
+.add-btn{background:var(--blue);color:white;border:0;border-radius:9px;padding:9px 12px;font-weight:750;font-size:.84rem}
+.add-btn:disabled{background:#829ab1}
+.cart-lines{display:grid;gap:9px;margin:15px 0}
+.cart-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.cart-line strong{display:block;color:var(--navy)}
+.cart-line small{color:var(--muted)}
+.qty-controls{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.qty-controls button{border:1px solid var(--line);background:#f5f8fb;border-radius:8px;padding:5px 10px;font-weight:800}
+.checkout-total{display:flex;justify-content:space-between;gap:10px;font-weight:850;font-size:1.1rem;color:var(--navy);padding:14px 0;border-top:1px solid var(--line)}
+.checkout-note{background:#fff8e8;border:1px solid #f0d99c;border-radius:11px;padding:12px;color:#765719;font-size:.88rem;margin:12px 0}
+@media(max-width:520px){.cart-line{align-items:flex-start;flex-direction:column}.qty-controls{width:100%;justify-content:flex-end}}
+
 </style>
 </head>
 <body>
@@ -88,6 +106,7 @@ footer strong{color:white}
 <div class="tag">Una idea que conecta compradores y comercios</div>
 </div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+<button class="cart-btn" id="openCart" type="button">Mi pedido (<span id="cartCount">0</span>)</button>
 <a class="register-link" href="panel-comercio.html" style="text-decoration:none">Panel del comercio</a>
 <button class="register-link" id="goRegister" type="button">Sumá tu comercio</button>
 </div>
@@ -155,6 +174,32 @@ footer strong{color:white}
 <div class="grid" id="productGrid"></div>
 </section>
 
+
+<section class="panel hidden" id="checkoutPanel" aria-labelledby="checkoutTitle">
+  <div class="section-head">
+    <div><h2 id="checkoutTitle">Tu pedido</h2><p class="sub" id="checkoutStore"></p></div>
+    <button class="small-btn" id="closeCart" type="button">Seguir buscando</button>
+  </div>
+  <div id="cartLines" class="cart-lines"></div>
+  <div class="checkout-total"><span>Total estimado</span><span id="cartTotal">$0</span></div>
+  <div class="checkout-note">Por ahora este paso registra el pedido para que el comercio lo confirme. El pago online y el cobro automático de la comisión todavía no están habilitados.</div>
+  <form id="checkoutForm">
+    <div class="form-grid">
+      <div class="field"><label for="buyerName">Tu nombre *</label><input id="buyerName" required maxlength="120" autocomplete="name"></div>
+      <div class="field"><label for="buyerPhone">Teléfono *</label><input id="buyerPhone" required maxlength="30" inputmode="tel" autocomplete="tel" placeholder="Ej.: 11 2345-6789"></div>
+      <div class="field full"><label for="buyerEmail">Correo electrónico</label><input id="buyerEmail" type="email" maxlength="160" autocomplete="email"></div>
+      <div class="field full"><label for="buyerAddress">Dirección de entrega (opcional)</label><input id="buyerAddress" maxlength="300" autocomplete="street-address"></div>
+      <div class="field full"><label for="buyerNotes">Aclaraciones (opcional)</label><textarea id="buyerNotes" maxlength="1000" placeholder="Por ejemplo: horario para recibir el pedido"></textarea></div>
+      <div class="hp" aria-hidden="true"><label for="checkoutWebsite">Dejar vacío</label><input id="checkoutWebsite" tabindex="-1" autocomplete="off"></div>
+    </div>
+    <div class="form-foot">
+      <button class="primary" id="placeOrder" type="submit">Enviar pedido al comercio</button>
+      <span class="form-message" id="checkoutMessage" role="status"></span>
+    </div>
+  </form>
+  <div id="orderConfirmation" class="info hidden" role="status"></div>
+</section>
+
 <section class="panel" id="registerPanel">
 <h2>¿Tenés un comercio?</h2>
 <p>Podés registrar y administrar tu comercio directamente desde el Panel del comercio: creá tu cuenta, confirmá tu correo y cargá tus productos. Si preferís, también podés dejarnos tus datos en esta solicitud y nos pondremos en contacto.</p>
@@ -200,6 +245,7 @@ const merchantSubmit = document.getElementById("merchantSubmit");
 let allProducts = [];
 let allBusinesses = [];
 let selectedCategory = "Todos";
+let cart = { comercio_id: null, items: [] };
 
 const headers = {
   apikey: SUPABASE_ANON_KEY,
@@ -332,10 +378,16 @@ function renderProducts() {
       <p class="desc">${escapeHTML(product.descripcion || product.categoria || "")}</p>
       <div class="meta">${escapeHTML(business?.nombre || "Comercio")}${business?.localidad ? " · " + escapeHTML(business.localidad) : ""}${business?.provincia ? ", " + escapeHTML(business.provincia) : ""}</div>
       <div class="price">${escapeHTML(money(product.precio, product.moneda))}</div>
-      <div class="product-actions">${whatsapp
-        ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>`
-        : '<span class="meta">Teléfono no disponible para WhatsApp</span>'
-      }</div>
+      <div class="product-actions" style="flex-wrap:wrap">
+        ${whatsapp
+          ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>`
+          : '<span class="meta">Teléfono no disponible para WhatsApp</span>'
+        }
+        ${product.precio !== null && Number(product.precio) > 0 && (product.moneda || "ARS") === "ARS"
+          ? `<button class="add-btn" type="button" data-add="${escapeHTML(product.id)}" data-commerce="${escapeHTML(product.comercio_id)}">Agregar al pedido</button>`
+          : '<span class="meta">Para comprar, consultá el precio al comercio</span>'
+        }
+      </div>
     </article>`;
   }).join("");
 }
@@ -377,6 +429,128 @@ async function loadCatalog() {
       '<div class="empty">El catálogo no está disponible en este momento. Intentá nuevamente más tarde.</div>';
   }
 }
+
+
+function cartStore() {
+  return allBusinesses.find(b => b.id === cart.comercio_id);
+}
+function cartProduct(id) {
+  return allProducts.find(p => p.id === id);
+}
+function cartAmount() {
+  return cart.items.reduce((sum, item) => {
+    const p = cartProduct(item.producto_id);
+    return sum + (p ? Number(p.precio) * item.cantidad : 0);
+  }, 0);
+}
+function renderCart() {
+  const count = cart.items.reduce((n, item) => n + item.cantidad, 0);
+  document.getElementById("cartCount").textContent = String(count);
+  const panel = document.getElementById("checkoutPanel");
+  const lines = document.getElementById("cartLines");
+  const store = cartStore();
+  document.getElementById("checkoutStore").textContent = store ? `Pedido para ${store.nombre}${store.localidad ? " · " + store.localidad : ""}` : "";
+  if (!cart.items.length) {
+    lines.innerHTML = '<div class="empty">Todavía no agregaste productos.</div>';
+  } else {
+    lines.innerHTML = cart.items.map(item => {
+      const p = cartProduct(item.producto_id);
+      if (!p) return "";
+      return `<div class="cart-line">
+        <div><strong>${escapeHTML(p.nombre)}</strong><small>${escapeHTML(money(p.precio,p.moneda))} por unidad</small></div>
+        <div class="qty-controls">
+          <button type="button" data-qty="-1" data-id="${escapeHTML(p.id)}" aria-label="Quitar una unidad">−</button>
+          <strong>${item.cantidad}</strong>
+          <button type="button" data-qty="1" data-id="${escapeHTML(p.id)}" aria-label="Agregar una unidad">+</button>
+          <button type="button" data-remove="${escapeHTML(p.id)}" aria-label="Eliminar producto">Quitar</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  document.getElementById("cartTotal").textContent = money(cartAmount(), "ARS");
+  document.getElementById("placeOrder").disabled = !cart.items.length;
+}
+function openCart() {
+  document.getElementById("checkoutPanel").classList.remove("hidden");
+  document.getElementById("checkoutPanel").scrollIntoView({behavior:"smooth",block:"start"});
+  renderCart();
+}
+document.getElementById("openCart").addEventListener("click", openCart);
+document.getElementById("closeCart").addEventListener("click", () => {
+  document.getElementById("checkoutPanel").classList.add("hidden");
+});
+grid.addEventListener("click", event => {
+  const add = event.target.closest("button[data-add]");
+  if (!add) return;
+  const product = cartProduct(add.dataset.add);
+  if (!product || !product.comercio_id) return;
+  if (cart.comercio_id && cart.comercio_id !== product.comercio_id) {
+    alert("Cada pedido corresponde a un comercio. Primero enviá o vaciá el pedido actual; después podés comprar en otro comercio.");
+    return;
+  }
+  cart.comercio_id = product.comercio_id;
+  const found = cart.items.find(i => i.producto_id === product.id);
+  if (found) found.cantidad += 1;
+  else cart.items.push({producto_id:product.id,cantidad:1});
+  renderCart();
+  add.textContent = "Agregado ✓";
+  setTimeout(() => { if (add.isConnected) add.textContent = "Agregar al pedido"; }, 1300);
+});
+document.getElementById("cartLines").addEventListener("click", event => {
+  const remove = event.target.closest("button[data-remove]");
+  const qty = event.target.closest("button[data-qty]");
+  if (remove) cart.items = cart.items.filter(i => i.producto_id !== remove.dataset.remove);
+  if (qty) {
+    const item = cart.items.find(i => i.producto_id === qty.dataset.id);
+    if (item) item.cantidad += Number(qty.dataset.qty);
+    cart.items = cart.items.filter(i => i.cantidad > 0);
+  }
+  if (!cart.items.length) cart.comercio_id = null;
+  renderCart();
+});
+document.getElementById("checkoutForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity() || !cart.items.length || !cart.comercio_id) return;
+  const submit = document.getElementById("placeOrder");
+  const message = document.getElementById("checkoutMessage");
+  submit.disabled = true;
+  submit.textContent = "Enviando pedido…";
+  message.textContent = "Verificando precios y disponibilidad con el servidor…";
+  document.getElementById("orderConfirmation").classList.add("hidden");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/crear-pedido`, {
+      method:"POST",
+      headers:{apikey:SUPABASE_ANON_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({
+        comercio_id:cart.comercio_id,
+        items:cart.items,
+        comprador_nombre:document.getElementById("buyerName").value.trim(),
+        comprador_email:document.getElementById("buyerEmail").value.trim(),
+        comprador_telefono:document.getElementById("buyerPhone").value.trim(),
+        direccion_entrega:document.getElementById("buyerAddress").value.trim(),
+        notas:document.getElementById("buyerNotes").value.trim(),
+        website:document.getElementById("checkoutWebsite").value
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.mensaje || "No pudimos registrar el pedido.");
+    cart = {comercio_id:null,items:[]};
+    renderCart();
+    form.reset();
+    const confirmation = document.getElementById("orderConfirmation");
+    confirmation.classList.remove("hidden");
+    confirmation.textContent = `¡Pedido ${result.numero_pedido} registrado! Total: ${money(result.total,"ARS")}. El comercio deberá confirmar el pedido. Comisión estimada de la plataforma: ${money(result.comision_estimativa,"ARS")} (${result.comision_porcentaje}%). Todavía no se realizó ningún cobro.`;
+    message.textContent = "Pedido guardado correctamente.";
+    message.className = "form-message ok";
+  } catch (error) {
+    message.textContent = error.message || "No se pudo enviar el pedido.";
+    message.className = "form-message error";
+  } finally {
+    submit.disabled = cart.items.length === 0;
+    submit.textContent = "Enviar pedido al comercio";
+  }
+});
 
 document.getElementById("searchForm").addEventListener("submit", event => {
   event.preventDefault();
