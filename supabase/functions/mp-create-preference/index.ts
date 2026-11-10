@@ -32,7 +32,8 @@ Deno.serve(async(req:Request)=>{
   if(orderError||!order)return reply(404,{ok:false,mensaje:"No encontramos el pedido."});
   if(order.estado!=="pendiente")return reply(409,{ok:false,mensaje:"Este pedido ya no está pendiente de pago."});
   if(order.moneda!=="ARS"||Number(order.total)<=0)return reply(400,{ok:false,mensaje:"El pedido no tiene un total válido en pesos argentinos."});
-  const {data:existing}=await admin.from("pagos").select("estado,datos_operativos").eq("pedido_id",pedidoId).eq("proveedor","mercado_pago").maybeSingle();
+  const {data:existing,error:existingError}=await admin.from("pagos").select("estado,datos_operativos,creado_at").eq("pedido_id",pedidoId).eq("proveedor","mercado_pago").order("creado_at",{ascending:false}).limit(1).maybeSingle();
+  if(existingError)throw existingError;
   const oldUrl=existing?.datos_operativos?.checkout_url;
   if(existing?.estado==="pendiente"&&typeof oldUrl==="string"&&oldUrl.startsWith("https://"))return reply(200,{ok:true,checkout_url:oldUrl,reutilizado:true});
   const {data:connection,error:connectionError}=await admin.from("conexiones_mercado_pago").select("estado,usuario_mercado_pago_id").eq("comercio_id",order.comercio_id).maybeSingle();
@@ -42,8 +43,19 @@ Deno.serve(async(req:Request)=>{
   const {data:commission,error:commissionError}=await admin.from("comisiones").select("porcentaje,base_calculo,importe_comision").eq("pedido_id",pedidoId).maybeSingle();
   if(commissionError||!commission)return reply(500,{ok:false,mensaje:"No pudimos calcular la comisión de la plataforma."});
   const token=await sellerToken(admin,tokenRow);
-  const items=(order.pedido_productos||[]).map((item:any)=>({id:undefined,title:String(item.nombre_producto||"Producto").slice(0,250)+(Number(item.cantidad)!==1?" x "+String(item.cantidad):""),quantity:1,currency_id:"ARS",unit_price:Number(Number(item.subtotal).toFixed(2))}));
-  if(!items.length||items.some((item:any)=>!Number.isFinite(item.unit_price)||item.unit_price<=0))return reply(400,{ok:false,mensaje:"El pedido no tiene productos con importes válidos."});
+  const lines=Array.isArray(order.pedido_productos)?order.pedido_productos:[];
+  const items=lines.map((item:any)=>{
+   const quantity=Number(item.cantidad);
+   const subtotal=Number(item.subtotal);
+   if(!Number.isInteger(quantity)||quantity<=0||!Number.isFinite(subtotal)||subtotal<=0)throw new Error("El pedido contiene cantidades o importes no válidos para Mercado Pago.");
+   const unitPrice=Number((subtotal/quantity).toFixed(2));
+   if(Math.abs(unitPrice*quantity-subtotal)>0.01)throw new Error("El importe de un producto no se puede representar en pesos.");
+   return {title:String(item.nombre_producto||"Producto").slice(0,250),quantity,currency_id:"ARS",unit_price:unitPrice};
+  });
+  const itemsTotal=Number(items.reduce((sum:number,item:any)=>sum+item.unit_price*item.quantity,0).toFixed(2));
+  const shipping=Number((Number(order.total)-itemsTotal).toFixed(2));
+  if(!items.length||items.some((item:any)=>!Number.isFinite(item.unit_price)||item.unit_price<=0)||shipping< -0.01)return reply(400,{ok:false,mensaje:"Los productos no coinciden con el total del pedido."});
+  if(shipping>0.01)items.push({title:"Costo de envío",quantity:1,currency_id:"ARS",unit_price:shipping});
   const site=env("SITE_URL").replace(/\/$/,"");
   const webhook=env("SUPABASE_URL").replace(/\/$/,"")+"/functions/v1/mp-payment-webhook";
   const preference={
@@ -62,11 +74,12 @@ Deno.serve(async(req:Request)=>{
    console.error("Preference creation failed:",response.status,data.message||data.error||"sin detalle");
    return reply(502,{ok:false,mensaje:"Mercado Pago no pudo crear el checkout. Volvé a intentar."});
   }
-  const checkoutUrl=tokenRow.live_mode?String(data.init_point):String(data.sandbox_init_point||data.init_point);
-  const idempotency="mp-order-"+pedidoId;
+  const checkoutUrl=tokenRow.live_mode?String(data.init_point||""):String(data.sandbox_init_point||"");
+  if(!checkoutUrl.startsWith("https://"))return reply(502,{ok:false,mensaje:"Mercado Pago no devolvió una URL de checkout válida para este entorno."});
+  const idempotency="mp-preference-"+crypto.randomUUID();
   const {error:paymentError}=await admin.from("pagos").upsert({
    pedido_id:pedidoId,medio_pago:"mercado_pago",proveedor:"mercado_pago",estado:"pendiente",importe:Number(order.total),moneda:"ARS",referencia_externa:String(data.id),idempotencia:idempotency,
-   datos_operativos:{preference_id:String(data.id),checkout_url:checkoutUrl,live_mode:Boolean(tokenRow.live_mode),marketplace_fee:Number(commission.importe_comision),created_at:new Date().toISOString()},
+   datos_operativos:{preference_id:String(data.id),checkout_url:checkoutUrl,live_mode:Boolean(tokenRow.live_mode),marketplace_fee:Number(commission.importe_comision),created_at:new Date().toISOString(),checkout_type:"checkout_pro_preferences"},
    actualizado_at:new Date().toISOString()
   },{onConflict:"idempotencia"});
   if(paymentError)throw paymentError;
