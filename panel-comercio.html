@@ -85,6 +85,10 @@ footer strong{color:white}
 <button class="primary" id="authSubmit" type="submit">Iniciar sesión</button>
 <span class="form-message" id="authMessage" role="status">Tu contraseña se verifica contra Supabase Auth; no la guardamos en el navegador.</span>
 </div>
+<div class="form-foot hidden" id="resendConfirmWrap">
+  <button class="ghost" id="resendConfirmBtn" type="button">Reenviar correo de confirmación</button>
+  <span class="form-message" id="resendConfirmMessage" role="status"></span>
+</div>
 </form>
 </section>
 
@@ -392,7 +396,52 @@ function setMode(next) {
   setMessage(authMessage, next === "login"
     ? "Tu contraseña se verifica contra Supabase Auth; no la guardamos en el navegador."
     : "Te enviaremos un correo de confirmación si tu cuenta la necesita.");
+  $("resendConfirmWrap").classList.toggle("hidden", next !== "login");
+  setMessage($("resendConfirmMessage"), "");
 }
+
+$("resendConfirmBtn").addEventListener("click", async () => {
+  const email = authEmail.value.trim();
+  const message = $("resendConfirmMessage");
+
+  if (!email || !authEmail.checkValidity()) {
+    setMessage(message, "Primero escribí un correo electrónico válido arriba.", "error");
+    authEmail.focus();
+    return;
+  }
+
+  const button = $("resendConfirmBtn");
+  button.disabled = true;
+  setMessage(message, "Solicitando un correo nuevo a Supabase…");
+
+  try {
+    const redirectTo = `${window.location.origin}/panel-comercio.html`;
+    const response = await authFetch(
+      `resend?redirect_to=${encodeURIComponent(redirectTo)}`,
+      { type: "signup", email }
+    );
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const detail = data.msg || data.message || data.error_description || "";
+      setMessage(message,
+        response.status === 429
+          ? "Supabase pidió esperar antes de reenviar. Probá más tarde."
+          : (detail || "No se pudo reenviar. Revisá el correo escrito e intentá nuevamente."),
+        "error");
+      return;
+    }
+
+    setMessage(message,
+      "Solicitud enviada. Revisá Recibidos y Spam; el enlace volverá al panel de Encontralo Ya.",
+      "ok");
+  } catch (error) {
+    console.error(error);
+    setMessage(message, "No pudimos conectar con Supabase. Intentá nuevamente.", "error");
+  } finally {
+    button.disabled = false;
+  }
+});
 
 authForm.addEventListener("submit", async event => {
   event.preventDefault();
@@ -426,7 +475,8 @@ authForm.addEventListener("submit", async event => {
         password: authPassword.value
       });
     } else {
-      response = await authFetch("signup", {
+      const redirectTo = `${window.location.origin}/panel-comercio.html`;
+      response = await authFetch(`signup?redirect_to=${encodeURIComponent(redirectTo)}`, {
         email: authEmail.value.trim(),
         password: authPassword.value
       });
