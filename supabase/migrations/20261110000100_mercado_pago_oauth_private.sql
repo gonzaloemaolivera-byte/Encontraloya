@@ -1,8 +1,7 @@
 -- Mercado Pago Split 1:1: almacenamiento privado de OAuth.
--- Los tokens nunca se exponen al navegador ni a los roles anon/authenticated.
-create schema if not exists private;
-
-create table if not exists private.mercado_pago_tokens (
+-- Tablas en public por compatibilidad con PostgREST; RLS y GRANTs impiden acceso
+-- a anon/authenticated. Solo service_role puede operar estas tablas.
+create table if not exists public.mercado_pago_tokens_privado (
   comercio_id uuid primary key references public.comercios(id) on delete cascade,
   usuario_mercado_pago_id text not null,
   access_token_enc text not null,
@@ -14,7 +13,7 @@ create table if not exists private.mercado_pago_tokens (
   actualizado_at timestamptz not null default now()
 );
 
-create table if not exists private.mercado_pago_oauth_states (
+create table if not exists public.mercado_pago_oauth_states_privado (
   state_hash text primary key,
   comercio_id uuid not null references public.comercios(id) on delete cascade,
   propietario_id uuid not null references auth.users(id) on delete cascade,
@@ -23,14 +22,13 @@ create table if not exists private.mercado_pago_oauth_states (
   usado_at timestamptz
 );
 
-alter table private.mercado_pago_tokens enable row level security;
-alter table private.mercado_pago_oauth_states enable row level security;
+alter table public.mercado_pago_tokens_privado enable row level security;
+alter table public.mercado_pago_oauth_states_privado enable row level security;
 
-revoke all on private.mercado_pago_tokens from public, anon, authenticated;
-revoke all on private.mercado_pago_oauth_states from public, anon, authenticated;
-grant usage on schema private to service_role;
-grant select, insert, update, delete on private.mercado_pago_tokens to service_role;
-grant select, insert, update, delete on private.mercado_pago_oauth_states to service_role;
+revoke all on public.mercado_pago_tokens_privado from public, anon, authenticated;
+revoke all on public.mercado_pago_oauth_states_privado from public, anon, authenticated;
+grant all on public.mercado_pago_tokens_privado to service_role;
+grant all on public.mercado_pago_oauth_states_privado to service_role;
 
-create index if not exists mercado_pago_oauth_states_expira_idx
-  on private.mercado_pago_oauth_states (expira_at);
+create index if not exists mercado_pago_oauth_states_privado_expira_idx
+  on public.mercado_pago_oauth_states_privado (expira_at);
