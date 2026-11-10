@@ -21,6 +21,20 @@ header{background:var(--navy);color:white;padding:17px 0}
 .brand span{color:#65d6df}
 .tag{font-size:.82rem;color:#d7e7f5}
 .register-link{border:1px solid #8fb5d4;border-radius:999px;padding:9px 14px;color:white;background:transparent;font-weight:700}
+.welcome{padding:28px 0;background:#fff;border-bottom:1px solid var(--line)}
+.welcome-intro{text-align:center;margin:0 auto 18px;max-width:650px}
+.welcome-intro h1{font-size:clamp(1.55rem,4vw,2.15rem);letter-spacing:-.8px;margin:0 0 7px}
+.welcome-intro p{color:var(--muted);margin:0}
+.access-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:850px;margin:auto}
+.access-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:8px;padding:20px;border:2px solid var(--line);border-radius:16px;background:var(--white);color:var(--ink);text-decoration:none;transition:border-color .2s,transform .2s;min-height:150px}
+.access-card:hover{border-color:var(--blue);transform:translateY(-2px)}
+.access-card .access-icon{font-size:1.65rem}
+.access-card strong{font-size:1.12rem;color:var(--navy)}
+.access-card span:last-child{font-size:.9rem;color:var(--muted)}
+.access-card.merchant{background:#f0f8f5;border-color:#c5e4d7}
+.access-card.merchant:hover{border-color:var(--green)}
+.access-card .access-cta{font-weight:800;color:var(--blue);margin-top:auto}
+.access-card.merchant .access-cta{color:var(--green)}
 .hero{padding:44px 0 34px;background:linear-gradient(135deg,#e5f5f8,#f5f8fb 70%)}
 .hero-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:28px;align-items:center}
 .eyebrow{color:var(--blue);font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:1.2px}
@@ -80,7 +94,30 @@ footer strong{color:white}
 </div>
 </header>
 
-<section class="hero">
+<section class="welcome" aria-labelledby="welcomeTitle">
+  <div class="wrap">
+    <div class="welcome-intro">
+      <h1 id="welcomeTitle">¡Bienvenido a Encontralo Ya!</h1>
+      <p>Una sola plataforma para encontrar productos y conectar con comercios de toda Argentina.</p>
+    </div>
+    <div class="access-grid">
+      <a class="access-card" href="#catalogo" id="buyerAccess">
+        <span class="access-icon" aria-hidden="true">🔎</span>
+        <strong>Soy comprador</strong>
+        <span>Quiero buscar productos, conocer comercios y comparar precios.</span>
+        <span class="access-cta">Explorar productos →</span>
+      </a>
+      <a class="access-card merchant" href="#registerPanel" id="merchantAccess">
+        <span class="access-icon" aria-hidden="true">🏪</span>
+        <strong>Tengo un comercio</strong>
+        <span>Quiero sumar mi negocio y publicar lo que vendo.</span>
+        <span class="access-cta">Registrar mi comercio →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="hero" id="catalogo">
 <div class="wrap hero-grid">
 <div>
 <div class="eyebrow">Comprá mejor, cerca tuyo</div>
@@ -359,6 +396,14 @@ document.getElementById("categories").addEventListener("click", event => {
   });
 
   renderProducts();
+});
+
+document.getElementById("buyerAccess").addEventListener("click", () => {
+  document.getElementById("searchInput").focus({preventScroll:true});
+});
+
+document.getElementById("merchantAccess").addEventListener("click", () => {
+  document.getElementById("merchantName").focus({preventScroll:true});
 });
 
 document.getElementById("goRegister").addEventListener("click", () => {
