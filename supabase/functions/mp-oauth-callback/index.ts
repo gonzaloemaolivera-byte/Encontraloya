@@ -18,8 +18,10 @@ Deno.serve(async(req:Request)=>{
   const hash=await sha256(state);
   const {data:pending,error}=await admin.from("mercado_pago_oauth_states_privado").select("comercio_id,propietario_id,expira_at,usado_at").eq("state_hash",hash).maybeSingle();
   if(error||!pending||pending.usado_at||new Date(pending.expira_at).getTime()<Date.now())return redirect("/panel-comercio.html?mp=state_error");
-  const {data:claimed,error:claimError}=await admin.from("mercado_pago_oauth_states_privado").update({usado_at:new Date().toISOString()}).eq("state_hash",hash).is("usado_at",null).gt("expira_at",new Date().toISOString()).select("comercio_id").maybeSingle();
+  const {data:claimed,error:claimError}=await admin.from("mercado_pago_oauth_states_privado").update({usado_at:new Date().toISOString()}).eq("state_hash",hash).is("usado_at",null).gt("expira_at",new Date().toISOString()).select("comercio_id,propietario_id").maybeSingle();
   if(claimError||!claimed)return redirect("/panel-comercio.html?mp=state_error");
+  const {data:currentShop,error:ownerCheckError}=await admin.from("comercios").select("propietario_id").eq("id",claimed.comercio_id).maybeSingle();
+  if(ownerCheckError||!currentShop||currentShop.propietario_id!==claimed.propietario_id)return redirect("/panel-comercio.html?mp=owner_changed");
   const form=new URLSearchParams({client_id:env("MP_CLIENT_ID"),client_secret:env("MP_CLIENT_SECRET"),grant_type:"authorization_code",code,redirect_uri:env("MP_REDIRECT_URI"),state});
   const response=await fetch("https://api.mercadopago.com/oauth/token",{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/x-www-form-urlencoded"},body:form});
   const credentials=await response.json().catch(()=>({}));
