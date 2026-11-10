@@ -41,10 +41,16 @@ export function requiredEnv(name: string) {
   return value;
 }
 
-function bytesToBase64(bytes: Uint8Array) {
+function bytesToBase64Url(bytes: Uint8Array) {
   let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlToBytes(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+  return Uint8Array.from(atob(padded), c => c.charCodeAt(0));
 }
 
 export async function sha256Hex(value: string) {
@@ -53,15 +59,12 @@ export async function sha256Hex(value: string) {
 }
 
 export function randomState() {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return bytesToBase64(bytes);
+  return bytesToBase64Url(crypto.getRandomValues(new Uint8Array(32)));
 }
 
 async function encryptionKey() {
-  const raw = requiredEnv("MP_TOKEN_ENCRYPTION_KEY");
-  const binary = atob(raw);
-  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
-  if (bytes.length !== 32) throw new Error("MP_TOKEN_ENCRYPTION_KEY debe contener 32 bytes codificados en Base64");
+  const bytes = base64UrlToBytes(requiredEnv("MP_TOKEN_ENCRYPTION_KEY"));
+  if (bytes.length !== 32) throw new Error("MP_TOKEN_ENCRYPTION_KEY debe contener 32 bytes codificados en Base64URL");
   return crypto.subtle.importKey("raw", bytes, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
@@ -69,6 +72,17 @@ export async function encryptToken(value: string) {
   const nonce = crypto.getRandomValues(new Uint8Array(12));
   const key = await encryptionKey();
   const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, new TextEncoder().encode(value));
-  return `${bytesToBase64(nonce)}.${bytesToBase64(new Uint8Array(ciphertext))}`;
+  return `${bytesToBase64Url(nonce)}.${bytesToBase64Url(new Uint8Array(ciphertext))}`;
 }
 
+export async function decryptToken(value: string) {
+  const [noncePart, ciphertextPart] = value.split(".");
+  if (!noncePart || !ciphertextPart) throw new Error("Token cifrado inválido");
+  const key = await encryptionKey();
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64UrlToBytes(noncePart) },
+    key,
+    base64UrlToBytes(ciphertextPart),
+  );
+  return new TextDecoder().decode(plaintext);
+}
