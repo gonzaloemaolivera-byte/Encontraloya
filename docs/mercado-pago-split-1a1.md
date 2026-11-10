@@ -16,6 +16,9 @@ Crear una aplicación con:
 Configurar exactamente esta URL de redireccionamiento:
 `https://egvchkzktjaitskcqlnr.supabase.co/functions/v1/mp-oauth-callback`
 
+Configurar esta URL HTTPS como destino de Webhooks para el evento de pagos:
+`https://egvchkzktjaitskcqlnr.supabase.co/functions/v1/mp-payment-webhook`
+
 La aplicación integradora debe cumplir el requisito KYC nivel 6 indicado por Mercado Pago. Cada comercio vendedor deberá autorizar a Encontralo Ya mediante OAuth.
 
 ## Secretos que faltan en Supabase Edge Functions
