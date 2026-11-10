@@ -94,9 +94,29 @@ footer strong{color:white}
 
 <!-- ======== Reclamar comercio ======== -->
 <section class="card hidden" id="claimCard">
-<h2>Reclamá tu comercio</h2>
-<p class="sub">Tu cuenta todavía no está vinculada a un comercio. Elegilo en la lista y validá el código privado que te entregamos por un canal directo.</p>
-<p class="info">El código se valida <strong>en el servidor</strong> comparando su hash privado. El token no se almacena en texto plano ni se devuelve al navegador. El teléfono, por sí solo, no sirve como prueba de titularidad.</p>
+<h2>Registrá tu comercio</h2>
+<p class="sub">Si sos el dueño o estás autorizado a administrar el negocio, completá estos datos. Tu cuenta quedará vinculada al comercio y vas a poder publicar productos.</p>
+<form id="newCommerceForm">
+<div class="form-grid">
+<div class="field full"><label for="newCommerceName">Nombre del comercio *</label><input id="newCommerceName" required maxlength="120" autocomplete="organization"></div>
+<div class="field"><label for="newCommerceType">Rubro *</label><select id="newCommerceType" required><option value="">Elegí un rubro</option><option>Ferretería</option><option>Repuestos</option><option>Limpieza</option><option>Bazar y hogar</option><option>Electricidad</option><option>Construcción</option><option>Alimentos</option><option>Otros</option></select></div>
+<div class="field"><label for="newCommercePhone">Teléfono de contacto</label><input id="newCommercePhone" type="tel" maxlength="30" autocomplete="tel" placeholder="Ej. 11 4444 0159"></div>
+<div class="field"><label for="newCommerceCity">Localidad *</label><input id="newCommerceCity" required maxlength="100" autocomplete="address-level2"></div>
+<div class="field"><label for="newCommerceProvince">Provincia *</label><input id="newCommerceProvince" required maxlength="100" autocomplete="address-level1"></div>
+<div class="field full"><label for="newCommerceAddress">Dirección</label><input id="newCommerceAddress" maxlength="180" autocomplete="street-address"></div>
+<div class="field full"><label for="newCommerceContact">Persona de contacto</label><input id="newCommerceContact" maxlength="120"></div>
+<div class="field full"><label for="newCommerceProducts">¿Qué vende el comercio?</label><textarea id="newCommerceProducts" maxlength="1000" placeholder="Contanos brevemente qué productos ofrece"></textarea></div>
+</div>
+<div class="form-foot">
+<button class="primary" id="newCommerceSubmit" type="submit">Registrar mi comercio</button>
+<span class="form-message" id="newCommerceMessage" role="status"></span>
+</div>
+</form>
+<p class="info">El comercio se vincula a tu cuenta iniciada y confirmada. Registrá solamente negocios que seas dueño o estés autorizado a administrar.</p>
+<div style="border-top:1px solid var(--line);margin-top:20px;padding-top:18px">
+<h2 style="font-size:1.05rem">¿El comercio ya está registrado?</h2>
+<p class="sub">Si el negocio ya existe en Encontralo Ya, podés reclamarlo con el código privado que te entregamos después de verificar la autorización.</p>
+</div>
 <form id="claimForm">
 <div class="form-grid">
 <div class="field full"><label for="claimComercio">Comercio a reclamar *</label><select id="claimComercio" required><option value="">Cargando comercios disponibles…</option></select></div>
@@ -239,7 +259,8 @@ function saveSession(data) {
   session = {
     access_token: data.access_token,
     refresh_token: data.refresh_token,
-    email: data.user?.email || ""
+    email: data.user?.email || data.email || session?.email || "",
+    user_id: data.user?.id || data.user_id || session?.user_id || ""
   };
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
@@ -333,7 +354,7 @@ async function restoreSession() {
   }
 
   const user = await response.json();
-  saveSession({ ...session, user: { email: user.email || "" } });
+  saveSession({ ...session, user: { id: user.id, email: user.email || "" } });
   return true;
 }
 
@@ -552,6 +573,65 @@ async function afterAuth() {
   comercio = null;
   showClaim();
 }
+
+// ---------- Alta autónoma de un comercio nuevo ----------
+
+$("newCommerceForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = $("newCommerceForm");
+  if (!form.reportValidity() || !session?.access_token || !session?.user_id) {
+    setMessage($("newCommerceMessage"),
+      "No pudimos validar tu sesión. Cerrá sesión y volvé a ingresar.", "error");
+    return;
+  }
+
+  const submit = $("newCommerceSubmit");
+  submit.disabled = true;
+  setMessage($("newCommerceMessage"), "Registrando tu comercio de forma segura…");
+
+  const payload = {
+    nombre: $("newCommerceName").value.trim(),
+    rubro: $("newCommerceType").value,
+    localidad: $("newCommerceCity").value.trim(),
+    provincia: $("newCommerceProvince").value.trim(),
+    telefono: $("newCommercePhone").value.trim() || null,
+    direccion: $("newCommerceAddress").value.trim() || null,
+    contacto: $("newCommerceContact").value.trim() || null,
+    que_vende: $("newCommerceProducts").value.trim() || null,
+    propietario_id: session.user_id
+  };
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/comercios`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      console.error("Error al registrar comercio:", detail);
+      throw new Error(response.status === 403
+        ? "Tu cuenta no tiene permiso para registrar este comercio. Volvé a iniciar sesión."
+        : `No se pudo registrar el comercio (error ${response.status}). Revisá los datos e intentá otra vez.`);
+    }
+
+    form.reset();
+    setMessage($("newCommerceMessage"), "¡Comercio registrado! Abriendo tu panel…", "ok");
+    await afterAuth();
+  } catch (error) {
+    console.error(error);
+    setMessage($("newCommerceMessage"),
+      error.message || "No pudimos conectar con el servidor. Intentá nuevamente.", "error");
+  } finally {
+    submit.disabled = false;
+  }
+});
 
 // ---------- Reclamo con código privado ----------
 
