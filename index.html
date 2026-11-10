@@ -154,7 +154,7 @@ footer strong{color:white}
 </div>
 </section>
 
-<main class="wrap">
+<main class="wrap">\n<div id="paymentReturnNotice" class="info hidden" role="status"></div>
 <section>
 <div class="section-head">
 <div><h2>Explorá productos</h2><p class="sub">Resultados publicados por comercios registrados.</p></div>
@@ -182,7 +182,7 @@ footer strong{color:white}
   </div>
   <div id="cartLines" class="cart-lines"></div>
   <div class="checkout-total"><span>Total estimado</span><span id="cartTotal">$0</span></div>
-  <div class="checkout-note">Por ahora este paso registra el pedido para que el comercio lo confirme. El pago online y el cobro automático de la comisión todavía no están habilitados.</div>
+  <div class="checkout-note">Si el comercio vinculó Mercado Pago, vas a poder continuar al pago seguro. Si todavía no lo vinculó, el pedido quedará registrado sin realizar ningún cobro.</div>
   <form id="checkoutForm">
     <div class="form-grid">
       <div class="field"><label for="buyerName">Tu nombre *</label><input id="buyerName" required maxlength="120" autocomplete="name"></div>
@@ -193,7 +193,7 @@ footer strong{color:white}
       <div class="hp" aria-hidden="true"><label for="checkoutWebsite">Dejar vacío</label><input id="checkoutWebsite" tabindex="-1" autocomplete="off"></div>
     </div>
     <div class="form-foot">
-      <button class="primary" id="placeOrder" type="submit">Enviar pedido al comercio</button>
+      <button class="primary" id="placeOrder" type="submit">Enviar pedido y pagar online</button>
       <span class="form-message" id="checkoutMessage" role="status"></span>
     </div>
   </form>
@@ -535,14 +535,28 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) throw new Error(result.mensaje || "No pudimos registrar el pedido.");
+    message.textContent = "Pedido registrado. Preparando el pago seguro…";
+    const paymentResponse = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-preference`, {
+      method:"POST",
+      headers:{apikey:SUPABASE_ANON_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({pedido_id:result.pedido_id})
+    });
+    const payment = await paymentResponse.json().catch(() => ({}));
     cart = {comercio_id:null,items:[]};
     renderCart();
     form.reset();
     const confirmation = document.getElementById("orderConfirmation");
     confirmation.classList.remove("hidden");
-    confirmation.textContent = `¡Pedido ${result.numero_pedido} registrado! Total: ${money(result.total,"ARS")}. El comercio deberá confirmar el pedido. Comisión estimada de la plataforma: ${money(result.comision_estimativa,"ARS")} (${result.comision_porcentaje}%). Todavía no se realizó ningún cobro.`;
-    message.textContent = "Pedido guardado correctamente.";
-    message.className = "form-message ok";
+    if (paymentResponse.ok && payment.ok && payment.checkout_url) {
+      confirmation.textContent = `¡Pedido ${result.numero_pedido} registrado! Total: ${money(result.total,"ARS")}. Te estamos llevando a Mercado Pago para completar el pago.`;
+      message.textContent = "Abriendo el pago seguro…";
+      message.className = "form-message ok";
+      window.location.assign(payment.checkout_url);
+      return;
+    }
+    confirmation.textContent = `¡Pedido ${result.numero_pedido} registrado! Total: ${money(result.total,"ARS")}. No se realizó ningún cobro porque el pago online de este comercio todavía no está disponible. Podés consultar con el comercio para continuar.`;
+    message.textContent = payment.mensaje || "El pedido quedó registrado, pero no se pudo iniciar el pago online.";
+    message.className = "form-message error";
   } catch (error) {
     message.textContent = error.message || "No se pudo enviar el pedido.";
     message.className = "form-message error";
@@ -683,6 +697,18 @@ merchantForm.addEventListener("submit", async event => {
     merchantSubmit.textContent = "Enviar registro";
   }
 });
+
+const paymentReturn = new URLSearchParams(window.location.search).get("pago");
+if (paymentReturn) {
+  const notice = document.getElementById("paymentReturnNotice");
+  notice.classList.remove("hidden");
+  notice.textContent = paymentReturn === "exito"
+    ? "Volviste de Mercado Pago. Estamos verificando la confirmación del pago; el pedido se actualizará cuando recibamos la notificación segura."
+    : paymentReturn === "pendiente"
+      ? "Mercado Pago informó que el pago está pendiente. El estado se actualizará cuando recibamos la confirmación."
+      : "El pago no se completó. El pedido quedó registrado; podés consultar con el comercio para coordinar otra forma de pago.";
+  window.history.replaceState({}, "", window.location.pathname);
+}
 
 loadCatalog();
 })();
