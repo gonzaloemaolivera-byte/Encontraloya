@@ -47,10 +47,15 @@ Deno.serve(async(req:Request)=>{
   const items=lines.map((item:any)=>{
    const quantity=Number(item.cantidad);
    const subtotal=Number(item.subtotal);
-   if(!Number.isInteger(quantity)||quantity<=0||!Number.isFinite(subtotal)||subtotal<=0)throw new Error("El pedido contiene cantidades o importes no válidos para Mercado Pago.");
-   const unitPrice=Number((subtotal/quantity).toFixed(2));
-   if(Math.abs(unitPrice*quantity-subtotal)>0.01)throw new Error("El importe de un producto no se puede representar en pesos.");
-   return {title:String(item.nombre_producto||"Producto").slice(0,250),quantity,currency_id:"ARS",unit_price:unitPrice};
+   if(!Number.isFinite(quantity)||quantity<=0||!Number.isFinite(subtotal)||subtotal<=0)throw new Error("El pedido contiene cantidades o importes no válidos para Mercado Pago.");
+   // Mercado Pago requiere quantity entero. Para cantidades fraccionarias (por peso/medida),
+   // se conserva el importe exacto como una unidad y se aclara la cantidad en el título.
+   const wholeQuantity=Number.isInteger(quantity);
+   const checkoutQuantity=wholeQuantity?quantity:1;
+   const unitPrice=Number((subtotal/checkoutQuantity).toFixed(2));
+   if(Math.abs(unitPrice*checkoutQuantity-subtotal)>0.01)throw new Error("El importe de un producto no se puede representar en pesos.");
+   const title=String(item.nombre_producto||"Producto")+(wholeQuantity||quantity===1?"":" x "+String(quantity));
+   return {title:title.slice(0,250),quantity:checkoutQuantity,currency_id:"ARS",unit_price:unitPrice};
   });
   const itemsTotal=Number(items.reduce((sum:number,item:any)=>sum+item.unit_price*item.quantity,0).toFixed(2));
   const shipping=Number((Number(order.total)-itemsTotal).toFixed(2));
