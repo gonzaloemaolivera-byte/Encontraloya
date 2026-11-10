@@ -539,7 +539,7 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
     let paymentResponse = null;
     let payment = {};
     try {
-      paymentResponse = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-order`, {
+      paymentResponse = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-preference`, {
         method:"POST",
         headers:{apikey:SUPABASE_ANON_KEY,"Content-Type":"application/json"},
         body:JSON.stringify({pedido_id:result.pedido_id})
