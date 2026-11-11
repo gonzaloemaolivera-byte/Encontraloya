@@ -55,7 +55,7 @@ async function sellerToken(admin: any, row: any): Promise<string> {
     body: form,
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.access_token || !data.refresh_token) throw new Error("No se pudo renovar la autorización de Mercado Pago");
+  if (!response.ok || !data.access_token || !data.refresh_token || typeof data.live_mode !== "boolean" || Boolean(data.live_mode) !== Boolean(row.live_mode)) throw new Error("No se pudo renovar la autorización en el mismo entorno de Mercado Pago");
   const expiresAt = new Date(Date.now() + Number(data.expires_in || 15552000) * 1000).toISOString();
   const { error } = await admin.from("mercado_pago_tokens_privado").update({
     access_token_enc: await encrypt(String(data.access_token)),
@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
     if (String(payment.id) !== dataId) return reply(400, "Payment ID mismatch");
     if (String(payment.collector_id) !== sellerId) return reply(400, "Seller mismatch");
     if (String(payment.currency_id || "") !== "ARS") return reply(400, "Currency mismatch");
-    if (Boolean(payment.live_mode) !== Boolean(tokenRow.live_mode)) return reply(400, "Environment mismatch");
+    if (typeof payment.live_mode !== "boolean" || Boolean(payment.live_mode) !== Boolean(tokenRow.live_mode)) return reply(400, "Environment mismatch");
 
     const orderId = String(payment.external_reference || "");
     if (!/^[0-9a-f-]{36}$/i.test(orderId)) return reply(400, "Invalid external reference");
