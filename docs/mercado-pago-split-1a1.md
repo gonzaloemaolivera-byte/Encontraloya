@@ -1,62 +1,89 @@
-# Integración Mercado Pago — Split 1:1 con Checkout Pro Orders API
+# Integración Mercado Pago — Encontralo Ya
 
-## Estado y alcance
-- La aplicación de Mercado Pago fue creada por el titular de la cuenta en modo de prueba.
-- El código de integración se mantiene en la rama `integracion-mercado-pago`; no modificar ni publicar `main` hasta completar pruebas.
-- Se implementó el flujo OAuth para que cada comercio autorice su propia cuenta.
-- El checkout del comprador se adapta a Checkout Pro mediante Orders API (`POST /v1/orders`), usando `marketplace_fee`.
-- El webhook se adapta al tópico `order` y consulta la order directamente en Mercado Pago antes de actualizar la base de datos.
-- No se habilitaron cobros reales. No se deben desplegar los cambios ni activar producción hasta configurar credenciales, Marketplace y probar el flujo completo.
+## Objetivo
 
-## Configuración de Mercado Pago que falta verificar
-La documentación Split 1:1 exige una aplicación con Checkout Pro y el modelo Marketplace. Verificar en los detalles/edición de la aplicación que el modelo Marketplace esté habilitado. La aplicación creada utiliza API de Orders.
+Integrar **Split de Pagos 1:1 con Checkout Pro (Preferences API)** para que cada comercio vendedor autorice a Encontralo Ya mediante OAuth y Mercado Pago distribuya el pago entre el vendedor y el marketplace.
 
-Configurar exactamente esta Redirect URL para OAuth:
+La comisión propia de Encontralo Ya se mantiene en el 5%, configurable desde la base de datos. No confundirla con `marketplace_fee`, que es el importe que se cobra a favor del marketplace en Mercado Pago.
+
+## Estado y seguridad
+
+- La aplicación existente de Mercado Pago fue creada con Checkout Pro y actualmente figura con API de Orders.
+- La documentación oficial de Mercado Pago indica que, en la edición de una aplicación Checkout Pro, se puede cambiar la API integrada entre Orders y Preferences.
+- La documentación Split 1:1 exige elegir el modelo Marketplace. La pantalla de edición permite seleccionar modelos de integración cuando el producto lo admite; todavía falta comprobar si Marketplace aparece para esta aplicación ya creada.
+- El trabajo de integración se mantiene en la rama `integracion-mercado-pago`. No mezclar con `main`, no desplegar las Edge Functions y no publicar cambios de Netlify hasta terminar las verificaciones.
+- No se habilitaron cobros reales ni se completó una prueba de punta a punta.
+- La rama de integración y `main` están divergidas; cualquier integración de cambios debe revisarse cuidadosamente y no hacerse a ciegas.
+
+## Configuración que debe verificarse en Mercado Pago
+
+1. Abrir la aplicación existente **Encontralo Ya** desde Tus integraciones.
+2. Entrar en **Editar aplicación**.
+3. Confirmar que el producto siga siendo **Checkout Pro**.
+4. En el campo de API integrada, seleccionar **Preferences** (no Orders).
+5. Comprobar si aparece el modelo **Marketplace** y seleccionarlo si está disponible.
+6. Configurar la Redirect URL de OAuth exactamente como se indica abajo.
+7. Guardar únicamente después de comprobar los valores. No eliminar ni duplicar la aplicación.
+
+Si Marketplace no aparece en la edición, no crear otra aplicación todavía: consultar a soporte de Mercado Pago si el modelo puede habilitarse en la aplicación existente y qué procedimiento corresponde.
+
+### Redirect URL OAuth
+
 `https://egvchkzktjaitskcqlnr.supabase.co/functions/v1/mp-oauth-callback`
 
-En Configuración de Webhooks, en el entorno Prueba:
+Debe ser una URL HTTPS estática y coincidir exactamente con la usada en OAuth.
+
+### Webhook de prueba
+
 - URL: `https://egvchkzktjaitskcqlnr.supabase.co/functions/v1/mp-payment-webhook`
-- Evento: **Order (Mercado Pago)**.
-- Guardar y copiar la firma secreta directamente a Supabase como `MP_WEBHOOK_SECRET`; nunca pegarla en GitHub ni en el chat.
+- Entorno: **Prueba**.
+- Evento: **payment** (no Order), porque el flujo implementado usa Preferences API.
+- Guardar la firma secreta directamente como secreto de Supabase `MP_WEBHOOK_SECRET`. Nunca pegarla en GitHub ni en el chat.
 
 ## Secretos requeridos en Supabase Edge Functions
-Configurar desde Supabase Dashboard → Edge Functions → Secrets:
+
+Configurar en Supabase Dashboard → Edge Functions → Secrets:
+
 - `MP_CLIENT_ID`: ID de aplicación (APP_ID).
 - `MP_CLIENT_SECRET`: SECRET_KEY de la aplicación.
 - `MP_REDIRECT_URI`: `https://egvchkzktjaitskcqlnr.supabase.co/functions/v1/mp-oauth-callback`.
 - `MP_TOKEN_ENCRYPTION_KEY`: clave aleatoria de 32 bytes codificada en Base64URL.
-- `MP_WEBHOOK_SECRET`: firma secreta de Webhooks para el entorno Prueba.
+- `MP_WEBHOOK_SECRET`: firma secreta del webhook del entorno Prueba.
 - `SITE_URL`: `https://genuine-nasturtium-f4db10.netlify.app`.
 
-Supabase provee `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` a las Edge Functions. La clave `service_role` nunca debe ir al frontend ni a GitHub.
+Supabase provee `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` a las Edge Functions. La clave `service_role` nunca debe ir al frontend ni a GitHub. No compartir Client Secret, Access Tokens, Refresh Tokens, claves de cifrado ni firma secreta.
 
-## Flujo técnico
-1. Un comerciante inicia sesión en el panel y elige el comercio que administra.
-2. `mp-oauth-start` valida JWT y propiedad del comercio; crea un state aleatorio de un solo uso con vencimiento de 10 minutos.
-3. El comercio autoriza a Encontralo Ya en Mercado Pago.
-4. `mp-oauth-callback` consume el state, intercambia el código OAuth y cifra access_token y refresh_token con AES-GCM antes de guardarlos en tablas privadas con RLS.
-5. `mp-create-order` valida el pedido pendiente, obtiene/renueva el token del vendedor, crea una order Checkout Pro con items, total, `external_reference`, `marketplace_fee` y URLs de retorno; persiste el ID y `checkout_url`.
-6. Mercado Pago envía Webhooks de tipo `order`. `mp-payment-webhook` valida HMAC, consulta `GET /v1/orders/{id}` con el token del vendedor y solo entonces actualiza pagos, pedidos y comisiones.
+## Flujo técnico implementado en la rama de integración
 
-## Reglas y límites
-- La comisión de Encontralo Ya se calcula desde la tabla `comisiones`; el porcentaje actual esperado es 5% y debe seguir siendo configurable.
-- La comisión de Mercado Pago se descuenta primero según sus condiciones; la comisión del marketplace se calcula sobre la base acordada y debe validarse en pruebas.
-- Split 1:1 exige que cada comercio vendedor autorice OAuth. No se deben reutilizar tokens de un vendedor para otro.
-- La documentación de Checkout Pro Orders indica `marketplace_fee` como parámetro de creación de la order. La documentación general de Split 1:1 describe el campo para Preferences API; por eso hay que confirmar la distribución efectiva con una compra de prueba de Marketplace antes de habilitar producción.
-- Las credenciales de prueba y cuentas de prueba son necesarias para la validación. No compartir Client Secret, Access Tokens, Refresh Tokens ni firma secreta.
-- No confiar en las URLs de retorno para confirmar pagos: el estado se confirma exclusivamente mediante consulta autenticada de la order y Webhook firmado.
+1. El comerciante inicia sesión en el panel y elige el comercio que administra.
+2. `mp-oauth-start` valida la sesión y la propiedad del comercio; crea un `state` aleatorio de un solo uso con vencimiento.
+3. El comerciante autoriza a Encontralo Ya en Mercado Pago.
+4. `mp-oauth-callback` consume el `state`, intercambia el código OAuth y cifra los tokens con AES-GCM antes de guardarlos en tablas privadas.
+5. `mp-create-preference` valida el pedido pendiente, obtiene o renueva el token OAuth del vendedor y llama a `POST https://api.mercadopago.com/checkout/preferences` con los ítems, importes, referencia externa, URLs de retorno y `marketplace_fee`. Devuelve la URL de checkout de prueba o producción según el modo de las credenciales.
+6. Mercado Pago notifica eventos `payment`. `mp-payment-webhook` valida la firma HMAC, consulta el pago en `GET /v1/payments/{id}` usando el token del vendedor y verifica vendedor, moneda, importe y referencia antes de actualizar pagos, pedidos y comisiones.
 
-## Pruebas pendientes
-1. Configurar secretos de prueba y Redirect URL.
-2. Verificar que la aplicación tenga modelo Marketplace.
-3. Configurar Webhook de prueba para evento Order (Mercado Pago).
-4. Vincular un comercio de prueba mediante OAuth.
-5. Crear un pedido de prueba y comprobar `checkout_url`.
-6. Probar aprobado, pendiente, cancelado/rechazado y reembolso; comprobar el reparto real del `marketplace_fee`.
-7. Revisar idempotencia, permisos, registros y reintentos.
-8. Solo después de aprobar todas las pruebas, preparar credenciales productivas y un despliegue controlado.
+## Reglas del marketplace
 
+- Split 1:1 requiere que cada comercio vendedor autorice OAuth. Nunca reutilizar el token de un vendedor para otro.
+- Checkout Pro Split 1:1 documenta `marketplace_fee` en la creación de preferencias mediante `POST /checkout/preferences`.
+- La comisión de Mercado Pago se descuenta según las condiciones de la plataforma; la comisión de Encontralo Ya se calcula por separado desde la tabla `comisiones`, actualmente con un 5% esperado y configurable.
+- No confiar en las URLs de retorno para confirmar pagos. La confirmación se realiza mediante consulta autenticada del pago y webhook firmado.
+- No asumir que un pedido quedó pagado solo porque el comprador regresó a la web.
 
-## Flujo Checkout Pro Split 1:1 confirmado
+## Pruebas pendientes antes de desplegar
 
-Usar Preferences API (`POST /checkout/preferences`), `marketplace_fee` y el Access Token OAuth del vendedor. La notificación configurada para este flujo es `payment`; el webhook consulta `GET /v1/payments/{id}` con el token del vendedor. La implementación de Orders API queda fuera del flujo activo mientras Mercado Pago no confirme oficialmente su compatibilidad para este caso.
+1. Confirmar en la aplicación de Mercado Pago Checkout Pro + API Preferences y el modelo Marketplace.
+2. Configurar Redirect URL y secretos de prueba en Supabase.
+3. Configurar Webhook de prueba para el evento `payment`.
+4. Desplegar las funciones de la rama de integración en un entorno de prueba controlado, después de revisar los secretos y la configuración.
+5. Vincular una cuenta de vendedor de prueba mediante OAuth.
+6. Crear un pedido de prueba y comprobar que se genera una preferencia y se abre el checkout sandbox.
+7. Probar pagos aprobados, pendientes, rechazados/cancelados y reembolsos; verificar el reparto real de `marketplace_fee`.
+8. Revisar idempotencia, permisos, registros, reintentos y que los webhooks atrasados no degraden estados finales.
+9. Solo después de superar las pruebas, preparar un despliegue controlado y, más adelante, habilitar producción.
+
+## Referencias oficiales
+
+- [Crear configuración de Split 1:1](https://www.mercadopago.com.ar/developers/es/docs/split-payments/split-1-1/integration-configuration/create-configuration)
+- [Integrar checkout en Split de Pagos 1:1](https://www.mercadopago.com.ar/developers/es/docs/split-payments/split-1-1/integration-configuration/integrate-marketplace)
+- [Datos de integración de Checkout Pro Preferences](https://www.mercadopago.com.ar/developers/es/docs/checkout-pro-preferences/additional-content/your-integrations/application-details)
