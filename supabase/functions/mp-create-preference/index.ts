@@ -43,7 +43,7 @@ Deno.serve(async(req:Request)=>{
   const {data:connection,error:connectionError}=await admin.from("conexiones_mercado_pago").select("estado,usuario_mercado_pago_id").eq("comercio_id",order.comercio_id).maybeSingle();
   if(connectionError||connection?.estado!=="conectado")return reply(409,{ok:false,mensaje:"Este comercio todavía no vinculó su cuenta de Mercado Pago."});
   const {data:tokenRow,error:tokenError}=await admin.from("mercado_pago_tokens_privado").select("*").eq("comercio_id",order.comercio_id).maybeSingle();
-  if(tokenError||!tokenRow)return reply(409,{ok:false,mensaje:"La conexión de Mercado Pago necesita volver a autorizarse."});
+  if(tokenError||!tokenRow||String(tokenRow.usuario_mercado_pago_id)!==String(connection.usuario_mercado_pago_id))return reply(409,{ok:false,mensaje:"La conexión de Mercado Pago necesita volver a autorizarse."});
   const {data:commission,error:commissionError}=await admin.from("comisiones").select("porcentaje,base_calculo,importe_comision").eq("pedido_id",pedidoId).maybeSingle();
   if(commissionError||!commission)return reply(500,{ok:false,mensaje:"No pudimos calcular la comisión de la plataforma."});
   const token=await sellerToken(admin,tokenRow);
@@ -67,7 +67,7 @@ Deno.serve(async(req:Request)=>{
    console.error("Preference creation failed:",response.status,data.message||data.error||"sin detalle");
    return reply(502,{ok:false,mensaje:"Mercado Pago no pudo crear el checkout. Volvé a intentar."});
   }
-  const checkoutUrl=tokenRow.live_mode?String(data.init_point):String(data.sandbox_init_point||data.init_point);
+  const checkoutUrl=tokenRow.live_mode?String(data.init_point||""):String(data.sandbox_init_point||"");
   const idempotency="mp-order-"+pedidoId;
   const {error:paymentError}=await admin.from("pagos").upsert({
    pedido_id:pedidoId,medio_pago:"mercado_pago",proveedor:"mercado_pago",estado:"pendiente",importe:Number(order.total),moneda:"ARS",referencia_externa:String(data.id),idempotencia:idempotency,
