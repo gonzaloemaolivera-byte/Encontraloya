@@ -13,7 +13,7 @@ async function sellerToken(admin:any, row:any){
  const form=new URLSearchParams({client_id:env("MP_CLIENT_ID"),client_secret:env("MP_CLIENT_SECRET"),grant_type:"refresh_token",refresh_token:await decrypt(row.refresh_token_enc)});
  const response=await fetch("https://api.mercadopago.com/oauth/token",{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/x-www-form-urlencoded"},body:form});
  const data=await response.json().catch(()=>({}));
- if(!response.ok||!data.access_token||!data.refresh_token)throw new Error("No se pudo renovar la autorización de Mercado Pago");
+ if(!response.ok||!data.access_token||!data.refresh_token||typeof data.live_mode!=="boolean"||Boolean(data.live_mode)!==Boolean(row.live_mode))throw new Error("No se pudo renovar la autorización en el mismo entorno de Mercado Pago");
  const expiresAt=new Date(Date.now()+Number(data.expires_in||15552000)*1000).toISOString();
  const {error}=await admin.from("mercado_pago_tokens_privado").update({access_token_enc:await encrypt(String(data.access_token)),refresh_token_enc:await encrypt(String(data.refresh_token)),expires_at:expiresAt,public_key:data.public_key||row.public_key,live_mode:Boolean(data.live_mode),scope:data.scope||row.scope,actualizado_at:new Date().toISOString()}).eq("comercio_id",row.comercio_id);
  if(error)throw error;
@@ -68,6 +68,7 @@ Deno.serve(async(req:Request)=>{
    return reply(502,{ok:false,mensaje:"Mercado Pago no pudo crear el checkout. Volvé a intentar."});
   }
   const checkoutUrl=tokenRow.live_mode?String(data.init_point||""):String(data.sandbox_init_point||"");
+  if(!checkoutUrl){console.error("Preference response missing checkout URL for expected environment");return reply(502,{ok:false,mensaje:"Mercado Pago no devolvió un enlace de pago para el entorno de prueba."});}
   const idempotency="mp-order-"+pedidoId;
   const {error:paymentError}=await admin.from("pagos").upsert({
    pedido_id:pedidoId,medio_pago:"mercado_pago",proveedor:"mercado_pago",estado:"pendiente",importe:Number(order.total),moneda:"ARS",referencia_externa:String(data.id),idempotencia:idempotency,
