@@ -25,7 +25,7 @@ Deno.serve(async (req:Request)=>{
   const state=b64url(crypto.getRandomValues(new Uint8Array(32)));
   const {error:stateError}=await admin.from("mercado_pago_oauth_states_privado").insert({state_hash:await sha256(state),comercio_id:comercioId,propietario_id:userData.user.id,expira_at:new Date(Date.now()+600000).toISOString()});
   if(stateError) throw stateError;
-  const authUrl=new URL("https://auth.mercadopago.com.ar/authorization");
+  const authUrl=new URL("https://auth.mercadopago.com/authorization");
   authUrl.searchParams.set("client_id",env("MP_CLIENT_ID"));
   authUrl.searchParams.set("response_type","code");
   authUrl.searchParams.set("platform_id","mp");
