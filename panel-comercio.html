@@ -152,6 +152,17 @@ footer strong{color:white}
 </div>
 </section>
 
+<section class="card" id="mercadoPagoCard">
+  <h2>Cobros con Mercado Pago</h2>
+  <p class="sub">Vinculá la cuenta de Mercado Pago de este comercio para poder recibir pagos online. La conexión se autoriza directamente en Mercado Pago.</p>
+  <div id="mpStatus" class="info" role="status">Consultando estado de la conexión…</div>
+  <div class="form-foot">
+    <button class="primary" id="connectMercadoPago" type="button">Vincular Mercado Pago</button>
+    <span class="form-message" id="mpMessage" role="status"></span>
+  </div>
+  <p class="sub" style="margin-top:12px">La vinculación no cobra ni transfiere dinero por sí sola. Los pagos se habilitarán después de completar la configuración de Encontralo Ya.</p>
+</section>
+
 <section class="card" id="claimMoreCard">
 <h2>Sumar otro comercio a esta cuenta</h2>
 <p class="sub">Si administrás más de un local, podés vincularlo con su código privado sin crear otra cuenta.</p>
@@ -403,6 +414,7 @@ function showComercioView() {
 
 function renderComercio() {
   $("comercioNombre").textContent = comercio.nombre || "Mi comercio";
+  loadMercadoPagoStatus();
   const partes = [comercio.localidad, comercio.provincia, comercio.rubro]
     .filter(Boolean).join(" · ");
   $("comercioDetalle").textContent = partes
@@ -420,6 +432,72 @@ function renderComercio() {
   }
   selector.value = comercio.id;
   $("shopSelectorWrap").classList.toggle("hidden", comercios.length < 2);
+}
+
+// ---------- Vinculación segura de Mercado Pago (OAuth) ----------
+
+async function loadMercadoPagoStatus() {
+  if (!comercio) return;
+  const status = $("mpStatus");
+  const button = $("connectMercadoPago");
+  status.textContent = "Consultando estado de la conexión…";
+  try {
+    const response = await authenticatedGet(
+      `${SUPABASE_URL}/rest/v1/conexiones_mercado_pago?select=estado,usuario_mercado_pago_id,conectado_at&comercio_id=eq.${encodeURIComponent(comercio.id)}`
+    );
+    if (!response.ok) throw new Error("No se pudo consultar la conexión.");
+    const rows = await response.json();
+    const connection = rows[0];
+    if (connection?.estado === "conectado") {
+      status.textContent = `Mercado Pago vinculado. Cuenta autorizada: ${connection.usuario_mercado_pago_id || "confirmada"}.`;
+      button.textContent = "Volver a vincular cuenta";
+    } else {
+      status.textContent = "Este comercio todavía no tiene una cuenta de Mercado Pago vinculada.";
+      button.textContent = "Vincular Mercado Pago";
+    }
+  } catch (error) {
+    console.error(error);
+    status.textContent = "No pudimos consultar el estado de Mercado Pago. Probá actualizar el panel.";
+  }
+}
+
+$("connectMercadoPago").addEventListener("click", async () => {
+  if (!comercio || !session?.access_token) {
+    setMessage($("mpMessage"), "Iniciá sesión nuevamente para continuar.", "error");
+    return;
+  }
+  const button = $("connectMercadoPago");
+  button.disabled = true;
+  setMessage($("mpMessage"), "Preparando autorización segura…");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-oauth-start`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ comercio_id: comercio.id })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok || !data.authorization_url) {
+      throw new Error(data.mensaje || "No pudimos iniciar la vinculación.");
+    }
+    window.location.assign(data.authorization_url);
+  } catch (error) {
+    console.error(error);
+    setMessage($("mpMessage"), error.message || "No pudimos conectar con Mercado Pago.", "error");
+    button.disabled = false;
+  }
+});
+
+const mpResult = new URLSearchParams(window.location.search).get("mp");
+if (mpResult === "connected") {
+  setTimeout(() => setMessage($("mpMessage"), "¡Cuenta de Mercado Pago vinculada correctamente!", "ok"), 0);
+  window.history.replaceState({}, "", window.location.pathname);
+} else if (mpResult) {
+  setTimeout(() => setMessage($("mpMessage"), "No se pudo completar la vinculación. Revisá la configuración y volvé a intentar.", "error"), 0);
+  window.history.replaceState({}, "", window.location.pathname);
 }
 
 // ---------- Flujo de acceso ----------
