@@ -903,7 +903,6 @@ $("productForm").addEventListener("submit", async event => {
           p_precio: $("productPrice").value === "" ? null : Number($("productPrice").value),
           p_moneda: $("productCurrency").value,
           p_disponible: $("productAvailable").value === "true",
-          p_tipo: $("publicationType").value,
           p_tipo: $("publicationType").value
         }
       : {
@@ -913,7 +912,8 @@ $("productForm").addEventListener("submit", async event => {
           p_categoria: $("productCategory").value,
           p_precio: $("productPrice").value === "" ? null : Number($("productPrice").value),
           p_moneda: $("productCurrency").value,
-          p_disponible: $("productAvailable").value === "true"
+          p_disponible: $("productAvailable").value === "true",
+          p_tipo: $("publicationType").value
         };
 
     const fn = editando ? "actualizar_publicacion" : "crear_publicacion";
