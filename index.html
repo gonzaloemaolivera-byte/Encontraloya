@@ -920,11 +920,17 @@ async function loadCustomerServiceChat() {
  if(!stateResponse.ok||!s)return;
  const labels={pendiente:"Solicitud enviada",negociando:"Acordando precio",aceptado:"Servicio aceptado",en_camino:"Profesional en camino",llego_destino:"El profesional llegó",trabajando:"Trabajo en curso",trabajo_terminado:"Trabajo terminado: falta confirmar pago",esperando_pago:"Esperando confirmación del prestador",completado:"Trabajo terminado y pago confirmado",cancelado:"Solicitud cancelada",en_revision:"Solicitud en revisión"};
  document.getElementById("serviceCustomerJobState").textContent=(labels[s.estado]||s.estado)+(s.importe_acordado!==null?" · Precio: "+money(s.importe_acordado,"ARS"):"");
- document.getElementById("acceptServicePrice").disabled=!!s.precio_aceptado||!s.precio_propuesto_prestador||["cancelado","en_revision","completado"].includes(s.estado);
+ document.getElementById("acceptServicePrice").disabled=!!s.precio_aceptado||s.precio_propuesto_prestador===null||["cancelado","en_revision","completado"].includes(s.estado);
  document.getElementById("confirmServiceArrival").disabled=!s.llegada_prestador_at||!!s.llegada_cliente_confirmada_at||["cancelado","en_revision","completado"].includes(s.estado);
  document.getElementById("confirmServicePaid").disabled=!s.trabajo_terminado_prestador_at||!!s.pago_cliente_confirmado_at||["cancelado","en_revision","completado"].includes(s.estado);
 }
-document.getElementById("openServiceChat").addEventListener("click",()=>{document.getElementById("serviceCustomerChatPanel").classList.remove("hidden");document.getElementById("serviceCustomerChatPanel").scrollIntoView({behavior:"smooth"});loadCustomerServiceChat();});
+document.getElementById("openServiceChat").addEventListener("click",()=>{
+ document.getElementById("serviceCustomerChatPanel").classList.remove("hidden");
+ document.getElementById("serviceCustomerChatPanel").scrollIntoView({behavior:"smooth"});
+ loadCustomerServiceChat();
+ if(window.__eyCustomerChatTimer)clearInterval(window.__eyCustomerChatTimer);
+ window.__eyCustomerChatTimer=setInterval(loadCustomerServiceChat,5000);
+});
 document.getElementById("serviceResumeForm").addEventListener("submit",e=>{
  e.preventDefault();
  const id=document.getElementById("serviceResumeId").value.trim();
@@ -934,6 +940,8 @@ document.getElementById("serviceResumeForm").addEventListener("submit",e=>{
  document.getElementById("serviceCustomerChatPanel").classList.remove("hidden");
  document.getElementById("serviceCustomerChatPanel").scrollIntoView({behavior:"smooth"});
  loadCustomerServiceChat();
+ if(window.__eyCustomerChatTimer)clearInterval(window.__eyCustomerChatTimer);
+ window.__eyCustomerChatTimer=setInterval(loadCustomerServiceChat,5000);
 });
 
 document.getElementById("serviceCustomerChatForm").addEventListener("submit",async e=>{
@@ -950,6 +958,8 @@ document.getElementById("confirmServiceArrival").addEventListener("click",async(
  const job=window.__eyService;if(!job?.token)return;const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirmar_llegada_cliente`,{method:"POST",headers,body:JSON.stringify({p_token:job.token})});
  document.getElementById("serviceCustomerChatStatus").textContent=response.ok?"Llegada confirmada.":"Todavía no figura la llegada del profesional.";await loadCustomerServiceChat();
 });
+document.getElementById("cancelServiceRequest").disabled=!!s.llegada_prestador_at||["cancelado","en_revision","completado"].includes(s.estado);
+ document.getElementById("reportServiceProblem").disabled=["cancelado","completado"].includes(s.estado);
 document.getElementById("cancelServiceRequest").addEventListener("click",async()=>{
  const job=window.__eyService;if(!job?.id||!job?.token)return;
  const reason=window.prompt("¿Por qué querés cancelar la solicitud?");if(reason===null)return;
