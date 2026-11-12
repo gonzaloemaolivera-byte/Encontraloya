@@ -855,7 +855,8 @@ async function loadMisSolicitudesServicio() {
       if(item.precio_aceptado && !item.llegada_prestador_at && !closed) actions.push(`<button class="primary" type="button" data-service-action="arrived" data-id="${escapeHTML(item.id)}">Llegué al destino</button>`);
       if(item.llegada_cliente_confirmada_at && !item.trabajo_terminado_prestador_at && !closed) actions.push(`<button class="primary" type="button" data-service-action="finished" data-id="${escapeHTML(item.id)}">Trabajo terminado</button>`);
       if(item.pago_cliente_confirmado_at && !item.pago_prestador_confirmado_at && !closed) actions.push(`<button class="primary" type="button" data-service-action="payment-received" data-id="${escapeHTML(item.id)}">Confirmar que recibí el pago</button>`);
-      if(!closed) actions.push(`<button class="ghost" type="button" data-service-action="cancel" data-id="${escapeHTML(item.id)}">Cancelar solicitud</button>`);
+      if(!closed && !item.llegada_prestador_at) actions.push(`<button class="ghost" type="button" data-service-action="cancel" data-id="${escapeHTML(item.id)}">Cancelar solicitud</button>`);
+      if(!closed && item.llegada_prestador_at) actions.push(`<button class="ghost" type="button" data-service-action="report" data-id="${escapeHTML(item.id)}">Reportar un problema</button>`);
       return `<article class="order-card" data-service-card="${escapeHTML(item.id)}">
         <div class="order-head"><div><strong>${escapeHTML(item.servicio || "Servicio solicitado")}</strong><div class="meta">${escapeHTML(fechaPedido(item.creado_at))}</div></div><span class="order-state">${escapeHTML(labels[item.estado]||item.estado)}</span></div>
         <div class="meta">Cliente: ${escapeHTML(item.cliente_nombre)} · Teléfono: ${escapeHTML(item.cliente_telefono)}</div>
@@ -908,6 +909,10 @@ $("serviceRequestsList").addEventListener("click", async event => {
  if(action==="cancel"){
    const reason=window.prompt("Motivo de cancelación:");if(reason===null)return;
    rpc="cancelar_solicitud_servicio";body={p_solicitud_id:id,p_token:null,p_motivo:reason};
+ }
+ if(action==="report"){
+   const reason=window.prompt("Contanos qué problema ocurrió. La solicitud quedará en revisión.");if(reason===null)return;
+   rpc="reportar_problema_servicio";body={p_solicitud_id:id,p_token:null,p_motivo:reason};
  }
  if(!rpc)return;
  button.disabled=true;
