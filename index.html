@@ -117,19 +117,19 @@ footer strong{color:white}
   <div class="wrap">
     <div class="welcome-intro">
       <h1 id="welcomeTitle">¡Bienvenido a Encontralo Ya!</h1>
-      <p>Una sola plataforma para encontrar productos y conectar con comercios de toda Argentina.</p>
+      <p>Una sola plataforma para encontrar productos, profesionales y servicios de toda Argentina.</p>
     </div>
     <div class="access-grid">
       <a class="access-card" href="#catalogo" id="buyerAccess">
         <span class="access-icon" aria-hidden="true">🔎</span>
         <strong>Soy comprador</strong>
-        <span>Quiero buscar productos, conocer comercios y comparar precios.</span>
+        <span>Quiero buscar productos, profesionales, servicios y comparar precios.</span>
         <span class="access-cta">Explorar productos →</span>
       </a>
       <a class="access-card merchant" href="#registerPanel" id="merchantAccess">
         <span class="access-icon" aria-hidden="true">🏪</span>
         <strong>Tengo un comercio</strong>
-        <span>Quiero sumar mi negocio y publicar lo que vendo.</span>
+        <span>Quiero sumar mi comercio o servicio y publicar lo que ofrezco.</span>
         <span class="access-cta">Registrar mi comercio →</span>
       </a>
     </div>
@@ -143,8 +143,8 @@ footer strong{color:white}
 <h1>Encontrá lo que necesitás. Compará y comprá.</h1>
 <p class="lead">Buscá productos y servicios de distintos comercios y profesionales en un solo lugar.</p>
 <form class="searchbox" id="searchForm">
-<input id="searchInput" type="search" placeholder="¿Qué producto estás buscando?" aria-label="Buscar productos">
-<button class="primary" type="submit">Buscar productos</button>
+<input id="searchInput" type="search" placeholder="¿Qué necesitás? Producto, oficio o servicio…" aria-label="Buscar productos, oficios o servicios">
+<button class="primary" type="submit">Buscar</button>
 </form>
 </div>
 <aside class="hero-note">
@@ -255,6 +255,24 @@ footer strong{color:white}
 </nav>
 <div class="status" id="catalogStatus" role="status">Conectando con el catálogo…</div>
 <div class="grid" id="productGrid"></div>
+
+<section class="panel hidden" id="missingActivityPanel" aria-labelledby="missingActivityTitle">
+  <h2 id="missingActivityTitle">¿No encontraste ese producto o servicio?</h2>
+  <p>Contanos qué actividad o profesional estás buscando. Vamos a registrar cada pedido para detectar rubros que faltan y en qué localidades se necesitan.</p>
+  <form id="missingActivityForm">
+    <div class="form-grid">
+      <div class="field"><label for="missingActivityName">¿Qué servicio o actividad buscás? *</label><input id="missingActivityName" required maxlength="120" placeholder="Ej.: pintor, albañil, plomero"></div>
+      <div class="field"><label for="missingActivityCity">Localidad *</label><input id="missingActivityCity" required maxlength="80" placeholder="Ej.: Moreno"></div>
+      <div class="field"><label for="missingActivityProvince">Provincia</label><input id="missingActivityProvince" maxlength="80" placeholder="Ej.: Buenos Aires"></div>
+      <div class="field"><label for="missingActivityContact">Contacto (opcional)</label><input id="missingActivityContact" maxlength="100" placeholder="Teléfono o correo"></div>
+      <div class="field full"><label for="missingActivityDetail">¿Qué necesitás? (opcional)</label><textarea id="missingActivityDetail" maxlength="700" placeholder="Contanos brevemente qué trabajo necesitás realizar."></textarea></div>
+    </div>
+    <div class="form-foot">
+      <button class="primary" id="missingActivitySubmit" type="submit">Registrar búsqueda</button>
+      <span class="form-message" id="missingActivityMessage" role="status"></span>
+    </div>
+  </form>
+</section>
 </section>
 
 
@@ -285,7 +303,7 @@ footer strong{color:white}
 
 <section class="panel" id="registerPanel">
 <h2>¿Tenés un comercio?</h2>
-<p>Podés registrar y administrar tu comercio directamente desde el Panel del comercio: creá tu cuenta, confirmá tu correo y cargá tus productos. Si preferís, también podés dejarnos tus datos en esta solicitud y nos pondremos en contacto.</p>
+<p>Podés registrar y administrar tu comercio o actividad desde el Panel: creá tu cuenta, confirmá tu correo y publicá tus productos o servicios.</p>
 <p style="margin:0 0 16px"><a class="primary" href="panel-comercio.html" style="display:inline-block;text-decoration:none">Crear cuenta y administrar mi comercio</a></p>
 <form id="merchantForm">
 <div class="form-grid">
@@ -445,9 +463,14 @@ function renderProducts() {
 
   if (!filtered.length) {
     grid.innerHTML =
-      '<div class="empty">No encontramos productos publicados con esos filtros. Probá otra búsqueda o volvé más tarde.</div>';
+      '<div class="empty">Todavía no encontramos publicaciones para esa búsqueda. Podés ayudarnos a incorporar esa actividad.</div>';
+    const missingPanel = document.getElementById("missingActivityPanel");
+    missingPanel.classList.remove("hidden");
+    const activityInput = document.getElementById("missingActivityName");
+    activityInput.value = searchInput.value.trim() || (selectedCategory !== "Todos" ? selectedCategory : "");
     return;
   }
+  document.getElementById("missingActivityPanel").classList.add("hidden");
 
   grid.innerHTML = filtered.map(product => {
     const business = businessMap.get(product.comercio_id);
@@ -764,6 +787,61 @@ merchantForm.addEventListener("submit", async event => {
   } finally {
     merchantSubmit.disabled = false;
     merchantSubmit.textContent = "Enviar registro";
+  }
+});
+
+// Registro de actividades y servicios que todavía no aparecen en el catálogo.
+const missingActivityForm = document.getElementById("missingActivityForm");
+missingActivityForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!missingActivityForm.reportValidity()) return;
+
+  const activity = document.getElementById("missingActivityName").value.trim();
+  const locality = document.getElementById("missingActivityCity").value.trim();
+  const province = document.getElementById("missingActivityProvince").value.trim();
+  const detail = document.getElementById("missingActivityDetail").value.trim();
+  const contact = document.getElementById("missingActivityContact").value.trim();
+  const submit = document.getElementById("missingActivitySubmit");
+  const message = document.getElementById("missingActivityMessage");
+
+  if (activity.length < 2 || locality.length < 2) {
+    message.textContent = "Completá la actividad y la localidad.";
+    return;
+  }
+
+  submit.disabled = true;
+  submit.textContent = "Registrando…";
+  message.textContent = "Guardando tu búsqueda…";
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/consultas`, {
+      method: "POST",
+      headers: { ...headers, Prefer: "return=minimal" },
+      body: JSON.stringify({
+        producto: "Actividad o servicio solicitado: " + activity,
+        localidad,
+        detalle: [
+          province ? "Provincia: " + province : "",
+          detail ? "Necesidad: " + detail : "",
+          "Origen: sugerencia de actividad faltante en el catálogo"
+        ].filter(Boolean).join(" | "),
+        contacto: contact || null
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("No se pudo registrar la actividad faltante:", errorText);
+      throw new Error("No pudimos guardar la búsqueda. Intentá nuevamente.");
+    }
+
+    missingActivityForm.reset();
+    message.textContent = "¡Gracias! Registramos esta actividad y su localidad para evaluar su incorporación.";
+  } catch (error) {
+    message.textContent = error.message || "No pudimos registrar la búsqueda.";
+  } finally {
+    submit.disabled = false;
+    submit.textContent = "Registrar búsqueda";
   }
 });
 
