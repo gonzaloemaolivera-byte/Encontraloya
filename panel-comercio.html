@@ -1010,7 +1010,7 @@ $("productsGrid").addEventListener("click", event => {
   if (!button) return;
 
   authenticatedGet(
-    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible&id=eq.${encodeURIComponent(button.dataset.edit)}`
+    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo&id=eq.${encodeURIComponent(button.dataset.edit)}`
   )
     .then(response => response.json())
     .then(rows => {
