@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#102a43">
+<meta name="robots" content="noindex,nofollow">
+<title>Encontralo Ya | Estadísticas</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--cyan:#65d6df;--ink:#172b4d;--muted:#627d98;--line:#d9e2ec;--paper:#f3f7fb;--green:#16845b;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.6;cursor:wait}
+header{background:var(--navy);color:white;padding:18px 0}.wrap{width:min(1080px,calc(100% - 30px));margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-size:1.3rem;font-weight:850}.brand span{color:var(--cyan)}.tag{font-size:.82rem;color:#d7e7f5}
+main{padding:28px 0 56px}.card{background:white;border:1px solid var(--line);border-radius:17px;padding:21px;box-shadow:0 10px 28px #102a4310;margin-bottom:16px}.auth{max-width:480px;margin:22px auto}.card h1,.card h2{margin:0 0 6px;color:var(--navy)}.sub{margin:0 0 17px;color:var(--muted);font-size:.92rem}
+.field{display:grid;gap:6px;margin:13px 0}label{font-weight:750;font-size:.86rem}input{width:100%;padding:12px;border:1px solid #bcccdc;border-radius:10px;background:white;color:var(--ink)}
+.primary,.secondary{border:0;border-radius:10px;padding:12px 17px;font-weight:800}.primary{background:var(--blue);color:white}.secondary{background:white;color:var(--blue);border:1px solid var(--blue)}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:15px}.msg{font-size:.88rem;color:var(--muted)}.msg.error{color:#a8201a}.msg.ok{color:var(--green)}
+.hidden{display:none!important}.top-actions{display:flex;gap:9px;align-items:center}.top-actions button{border:1px solid #8fb5d4;border-radius:999px;padding:8px 13px;background:transparent;color:white;font-weight:700}
+.heading{display:flex;justify-content:space-between;align-items:end;gap:14px;margin:6px 0 16px}.heading h1{margin:0;color:var(--navy);font-size:1.65rem}.updated{font-size:.82rem;color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.metric{background:white;border:1px solid var(--line);border-radius:15px;padding:16px;min-width:0}.metric .label{color:var(--muted);font-size:.8rem}.metric .number{font-size:1.85rem;font-weight:850;letter-spacing:-1px;color:var(--navy);margin-top:4px;font-variant-numeric:tabular-nums}
+.columns{display:grid;grid-template-columns:1.35fr 1fr;gap:15px;margin-top:15px}.bar-list{display:grid;gap:13px;margin-top:17px}.bar-row{display:grid;grid-template-columns:minmax(90px,140px) 1fr 34px;gap:10px;align-items:center;font-size:.87rem}.bar-track{height:10px;border-radius:20px;background:#eaf0f6;overflow:hidden}.bar-fill{height:100%;border-radius:20px;background:var(--blue)}.bar-count{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.days{display:flex;align-items:end;gap:5px;height:170px;margin-top:18px;padding:8px 2px 0;border-bottom:1px solid var(--line)}.day{flex:1;min-width:0;height:100%;display:flex;align-items:end;justify-content:center;position:relative}.day-bar{width:min(22px,85%);background:linear-gradient(180deg,#65d6df,#1769aa);border-radius:5px 5px 0 0;min-height:2px}.day-label{position:absolute;bottom:-23px;font-size:.65rem;color:var(--muted);white-space:nowrap}
+.table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.9rem}.table td{padding:10px 5px;border-bottom:1px solid #edf2f7}.table td:last-child{text-align:right;font-weight:800}.note{font-size:.82rem;color:var(--muted);margin-top:13px}.empty{color:var(--muted);font-size:.9rem;padding:12px 0}
+@media(max-width:800px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric:last-child{grid-column:span 2}.columns{grid-template-columns:1fr}.heading{align-items:start;flex-direction:column}}
+@media(max-width:420px){.metric .number{font-size:1.55rem}.card{padding:16px}.bar-row{grid-template-columns:95px 1fr 28px;gap:7px}}
+</style>
+</head>
+<body>
+<header><div class="wrap top"><div><div class="brand">Encontralo <span>Ya</span></div><div class="tag">Panel privado · Estadísticas de visitas</div></div><div class="top-actions hidden" id="topActions"><button id="refreshBtn" type="button">Actualizar</button><button id="logoutBtn" type="button">Salir</button></div></div></header>
+<main class="wrap">
+<section class="card auth" id="authCard">
+<h1>Estadísticas de administración</h1>
+<p class="sub">Ingresá con el correo oficial de administración. El acceso está restringido desde el servidor.</p>
+<form id="loginForm">
+<div class="field"><label for="email">Correo de administración</label><input id="email" type="email" value="administracionencontradoya@gmail.com" readonly autocomplete="username"></div>
+<div class="field"><label for="password">Contraseña</label><input id="password" type="password" required minlength="8" autocomplete="current-password" placeholder="Tu contraseña de administración"></div>
+<div class="actions"><button class="primary" id="loginBtn" type="submit">Ingresar</button><button class="secondary" id="signupBtn" type="button">Crear acceso</button></div>
+<p class="msg" id="authMessage" role="status">Si todavía no creaste esta cuenta, tocá “Crear acceso”. Luego confirmá el correo recibido.</p>
+</form>
+</section>
+<section id="dashboard" class="hidden">
+<div class="heading"><div><h1>Así está creciendo Encontralo Ya</h1><div class="updated" id="updatedAt">Cargando estadísticas…</div></div></div>
+<div class="metrics">
+<div class="metric"><div class="label">Visitas registradas</div><div class="number" id="total">—</div></div>
+<div class="metric"><div class="label">Últimas 24 horas</div><div class="number" id="last24">—</div></div>
+<div class="metric"><div class="label">Hoy</div><div class="number" id="today">—</div></div>
+<div class="metric"><div class="label">Últimos 7 días</div><div class="number" id="last7">—</div></div>
+<div class="metric"><div class="label">Últimos 30 días</div><div class="number" id="last30">—</div></div>
+</div>
+<div class="columns">
+<section class="card"><h2>Visitas por día</h2><p class="sub">Actividad registrada durante los últimos 30 días</p><div class="days" id="dailyChart" aria-label="Gráfico de visitas por día"></div><p class="note">Cada barra representa sesiones registradas, no personas identificadas.</p></section>
+<section class="card"><h2>¿De dónde llegan?</h2><p class="sub">Origen detectado al ingresar a la plataforma</p><div class="bar-list" id="originList"></div></section>
+</div>
+<section class="card"><h2>Páginas más visitadas</h2><div id="pageList"></div><p class="note">No se guardan IP, nombres, teléfonos ni correos de visitantes.</p></section>
+</section>
+</main>
+<script>
+const SUPABASE_URL = "https://egvchkzktjaitskcqlnr.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_MhdqvUOMFQrImKw0ePCH1g_FU2BpGxj";
+const ADMIN_EMAIL = "administracionencontradoya@gmail.com";
+const $ = id => document.getElementById(id);
+let accessToken = null;
+const fmt = n => new Intl.NumberFormat("es-AR").format(Number(n || 0));
+function message(text, type=""){ $("authMessage").textContent=text; $("authMessage").className="msg "+type; }
+function safe(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+async function authRequest(path, body){
+ const r=await fetch(SUPABASE_URL+"/auth/v1/"+path,{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)});
+ const d=await r.json().catch(()=>({}));
+ if(!r.ok) throw new Error(d.msg||d.message||d.error_description||"No se pudo completar el acceso.");
+ return d;
+}
+$("signupBtn").addEventListener("click",async()=>{
+ const password=$("password").value;
+ if(password.length<12||!/[A-Z]/.test(password)||!/[a-z]/.test(password)||!/[0-9]/.test(password)||!/[^A-Za-z0-9]/.test(password)){message("Para crear el acceso usá 12 caracteres o más, con mayúscula, minúscula, número y símbolo.","error");return;}
+ $("signupBtn").disabled=true;message("Creando el acceso de administración…");
+ try{
+  const d=await authRequest("signup",{email:ADMIN_EMAIL,password});
+  if(d.access_token){accessToken=d.access_token;await loadDashboard();}
+  else message("Cuenta creada. Revisá el correo de administración y confirmá la dirección. Después ingresá desde aquí.","ok");
+ }catch(e){message(e.message,"error");}
+ finally{$("signupBtn").disabled=false;}
+});
+$("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();$("loginBtn").disabled=true;message("Verificando acceso…");
+ try{const d=await authRequest("token?grant_type=password",{email:ADMIN_EMAIL,password:$("password").value});accessToken=d.access_token;await loadDashboard();}
+ catch(err){message(err.message,"error");}
+ finally{$("loginBtn").disabled=false;}
+});
+async function loadDashboard(){
+ if(!accessToken) return;
+ $("authCard").classList.add("hidden");$("dashboard").classList.remove("hidden");$("topActions").classList.remove("hidden");$("updatedAt").textContent="Consultando datos seguros…";
+ try{
+  const r=await fetch(SUPABASE_URL+"/rest/v1/rpc/obtener_estadisticas_admin",{method:"POST",headers:{"apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+accessToken,"Content-Type":"application/json"},body:"{}"});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.message||d.details||"No se pudo validar el acceso de administración.");
+  render(d);
+ }catch(e){accessToken=null;$("dashboard").classList.add("hidden");$("topActions").classList.add("hidden");$("authCard").classList.remove("hidden");message(e.message,"error");}
+}
+function render(d){
+ $("total").textContent=fmt(d.total);$("last24").textContent=fmt(d.ultimas_24_horas);$("today").textContent=fmt(d.hoy);$("last7").textContent=fmt(d.ultimos_7_dias);$("last30").textContent=fmt(d.ultimos_30_dias);
+ const last=d.ultima_visita?new Date(d.ultima_visita).toLocaleString("es-AR"):"Todavía no hay visitas";
+ $("updatedAt").textContent="Última visita registrada: "+last+" · Actualizado: "+new Date().toLocaleTimeString("es-AR");
+ const origins=Array.isArray(d.por_origen)?d.por_origen:[];const maxOrigin=Math.max(1,...origins.map(x=>Number(x.cantidad)||0));
+ const labels={directo:"Acceso directo",whatsapp:"WhatsApp",instagram:"Instagram",facebook:"Facebook",referido:"Otros sitios",chatgptcom:"ChatGPT",qr:"Código QR"};
+ $("originList").innerHTML=origins.length?origins.map(x=>'<div class="bar-row"><span>'+safe(labels[x.origen]||x.origen)+'</span><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(1,Number(x.cantidad)/maxOrigin*100)+'%"></div></div><span class="bar-count">'+fmt(x.cantidad)+'</span></div>').join(""):'<div class="empty">Todavía no hay datos.</div>';
+ const days=Array.isArray(d.por_dia)?d.por_dia:[];const maxDay=Math.max(1,...days.map(x=>Number(x.cantidad)||0));
+ $("dailyChart").innerHTML=days.length?days.map(x=>{const date=new Date(x.fecha+"T12:00:00");const h=Math.max(2,Number(x.cantidad)/maxDay*100);return '<div class="day" title="'+safe(date.toLocaleDateString("es-AR"))+': '+fmt(x.cantidad)+' visitas"><div class="day-bar" style="height:'+h+'%"></div><span class="day-label">'+date.getDate()+'</span></div>';}).join(""):'<div class="empty">Todavía no hay actividad diaria.</div>';
+ const pages=Array.isArray(d.por_pagina)?d.por_pagina:[];
+ $("pageList").innerHTML=pages.length?'<table class="table"><tbody>'+pages.map(x=>'<tr><td>'+safe(x.pagina)+'</td><td>'+fmt(x.cantidad)+'</td></tr>').join("")+'</tbody></table>':'<div class="empty">Todavía no hay páginas registradas.</div>';
+}
+$("refreshBtn").addEventListener("click",loadDashboard);
+$("logoutBtn").addEventListener("click",()=>{accessToken=null;$("password").value="";$("dashboard").classList.add("hidden");$("topActions").classList.add("hidden");$("authCard").classList.remove("hidden");message("Sesión cerrada.");});
+</script>
+</body>
+</html>
