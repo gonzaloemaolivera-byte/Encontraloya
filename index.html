@@ -296,15 +296,15 @@ footer strong{color:white}
   <p id="serviceCustomerChatStatus" class="form-message" role="status"></p>
 </section>
 
-<section class="panel" id="serviceCustomerConfirmPanel" aria-labelledby="serviceCustomerConfirmTitle">
-  <h2 id="serviceCustomerConfirmTitle">¿El trabajo ya terminó?</h2>
-  <p>Ingresá el código que recibiste al solicitar el servicio y el importe final acordado. La comisión se calcula únicamente cuando vos y el prestador confirman el trabajo.</p>
-  <form id="serviceCustomerConfirmForm">
+<section class="panel" id="serviceResumePanel">
+  <h2>Volver a una conversación de servicio</h2>
+  <p>Si cerraste la página, podés volver con el número de solicitud y el código privado que guardaste.</p>
+  <form id="serviceResumeForm">
     <div class="form-grid">
-      <div class="field"><label for="serviceConfirmToken">Código de confirmación *</label><input id="serviceConfirmToken" required maxlength="36" placeholder="Código que guardaste"></div>
-      <div class="field"><label for="serviceConfirmAmount">Importe final acordado (ARS) *</label><input id="serviceConfirmAmount" required type="number" min="0" step="0.01" inputmode="decimal"></div>
+      <div class="field"><label for="serviceResumeId">Número de solicitud</label><input id="serviceResumeId" required></div>
+      <div class="field"><label for="serviceResumeToken">Código privado</label><input id="serviceResumeToken" required></div>
     </div>
-    <div class="form-foot"><button class="primary" id="serviceConfirmSubmit" type="submit">Confirmar trabajo terminado</button><span id="serviceConfirmMessage" class="form-message" role="status"></span></div>
+    <button class="primary" type="submit">Volver a mi conversación</button>
   </form>
 </section>
 
@@ -914,6 +914,17 @@ async function loadCustomerServiceChat() {
  document.getElementById("serviceCustomerMessages").innerHTML=(Array.isArray(data)?data:[]).map(m=>`<p><strong>${escapeHTML(m.emisor==="prestador"?"Profesional":"Vos")}:</strong> ${escapeHTML(m.contenido)} <small>${escapeHTML(new Date(m.creado_at).toLocaleString("es-AR"))}</small></p>`).join("")||"Todavía no hay mensajes.";
 }
 document.getElementById("openServiceChat").addEventListener("click",()=>{document.getElementById("serviceCustomerChatPanel").classList.remove("hidden");document.getElementById("serviceCustomerChatPanel").scrollIntoView({behavior:"smooth"});loadCustomerServiceChat();});
+document.getElementById("serviceResumeForm").addEventListener("submit",e=>{
+ e.preventDefault();
+ const id=document.getElementById("serviceResumeId").value.trim();
+ const token=document.getElementById("serviceResumeToken").value.trim();
+ if(!id||!token)return;
+ window.__eyService={id,token};
+ document.getElementById("serviceCustomerChatPanel").classList.remove("hidden");
+ document.getElementById("serviceCustomerChatPanel").scrollIntoView({behavior:"smooth"});
+ loadCustomerServiceChat();
+});
+
 document.getElementById("serviceCustomerChatForm").addEventListener("submit",async e=>{
  e.preventDefault();const job=window.__eyService;const input=document.getElementById("serviceCustomerMessage");if(!job?.token||!input.value.trim())return;
  const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/enviar_mensaje_servicio`,{method:"POST",headers,body:JSON.stringify({p_token:job.token,p_contenido:input.value.trim()})});
@@ -934,34 +945,7 @@ document.getElementById("confirmServicePaid").addEventListener("click",async()=>
  document.getElementById("serviceCustomerChatStatus").textContent=response.ok?"Tu confirmación quedó registrada. El prestador debe confirmar que recibió el pago.":"No se pudo confirmar; revisá el importe y el estado.";await loadCustomerServiceChat();
 });
 
-document.getElementById("serviceCustomerConfirmForm").addEventListener("submit", async event => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  if (!form.reportValidity()) return;
-  const submit = document.getElementById("serviceConfirmSubmit");
-  const message = document.getElementById("serviceConfirmMessage");
-  submit.disabled = true;
-  message.textContent = "Registrando tu confirmación…";
-  try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirmar_trabajo_cliente`, {
-      method:"POST", headers,
-      body:JSON.stringify({
-        p_token:document.getElementById("serviceConfirmToken").value.trim(),
-        p_importe:Number(document.getElementById("serviceConfirmAmount").value)
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || data.msg || "No pudimos confirmar el trabajo.");
-    message.textContent = data.estado === "completado"
-      ? "¡Trabajo confirmado por ambas partes! Se registró la comisión correspondiente."
-      : "Tu confirmación quedó registrada. Falta la confirmación del prestador.";
-    form.reset();
-  } catch(error) {
-    message.textContent = error.message || "Error de conexión.";
-  } finally {
-    submit.disabled = false;
-  }
-});
+
 
 // Registro de actividades y servicios que todavía no aparecen en el catálogo.
 const missingActivityForm = document.getElementById("missingActivityForm");
