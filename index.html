@@ -256,6 +256,37 @@ footer strong{color:white}
 <div class="status" id="catalogStatus" role="status">Conectando con el catálogo…</div>
 <div class="grid" id="productGrid"></div>
 
+<section class="panel hidden" id="serviceRequestPanel" aria-labelledby="serviceRequestTitle">
+  <h2 id="serviceRequestTitle">Solicitar este servicio</h2>
+  <p id="serviceRequestName" class="sub"></p>
+  <form id="serviceRequestForm">
+    <input type="hidden" id="servicePublicationId">
+    <div class="form-grid">
+      <div class="field"><label for="serviceClientName">Tu nombre *</label><input id="serviceClientName" required maxlength="120"></div>
+      <div class="field"><label for="serviceClientPhone">Tu teléfono *</label><input id="serviceClientPhone" required maxlength="30" inputmode="tel"></div>
+      <div class="field full"><label for="serviceClientEmail">Correo (opcional)</label><input id="serviceClientEmail" type="email" maxlength="160"></div>
+      <div class="field full"><label for="serviceClientDetail">¿Qué trabajo necesitás? *</label><textarea id="serviceClientDetail" required minlength="5" maxlength="2000" placeholder="Contá qué necesitás y dónde se realizaría el trabajo."></textarea></div>
+    </div>
+    <div class="form-foot"><button class="primary" id="serviceRequestSubmit" type="submit">Enviar solicitud gratis</button><button class="small-btn" id="serviceRequestCancel" type="button">Cancelar</button><span id="serviceRequestMessage" class="form-message" role="status"></span></div>
+  </form>
+  <div id="serviceRequestSuccess" class="hidden">
+    <p><strong>¡Solicitud enviada!</strong> Guardá este código: lo vas a necesitar para confirmar el trabajo cuando esté terminado.</p>
+    <p><code id="serviceCustomerToken"></code> <button class="small-btn" type="button" id="copyServiceToken">Copiar código</button></p>
+  </div>
+</section>
+
+<section class="panel" id="serviceCustomerConfirmPanel" aria-labelledby="serviceCustomerConfirmTitle">
+  <h2 id="serviceCustomerConfirmTitle">¿El trabajo ya terminó?</h2>
+  <p>Ingresá el código que recibiste al solicitar el servicio y el importe final acordado. La comisión se calcula únicamente cuando vos y el prestador confirman el trabajo.</p>
+  <form id="serviceCustomerConfirmForm">
+    <div class="form-grid">
+      <div class="field"><label for="serviceConfirmToken">Código de confirmación *</label><input id="serviceConfirmToken" required maxlength="36" placeholder="Código que guardaste"></div>
+      <div class="field"><label for="serviceConfirmAmount">Importe final acordado (ARS) *</label><input id="serviceConfirmAmount" required type="number" min="0" step="0.01" inputmode="decimal"></div>
+    </div>
+    <div class="form-foot"><button class="primary" id="serviceConfirmSubmit" type="submit">Confirmar trabajo terminado</button><span id="serviceConfirmMessage" class="form-message" role="status"></span></div>
+  </form>
+</section>
+
 <section class="panel hidden" id="missingActivityPanel" aria-labelledby="missingActivityTitle">
   <h2 id="missingActivityTitle">¿No encontraste ese producto o servicio?</h2>
   <p>Contanos qué actividad o profesional estás buscando. Vamos a registrar cada pedido para detectar rubros que faltan y en qué localidades se necesitan.</p>
@@ -486,12 +517,14 @@ function renderProducts() {
       <div class="price">${escapeHTML(money(product.precio, product.moneda))}</div>
       <div class="product-actions" style="flex-wrap:wrap">
         ${whatsapp
-          ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">${product.tipo === "servicio" ? "Consultar / pedir presupuesto" : "Consultar por WhatsApp"}</a>`
+          ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">${product.tipo === "servicio" ? "Consultar por WhatsApp" : "Consultar por WhatsApp"}</a>`
           : '<span class="meta">Teléfono no disponible para WhatsApp</span>'
         }
-        ${product.tipo !== "servicio" && product.precio !== null && Number(product.precio) > 0 && (product.moneda || "ARS") === "ARS"
-          ? `<button class="add-btn" type="button" data-add="${escapeHTML(product.id)}" data-commerce="${escapeHTML(product.comercio_id)}">Agregar al pedido</button>`
-          : '<span class="meta">Consultá disponibilidad y condiciones con quien lo ofrece</span>'
+        ${product.tipo === "servicio"
+          ? `<button class="add-btn" type="button" data-request-service="${escapeHTML(product.id)}" data-service-name="${escapeHTML(product.nombre)}">Solicitar servicio gratis</button>`
+          : (product.precio !== null && Number(product.precio) > 0 && (product.moneda || "ARS") === "ARS"
+            ? `<button class="add-btn" type="button" data-add="${escapeHTML(product.id)}" data-commerce="${escapeHTML(product.comercio_id)}">Agregar al pedido</button>`
+            : '<span class="meta">Consultá disponibilidad y condiciones con quien lo ofrece</span>')
         }
       </div>
     </article>`;
@@ -787,6 +820,91 @@ merchantForm.addEventListener("submit", async event => {
   } finally {
     merchantSubmit.disabled = false;
     merchantSubmit.textContent = "Enviar registro";
+  }
+});
+
+// Solicitudes de trabajo: el comprador recibe un código privado para confirmar al finalizar.
+grid.addEventListener("click", event => {
+  const button = event.target.closest("button[data-request-service]");
+  if (!button) return;
+  document.getElementById("servicePublicationId").value = button.dataset.requestService;
+  document.getElementById("serviceRequestName").textContent = button.dataset.serviceName || "Servicio seleccionado";
+  document.getElementById("serviceRequestForm").classList.remove("hidden");
+  document.getElementById("serviceRequestSuccess").classList.add("hidden");
+  document.getElementById("serviceRequestPanel").classList.remove("hidden");
+  document.getElementById("serviceRequestPanel").scrollIntoView({behavior:"smooth",block:"start"});
+});
+document.getElementById("serviceRequestCancel").addEventListener("click", () => {
+  document.getElementById("serviceRequestPanel").classList.add("hidden");
+});
+document.getElementById("serviceRequestForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity()) return;
+  const submit = document.getElementById("serviceRequestSubmit");
+  const message = document.getElementById("serviceRequestMessage");
+  submit.disabled = true;
+  message.textContent = "Enviando solicitud…";
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/crear_solicitud_servicio`, {
+      method:"POST", headers,
+      body:JSON.stringify({
+        p_publicacion_id:document.getElementById("servicePublicationId").value,
+        p_cliente_nombre:document.getElementById("serviceClientName").value.trim(),
+        p_cliente_telefono:document.getElementById("serviceClientPhone").value.trim(),
+        p_cliente_email:document.getElementById("serviceClientEmail").value.trim() || null,
+        p_detalle:document.getElementById("serviceClientDetail").value.trim()
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw new Error(data.message || data.msg || "No pudimos enviar la solicitud.");
+    document.getElementById("serviceCustomerToken").textContent = data.token_cliente;
+    document.getElementById("serviceRequestForm").classList.add("hidden");
+    document.getElementById("serviceRequestSuccess").classList.remove("hidden");
+    message.textContent = "";
+    form.reset();
+  } catch(error) {
+    message.textContent = error.message || "Error de conexión.";
+  } finally {
+    submit.disabled = false;
+  }
+});
+document.getElementById("copyServiceToken").addEventListener("click", async () => {
+  const token = document.getElementById("serviceCustomerToken").textContent;
+  try {
+    await navigator.clipboard.writeText(token);
+    document.getElementById("copyServiceToken").textContent = "Copiado";
+  } catch {
+    document.getElementById("serviceConfirmToken").value = token;
+    document.getElementById("serviceCustomerConfirmPanel").scrollIntoView({behavior:"smooth"});
+  }
+});
+document.getElementById("serviceCustomerConfirmForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity()) return;
+  const submit = document.getElementById("serviceConfirmSubmit");
+  const message = document.getElementById("serviceConfirmMessage");
+  submit.disabled = true;
+  message.textContent = "Registrando tu confirmación…";
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirmar_trabajo_cliente`, {
+      method:"POST", headers,
+      body:JSON.stringify({
+        p_token:document.getElementById("serviceConfirmToken").value.trim(),
+        p_importe:Number(document.getElementById("serviceConfirmAmount").value)
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || data.msg || "No pudimos confirmar el trabajo.");
+    message.textContent = data.estado === "completado"
+      ? "¡Trabajo confirmado por ambas partes! Se registró la comisión correspondiente."
+      : "Tu confirmación quedó registrada. Falta la confirmación del prestador.";
+    form.reset();
+  } catch(error) {
+    message.textContent = error.message || "Error de conexión.";
+  } finally {
+    submit.disabled = false;
   }
 });
 
