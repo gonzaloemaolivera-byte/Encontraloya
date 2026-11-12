@@ -177,6 +177,15 @@ footer strong{color:white}
   <div id="ordersList"></div>
 </section>
 
+<section class="card" style="max-width:none" id="serviceRequestsCard">
+  <div class="form-foot" style="justify-content:space-between;margin-top:0">
+    <div><h2>Solicitudes de trabajo</h2><p class="sub">Consultas de personas que necesitan tus servicios. Recibirlas es gratis.</p></div>
+    <button class="ghost" id="reloadServiceRequests" type="button">Actualizar solicitudes</button>
+  </div>
+  <div id="serviceRequestsStatus" role="status" style="color:var(--muted);font-size:.9rem;padding:8px 0">Cargando solicitudes…</div>
+  <div id="serviceRequestsList"></div>
+</section>
+
 <section class="card">
 <h2 id="formTitle">Publicar un producto o servicio</h2>
 <p class="sub">Los productos y servicios publicados aparecen en el catálogo público si están disponibles. Si ofrecés un servicio, poné su nombre, describilo y dejá el precio vacío si trabajás con presupuesto. No se puede borrar: si ya no lo tenés, marcálo como no disponible.</p>
@@ -399,6 +408,7 @@ function showComercioView() {
   renderComercio();
   loadComerciosSinReclamar("claimMoreComercio", "claimMoreMessage");
   loadMisPedidos();
+  loadMisSolicitudesServicio();
   loadMisProductos();
 }
 
@@ -816,6 +826,79 @@ async function loadMisPedidos() {
 }
 
 $("reloadOrders").addEventListener("click", loadMisPedidos);
+
+async function loadMisSolicitudesServicio() {
+  if (!comercio) return;
+  const status = $("serviceRequestsStatus");
+  const list = $("serviceRequestsList");
+  status.textContent = "Buscando solicitudes de trabajo…";
+  list.innerHTML = "";
+  try {
+    const response = await authenticatedRpc("listar_solicitudes_servicio_prestador", {
+      p_comercio_id: comercio.id
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.message || payload.msg || "No pudimos cargar las solicitudes.");
+    const requests = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+    if (!requests.length) {
+      status.textContent = "Todavía no recibiste solicitudes de servicios.";
+      list.innerHTML = '<div class="empty">Cuando alguien solicite uno de tus servicios, aparecerá acá.</div>';
+      return;
+    }
+    status.textContent = `${requests.length} solicitud(es) recibida(s).`;
+    list.innerHTML = requests.map(item => {
+      const state = item.estado === "completado" ? "Trabajo confirmado por ambas partes"
+        : item.estado === "esperando_confirmaciones" ? "Esperando confirmación"
+        : item.estado === "cancelado" ? "Cancelado"
+        : item.estado === "en_revision" ? "En revisión"
+        : item.prestador_confirmo ? "Esperando al cliente" : "Nueva solicitud";
+      const canConfirm = !item.prestador_confirmo && !["cancelado","en_revision","completado"].includes(item.estado);
+      return `<article class="order-card">
+        <div class="order-head"><div><strong>${escapeHTML(item.servicio || "Servicio solicitado")}</strong><div class="meta">${escapeHTML(fechaPedido(item.creado_at))}</div></div><span class="order-state">${escapeHTML(state)}</span></div>
+        <div class="meta">Cliente: ${escapeHTML(item.cliente_nombre)} · Teléfono: ${escapeHTML(item.cliente_telefono)}</div>
+        ${item.cliente_email ? `<div class="meta">Correo: ${escapeHTML(item.cliente_email)}</div>` : ""}
+        <p>${escapeHTML(item.detalle)}</p>
+        ${item.importe_acordado !== null ? `<div class="meta">Importe acordado: ${escapeHTML(money(item.importe_acordado,"ARS"))}</div>` : ""}
+        <div class="meta">Confirmación del prestador: ${item.prestador_confirmo ? "Sí" : "Pendiente"} · Del cliente: ${item.cliente_confirmo ? "Sí" : "Pendiente"}</div>
+        ${item.completado_at ? `<div class="meta">Comisión registrada: ${escapeHTML(money(item.importe_comision,"ARS"))} (${escapeHTML(item.porcentaje_comision)}%)</div>` : ""}
+        ${canConfirm ? `<div class="form-foot"><button class="primary" type="button" data-confirm-service="${escapeHTML(item.id)}">Confirmar trabajo terminado</button></div>` : ""}
+      </article>`;
+    }).join("");
+  } catch (error) {
+    console.error(error);
+    status.textContent = error.message || "No pudimos cargar las solicitudes.";
+  }
+}
+
+$("reloadServiceRequests").addEventListener("click", loadMisSolicitudesServicio);
+$("serviceRequestsList").addEventListener("click", async event => {
+  const button = event.target.closest("button[data-confirm-service]");
+  if (!button || !comercio) return;
+  const raw = window.prompt("Ingresá el importe final acordado con el cliente (en pesos). Si fue sin cargo, ingresá 0.");
+  if (raw === null) return;
+  const amount = Number(raw.replace(",", "."));
+  if (!Number.isFinite(amount) || amount < 0) {
+    window.alert("Ingresá un importe válido.");
+    return;
+  }
+  button.disabled = true;
+  try {
+    const response = await authenticatedRpc("confirmar_trabajo_prestador", {
+      p_solicitud_id: button.dataset.confirmService,
+      p_importe: amount
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || data.msg || "No se pudo registrar la confirmación.");
+    window.alert(data.estado === "completado"
+      ? "Trabajo confirmado por ambas partes. La comisión quedó registrada."
+      : "Tu confirmación quedó registrada. Falta la confirmación del cliente.");
+    await loadMisSolicitudesServicio();
+  } catch (error) {
+    window.alert(error.message || "Error de conexión.");
+    button.disabled = false;
+  }
+});
+
 
 $("ordersList").addEventListener("click", async event => {
   const button = event.target.closest("button[data-order-id][data-next-state]");
