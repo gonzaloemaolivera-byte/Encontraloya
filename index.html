@@ -684,6 +684,47 @@ merchantForm.addEventListener("submit", async event => {
   }
 });
 
+// Medición básica de visitas: no guarda IP, nombre, teléfono ni correo.
+async function registerVisit() {
+  try {
+    const storageKey = "ey_analytics_session";
+    let sessionId = sessionStorage.getItem(storageKey);
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+      sessionStorage.setItem(storageKey, sessionId);
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    let source = params.get("origen") || params.get("utm_source") || "";
+    const referrer = String(document.referrer || "").toLowerCase();
+
+    if (!source) {
+      if (referrer.includes("whatsapp") || referrer.includes("wa.me")) source = "whatsapp";
+      else if (referrer.includes("instagram")) source = "instagram";
+      else if (referrer.includes("facebook")) source = "facebook";
+      else if (referrer) source = "referido";
+      else source = "directo";
+    }
+
+    source = source.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40) || "otro";
+    const page = window.location.pathname.replace(/[^a-zA-Z0-9/_-]/g, "").slice(0, 120) || "/";
+
+    await fetch(`${SUPABASE_URL}/rest/v1/rpc/registrar_visita`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        p_session_id: sessionId,
+        p_origen: source,
+        p_pagina: page
+      })
+    });
+  } catch (error) {
+    // La medición nunca debe impedir que la plataforma cargue.
+    console.debug("Medición de visita no disponible:", error);
+  }
+}
+
+registerVisit();
 loadCatalog();
 })();
 </script>
