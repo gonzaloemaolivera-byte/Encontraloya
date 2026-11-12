@@ -32,7 +32,7 @@ main{padding:28px 0 56px}.card{background:white;border:1px solid var(--line);bor
 <h1>Estadísticas de administración</h1>
 <p class="sub">Ingresá con el correo oficial de administración. El acceso está restringido desde el servidor.</p>
 <form id="loginForm">
-<div class="field"><label for="email">Correo de administración</label><input id="email" type="email" value="administracionencontradoya@gmail.com" readonly autocomplete="username"></div>
+<div class="field"><label for="email">Correo de administración</label><input id="email" type="email" value="administracionencontraloya@gmail.com" readonly autocomplete="username"></div>
 <div class="field"><label for="password">Contraseña</label><input id="password" type="password" required minlength="8" autocomplete="current-password" placeholder="Tu contraseña de administración"></div>
 <div class="actions"><button class="primary" id="loginBtn" type="submit">Ingresar</button><button class="secondary" id="signupBtn" type="button">Crear acceso</button></div>
 <p class="msg" id="authMessage" role="status">Si todavía no creaste esta cuenta, tocá “Crear acceso”. Luego confirmá el correo recibido.</p>
@@ -57,7 +57,7 @@ main{padding:28px 0 56px}.card{background:white;border:1px solid var(--line);bor
 <script>
 const SUPABASE_URL = "https://egvchkzktjaitskcqlnr.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_MhdqvUOMFQrImKw0ePCH1g_FU2BpGxj";
-const ADMIN_EMAIL = "administracionencontradoya@gmail.com";
+const ADMIN_EMAIL = "administracionencontraloya@gmail.com";
 const $ = id => document.getElementById(id);
 let accessToken = null;
 const fmt = n => new Intl.NumberFormat("es-AR").format(Number(n || 0));
