@@ -847,21 +847,37 @@ async function loadMisSolicitudesServicio() {
     }
     status.textContent = `${requests.length} solicitud(es) recibida(s).`;
     list.innerHTML = requests.map(item => {
-      const state = item.estado === "completado" ? "Trabajo confirmado por ambas partes"
-        : item.estado === "esperando_confirmaciones" ? "Esperando confirmación"
-        : item.estado === "cancelado" ? "Cancelado"
-        : item.estado === "en_revision" ? "En revisión"
-        : item.prestador_confirmo ? "Esperando al cliente" : "Nueva solicitud";
-      const canConfirm = !item.prestador_confirmo && !["cancelado","en_revision","completado"].includes(item.estado);
-      return `<article class="order-card">
-        <div class="order-head"><div><strong>${escapeHTML(item.servicio || "Servicio solicitado")}</strong><div class="meta">${escapeHTML(fechaPedido(item.creado_at))}</div></div><span class="order-state">${escapeHTML(state)}</span></div>
+      const labels={pendiente:"Nueva solicitud",negociando:"Precio por acordar",aceptado:"Servicio aceptado",en_camino:"En camino",llego_destino:"Llegó al destino",trabajando:"Trabajo en curso",trabajo_terminado:"Trabajo terminado",esperando_pago:"Esperando confirmación de pago",completado:"Trabajo terminado y pago confirmado",cancelado:"Cancelado",en_revision:"En revisión",esperando_confirmaciones:"Esperando confirmaciones"};
+      const closed=["cancelado","en_revision","completado"].includes(item.estado);
+      const actions=[];
+      if(!closed && item.precio_propuesto_cliente!==null && !item.precio_aceptado) actions.push(`<button class="ghost" type="button" data-service-action="accept-customer-price" data-id="${escapeHTML(item.id)}">Aceptar precio del cliente</button>`);
+      if(!closed && !item.precio_aceptado) actions.push(`<button class="ghost" type="button" data-service-action="propose-price" data-id="${escapeHTML(item.id)}">Proponer / negociar precio</button>`);
+      if(item.precio_aceptado && !item.llegada_prestador_at && !closed) actions.push(`<button class="primary" type="button" data-service-action="arrived" data-id="${escapeHTML(item.id)}">Llegué al destino</button>`);
+      if(item.llegada_cliente_confirmada_at && !item.trabajo_terminado_prestador_at && !closed) actions.push(`<button class="primary" type="button" data-service-action="finished" data-id="${escapeHTML(item.id)}">Trabajo terminado</button>`);
+      if(item.pago_cliente_confirmado_at && !item.pago_prestador_confirmado_at && !closed) actions.push(`<button class="primary" type="button" data-service-action="payment-received" data-id="${escapeHTML(item.id)}">Confirmar que recibí el pago</button>`);
+      if(!closed) actions.push(`<button class="ghost" type="button" data-service-action="cancel" data-id="${escapeHTML(item.id)}">Cancelar solicitud</button>`);
+      return `<article class="order-card" data-service-card="${escapeHTML(item.id)}">
+        <div class="order-head"><div><strong>${escapeHTML(item.servicio || "Servicio solicitado")}</strong><div class="meta">${escapeHTML(fechaPedido(item.creado_at))}</div></div><span class="order-state">${escapeHTML(labels[item.estado]||item.estado)}</span></div>
         <div class="meta">Cliente: ${escapeHTML(item.cliente_nombre)} · Teléfono: ${escapeHTML(item.cliente_telefono)}</div>
         ${item.cliente_email ? `<div class="meta">Correo: ${escapeHTML(item.cliente_email)}</div>` : ""}
         <p>${escapeHTML(item.detalle)}</p>
-        ${item.importe_acordado !== null ? `<div class="meta">Importe acordado: ${escapeHTML(money(item.importe_acordado,"ARS"))}</div>` : ""}
-        <div class="meta">Confirmación del prestador: ${item.prestador_confirmo ? "Sí" : "Pendiente"} · Del cliente: ${item.cliente_confirmo ? "Sí" : "Pendiente"}</div>
+        <div class="meta"><strong>Destino:</strong> ${escapeHTML(item.destino_direccion||"No informado")}, ${escapeHTML(item.destino_localidad||"")}</div>
+        ${item.fecha_preferida ? `<div class="meta">Horario solicitado: ${escapeHTML(fechaPedido(item.fecha_preferida))}</div>` : ""}
+        ${item.precio_propuesto_cliente!==null ? `<div class="meta">Precio propuesto por cliente: ${escapeHTML(money(item.precio_propuesto_cliente,"ARS"))}</div>` : ""}
+        ${item.precio_propuesto_prestador!==null ? `<div class="meta">Tu propuesta: ${escapeHTML(money(item.precio_propuesto_prestador,"ARS"))}</div>` : ""}
+        ${item.precio_aceptado ? `<div class="meta"><strong>Precio acordado:</strong> ${escapeHTML(money(item.importe_acordado,"ARS"))}</div>` : '<div class="meta">Precio todavía no acordado.</div>'}
+        <div class="meta">Llegada: ${item.llegada_prestador_at?"Marcada por vos": "Pendiente"} · Cliente confirmó llegada: ${item.llegada_cliente_confirmada_at?"Sí":"Pendiente"}</div>
+        <div class="meta">Trabajo: ${item.trabajo_terminado_prestador_at?"Marcado terminado por vos":"En curso / pendiente"} · Pago cliente: ${item.pago_cliente_confirmado_at?"Confirmado":"Pendiente"} · Pago recibido por vos: ${item.pago_prestador_confirmado_at?"Confirmado":"Pendiente"}</div>
         ${item.completado_at ? `<div class="meta">Comisión registrada: ${escapeHTML(money(item.importe_comision,"ARS"))} (${escapeHTML(item.porcentaje_comision)}%)</div>` : ""}
-        ${canConfirm ? `<div class="form-foot"><button class="primary" type="button" data-confirm-service="${escapeHTML(item.id)}">Confirmar trabajo terminado</button></div>` : ""}
+        <div class="form-foot">${actions.join("")}</div>
+        <button class="ghost" type="button" data-service-action="open-chat" data-id="${escapeHTML(item.id)}">Abrir conversación</button>
+        <div class="hidden" id="service-chat-${escapeHTML(item.id)}">
+          <div class="order-card" data-chat-messages="${escapeHTML(item.id)}" style="max-height:220px;overflow:auto"></div>
+          <form data-chat-form="${escapeHTML(item.id)}">
+            <div class="field"><label>Mensaje para el cliente</label><textarea required maxlength="2000" data-chat-input="${escapeHTML(item.id)}" placeholder="Escribí un mensaje…"></textarea></div>
+            <button class="primary" type="submit">Enviar mensaje</button>
+          </form>
+        </div>
       </article>`;
     }).join("");
   } catch (error) {
@@ -872,31 +888,48 @@ async function loadMisSolicitudesServicio() {
 
 $("reloadServiceRequests").addEventListener("click", loadMisSolicitudesServicio);
 $("serviceRequestsList").addEventListener("click", async event => {
-  const button = event.target.closest("button[data-confirm-service]");
-  if (!button || !comercio) return;
-  const raw = window.prompt("Ingresá el importe final acordado con el cliente (en pesos). Si fue sin cargo, ingresá 0.");
-  if (raw === null) return;
-  const amount = Number(raw.replace(",", "."));
-  if (!Number.isFinite(amount) || amount < 0) {
-    window.alert("Ingresá un importe válido.");
-    return;
-  }
-  button.disabled = true;
-  try {
-    const response = await authenticatedRpc("confirmar_trabajo_prestador", {
-      p_solicitud_id: button.dataset.confirmService,
-      p_importe: amount
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || data.msg || "No se pudo registrar la confirmación.");
-    window.alert(data.estado === "completado"
-      ? "Trabajo confirmado por ambas partes. La comisión quedó registrada."
-      : "Tu confirmación quedó registrada. Falta la confirmación del cliente.");
-    await loadMisSolicitudesServicio();
-  } catch (error) {
-    window.alert(error.message || "Error de conexión.");
-    button.disabled = false;
-  }
+ const button=event.target.closest("button[data-service-action]");if(!button||!comercio)return;
+ const id=button.dataset.id, action=button.dataset.serviceAction;
+ if(action==="open-chat"){
+   const panel=$(`service-chat-${id}`);panel.classList.toggle("hidden");
+   if(!panel.classList.contains("hidden")) await loadProviderServiceMessages(id);
+   return;
+ }
+ let rpc=null,body={};
+ if(action==="accept-customer-price"){rpc="aceptar_precio_propuesto_cliente";body={p_solicitud_id:id};}
+ if(action==="propose-price"){
+   const raw=window.prompt("Ingresá el precio total que ofrecés en pesos (ARS):");if(raw===null)return;
+   const amount=Number(raw.replace(",", "."));if(!Number.isFinite(amount)||amount<0){window.alert("Precio inválido.");return;}
+   rpc="proponer_precio_servicio";body={p_solicitud_id:id,p_precio:amount};
+ }
+ if(action==="arrived"){rpc="marcar_llegada_prestador";body={p_solicitud_id:id};}
+ if(action==="finished"){if(!window.confirm("¿Confirmás que terminaste el trabajo?"))return;rpc="marcar_trabajo_terminado_prestador";body={p_solicitud_id:id};}
+ if(action==="payment-received"){if(!window.confirm("¿Confirmás que recibiste el pago del cliente?"))return;rpc="confirmar_pago_recibido_prestador";body={p_solicitud_id:id};}
+ if(action==="cancel"){
+   const reason=window.prompt("Motivo de cancelación:");if(reason===null)return;
+   rpc="cancelar_solicitud_servicio";body={p_solicitud_id:id,p_token:null,p_motivo:reason};
+ }
+ if(!rpc)return;
+ button.disabled=true;
+ try{
+   const response=await authenticatedRpc(rpc,body);const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw new Error(data.message||data.msg||"No se pudo actualizar la solicitud.");
+   await loadMisSolicitudesServicio();
+ }catch(error){window.alert(error.message||"Error de conexión.");button.disabled=false;}
+});
+async function loadProviderServiceMessages(id){
+ const response=await authenticatedRpc("listar_mensajes_servicio",{p_solicitud_id:id,p_token:null});
+ const data=await response.json().catch(()=>[]);
+ const box=document.querySelector(`[data-chat-messages="${id}"]`);
+ if(!response.ok){box.textContent="No se pudo cargar la conversación.";return;}
+ box.innerHTML=(Array.isArray(data)?data:[]).map(m=>`<p><strong>${escapeHTML(m.emisor==="prestador"?"Vos":"Cliente")}:</strong> ${escapeHTML(m.contenido)} <small>${escapeHTML(fechaPedido(m.creado_at))}</small></p>`).join("")||"Todavía no hay mensajes.";
+}
+$("serviceRequestsList").addEventListener("submit",async event=>{
+ const form=event.target.closest("form[data-chat-form]");if(!form)return;
+ event.preventDefault();const id=form.dataset.chatForm;const input=form.querySelector("textarea");if(!input.value.trim())return;
+ const response=await authenticatedRpc("enviar_mensaje_servicio_prestador",{p_solicitud_id:id,p_contenido:input.value.trim()});
+ if(!response.ok){window.alert("No se pudo enviar el mensaje.");return;}
+ input.value="";await loadProviderServiceMessages(id);
 });
 
 
