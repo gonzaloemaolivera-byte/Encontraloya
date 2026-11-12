@@ -902,8 +902,9 @@ document.getElementById("copyServiceToken").addEventListener("click", async () =
     await navigator.clipboard.writeText(token);
     document.getElementById("copyServiceToken").textContent = "Copiado";
   } catch {
-    document.getElementById("serviceConfirmToken").value = token;
-    document.getElementById("serviceCustomerConfirmPanel").scrollIntoView({behavior:"smooth"});
+    document.getElementById("serviceResumeToken").value = token;
+    document.getElementById("serviceResumeId").value = document.getElementById("serviceRequestId").textContent;
+    document.getElementById("serviceResumePanel").scrollIntoView({behavior:"smooth"});
   }
 });
 async function loadCustomerServiceChat() {
