@@ -913,6 +913,14 @@ async function loadCustomerServiceChat() {
  const data=await response.json().catch(()=>[]);
  if(!response.ok){document.getElementById("serviceCustomerChatStatus").textContent="No pudimos cargar la conversación.";return;}
  document.getElementById("serviceCustomerMessages").innerHTML=(Array.isArray(data)?data:[]).map(m=>`<p><strong>${escapeHTML(m.emisor==="prestador"?"Profesional":"Vos")}:</strong> ${escapeHTML(m.contenido)} <small>${escapeHTML(new Date(m.creado_at).toLocaleString("es-AR"))}</small></p>`).join("")||"Todavía no hay mensajes.";
+ const stateResponse=await fetch(`${SUPABASE_URL}/rest/v1/rpc/obtener_estado_solicitud_cliente`,{method:"POST",headers,body:JSON.stringify({p_solicitud_id:job.id,p_token:job.token})});
+ const s=await stateResponse.json().catch(()=>null);
+ if(!stateResponse.ok||!s)return;
+ const labels={pendiente:"Solicitud enviada",negociando:"Acordando precio",aceptado:"Servicio aceptado",en_camino:"Profesional en camino",llego_destino:"El profesional llegó",trabajando:"Trabajo en curso",trabajo_terminado:"Trabajo terminado: falta confirmar pago",esperando_pago:"Esperando confirmación del prestador",completado:"Trabajo terminado y pago confirmado",cancelado:"Solicitud cancelada",en_revision:"Solicitud en revisión"};
+ document.getElementById("serviceCustomerJobState").textContent=(labels[s.estado]||s.estado)+(s.importe_acordado!==null?" · Precio: "+money(s.importe_acordado,"ARS"):"");
+ document.getElementById("acceptServicePrice").disabled=!!s.precio_aceptado||!s.precio_propuesto_prestador||["cancelado","en_revision","completado"].includes(s.estado);
+ document.getElementById("confirmServiceArrival").disabled=!s.llegada_prestador_at||!!s.llegada_cliente_confirmada_at||["cancelado","en_revision","completado"].includes(s.estado);
+ document.getElementById("confirmServicePaid").disabled=!s.trabajo_terminado_prestador_at||!!s.pago_cliente_confirmado_at||["cancelado","en_revision","completado"].includes(s.estado);
 }
 document.getElementById("openServiceChat").addEventListener("click",()=>{document.getElementById("serviceCustomerChatPanel").classList.remove("hidden");document.getElementById("serviceCustomerChatPanel").scrollIntoView({behavior:"smooth"});loadCustomerServiceChat();});
 document.getElementById("serviceResumeForm").addEventListener("submit",e=>{
