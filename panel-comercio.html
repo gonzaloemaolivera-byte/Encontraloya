@@ -114,6 +114,7 @@ footer strong{color:white}
 <div class="field full"><label for="newCommerceAddress">Dirección</label><input id="newCommerceAddress" maxlength="180" autocomplete="street-address"></div>
 <div class="field full"><label for="newCommerceContact">Persona de contacto</label><input id="newCommerceContact" maxlength="120"></div>
 <div class="field full"><label for="newCommerceProducts">¿Qué vende u ofrece el comercio?</label><textarea id="newCommerceProducts" maxlength="1000" placeholder="Contanos qué productos vende o qué servicios brinda"></textarea></div>
+<div class="field full"><label for="newCommerceCoverage">Zona de cobertura (opcional)</label><textarea id="newCommerceCoverage" maxlength="1000" placeholder="Ej.: Moreno, Paso del Rey, La Reja y Merlo"></textarea><small class="hint">Indicá las localidades, barrios o zonas donde trabajás. Podés agregar más de una.</small></div>
 </div>
 <div class="form-foot">
 <button class="primary" id="newCommerceSubmit" type="submit">Registrar mi comercio</button>
@@ -146,6 +147,7 @@ footer strong{color:white}
 <label for="shopSelect">Comercio que estás administrando</label>
 <select id="shopSelect" aria-label="Elegir comercio"></select>
 </div>
+<div class="field" style="margin-top:14px"><label for="coverageInput">Zona de cobertura (opcional)</label><textarea id="coverageInput" maxlength="1000" placeholder="Ej.: Moreno, Paso del Rey, La Reja y Merlo"></textarea><small class="hint">Localidades, barrios o zonas donde ofrecés tus servicios o atendés clientes.</small><div class="form-foot"><button class="ghost" id="coverageSave" type="button">Guardar zona de cobertura</button><span class="form-message" id="coverageMessage" role="status"></span></div></div>
 <div class="form-foot">
 <button class="ghost" id="logoutBtn" type="button">Cerrar sesión</button>
 <span class="form-message">Accedés como <strong id="comercioEmail"></strong>.</span>
@@ -418,6 +420,8 @@ function showComercioView() {
 
 function renderComercio() {
   $("comercioNombre").textContent = comercio.nombre || "Mi comercio";
+  $("coverageInput").value = comercio.cobertura_localidades || "";
+  setMessage($("coverageMessage"), "");
   const partes = [comercio.localidad, comercio.provincia, comercio.rubro]
     .filter(Boolean).join(" · ");
   $("comercioDetalle").textContent = partes
@@ -436,6 +440,35 @@ function renderComercio() {
   selector.value = comercio.id;
   $("shopSelectorWrap").classList.toggle("hidden", comercios.length < 2);
 }
+
+$("coverageSave").addEventListener("click", async () => {
+  if (!comercio?.id || !session?.access_token) return;
+  const button = $("coverageSave");
+  button.disabled = true;
+  setMessage($("coverageMessage"), "Guardando zona de cobertura…");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/comercios?id=eq.${encodeURIComponent(comercio.id)}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      },
+      body: JSON.stringify({ cobertura_localidades: $("coverageInput").value.trim() || null })
+    });
+    if (!response.ok) throw new Error(`No se pudo guardar (error ${response.status}).`);
+    comercio.cobertura_localidades = $("coverageInput").value.trim() || null;
+    const linked = comercios.find(item => item.id === comercio.id);
+    if (linked) linked.cobertura_localidades = comercio.cobertura_localidades;
+    setMessage($("coverageMessage"), "Zona de cobertura guardada.", "ok");
+  } catch (error) {
+    console.error(error);
+    setMessage($("coverageMessage"), error.message || "No pudimos guardar la zona.", "error");
+  } finally {
+    button.disabled = false;
+  }
+});
 
 // ---------- Flujo de acceso ----------
 
@@ -635,6 +668,7 @@ $("newCommerceForm").addEventListener("submit", async event => {
     direccion: $("newCommerceAddress").value.trim() || null,
     contacto: $("newCommerceContact").value.trim() || null,
     que_vende: $("newCommerceProducts").value.trim() || null,
+    cobertura_localidades: $("newCommerceCoverage").value.trim() || null,
     propietario_id: session.user_id
   };
 
