@@ -86,7 +86,7 @@ footer strong{color:white}
 </div>
 <form id="authForm">
 <div class="form-grid">
-<div class="field full"><label for="authEmail">Correo electrónico *</label><input id="authEmail" type="email" required autocomplete="email" maxlength="120"></div>
+<div class="field full"><label for="authEmail">Tu correo electrónico real *</label><input id="authEmail" type="email" required autocomplete="email" maxlength="120"><small class="hint" id="authEmailHint">Escribí una casilla que puedas abrir. Si creás una cuenta, te enviaremos allí el correo para confirmar tu dirección. Revisá también Spam.</small></div>
 <div class="field full"><label for="authPassword">Contraseña *</label><input id="authPassword" type="password" required minlength="8" autocomplete="current-password" placeholder="Al crear cuenta: 12+ caracteres, mayúscula, minúscula, número y símbolo"></div>
 </div>
 <div class="form-foot">
@@ -448,9 +448,12 @@ function setMode(next) {
   tabSignup.classList.toggle("active", next === "signup");
   authSubmit.textContent = next === "login" ? "Iniciar sesión" : "Crear cuenta";
   authPassword.setAttribute("autocomplete", next === "login" ? "current-password" : "new-password");
+  $("authEmailHint").textContent = next === "login"
+    ? "Ingresá el mismo correo real que usaste al crear tu cuenta. Si no confirmaste la dirección, revisá Recibidos y Spam."
+    : "Escribí una casilla real a la que tengas acceso. Enviaremos allí el correo de confirmación; revisá Recibidos y Spam para activar tu cuenta.";
   setMessage(authMessage, next === "login"
-    ? "Tu contraseña se verifica contra Supabase Auth; no la guardamos en el navegador."
-    : "Te enviaremos un correo de confirmación si tu cuenta la necesita.");
+    ? "Ingresá el correo y la contraseña de tu cuenta de Encontralo Ya."
+    : "Creá tu cuenta con un correo real y una contraseña segura.");
   $("resendConfirmWrap").classList.toggle("hidden", next !== "login");
   setMessage($("resendConfirmMessage"), "");
 }
