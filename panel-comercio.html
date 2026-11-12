@@ -183,12 +183,13 @@ footer strong{color:white}
 <form id="productForm">
 <input type="hidden" id="productId">
 <div class="form-grid">
+<div class="field"><label for="publicationType">¿Qué vas a publicar? *</label><select id="publicationType" required><option value="producto">Producto</option><option value="servicio">Servicio / trabajo</option></select></div>
 <div class="field full"><label for="productName">Nombre del producto o servicio *</label><input id="productName" required maxlength="120"></div>
 <div class="field"><label for="productCategory">Categoría</label><select id="productCategory"><option value="">Sin categoría</option><optgroup label="Comercios generales"><option>Almacén</option><option>Kiosco</option><option>Supermercado</option><option>Autoservicio</option><option>Mayorista</option><option>Polirrubro</option></optgroup><optgroup label="Gastronomía y alimentos"><option>Pizzería</option><option>Panadería</option><option>Confitería y pastelería</option><option>Rotisería</option><option>Restaurante</option><option>Cafetería</option><option>Heladería</option><option>Bar</option><option>Carnicería</option><option>Pollería</option><option>Pescadería</option><option>Verdulería y frutería</option><option>Dietética</option><option>Fábrica de pastas</option><option>Servicio de catering</option></optgroup><optgroup label="Belleza y cuidado personal"><option>Peluquería</option><option>Barbería</option><option>Centro de estética</option><option>Manicuría y uñas</option><option>Cosmética y perfumería</option><option>Spa y masajes</option></optgroup><optgroup label="Indumentaria y accesorios"><option>Indumentaria</option><option>Calzado</option><option>Marroquinería</option><option>Accesorios y bijouterie</option><option>Ropa deportiva</option><option>Lencería</option></optgroup><optgroup label="Hogar, construcción y mantenimiento"><option>Ferretería</option><option>Materiales para construcción</option><option>Pinturería</option><option>Electricidad</option><option>Plomería y sanitarios</option><option>Gas y calefacción</option><option>Muebles</option><option>Bazar y hogar</option><option>Decoración</option><option>Iluminación</option><option>Jardinería y vivero</option><option>Vivero</option><option>Energía solar y paneles solares</option><option>Limpieza</option><option>Aberturas y vidriería</option></optgroup><optgroup label="Automotor, movilidad y repuestos"><option>Repuestos automotores</option><option>Taller mecánico</option><option>Gomería</option><option>Bicicletería</option><option>Motos y repuestos</option><option>Concesionaria de vehículos</option><option>Lavadero de autos</option></optgroup><optgroup label="Tecnología y entretenimiento"><option>Celulares y accesorios</option><option>Informática</option><option>Electrónica</option><option>Audio y video</option><option>Juguetería</option><option>Deportes y camping</option><option>Instrumentos musicales</option><option>Fotografía</option></optgroup><optgroup label="Salud, mascotas y óptica"><option>Farmacia</option><option>Perfumería</option><option>Óptica</option><option>Veterinaria</option><option>Pet shop</option><option>Alimentos para mascotas</option><option>Ortopedia</option></optgroup><optgroup label="Librería, educación y oficina"><option>Librería</option><option>Papelería y artículos de oficina</option><option>Imprenta y gráfica</option></optgroup><optgroup label="Servicios profesionales y personales"><option>Electricista</option><option>Plomero</option><option>Gasista matriculado</option><option>Pintor</option><option>Albañil y contratista</option><option>Carpintería</option><option>Herrero</option><option>Servicio técnico</option><option>Diseño y fotografía</option><option>Clases y apoyo escolar</option><option>Servicios de informática</option><option>Fletes y mudanzas</option><option>Cerrajería</option><option>Costura y arreglos de ropa</option></optgroup><optgroup label="Otros"><option>Otros comercios o servicios</option></optgroup></select></div>
 <div class="field"><label for="productPrice">Precio</label><input id="productPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Vacío = consultar precio"></div>
 <div class="field"><label for="productCurrency">Moneda</label><select id="productCurrency"><option value="ARS">ARS</option><option value="USD">USD</option></select></div>
 <div class="field"><label for="productAvailable">Disponibilidad</label><select id="productAvailable"><option value="true">Disponible</option><option value="false">No disponible</option></select></div>
-<div class="field full"><label for="productDescription">Descripción</label><textarea id="productDescription" maxlength="500" placeholder="Detalles del producto: marca, medidas, presentación…"></textarea></div>
+<div class="field full"><label for="productDescription">Descripción</label><textarea id="productDescription" maxlength="500" placeholder="Contá qué ofrecés, tus habilidades, experiencia, zona de trabajo, materiales o detalles importantes…"></textarea></div>
 </div>
 <div class="form-foot">
 <button class="primary" id="productSubmit" type="submit">Publicar producto</button>
@@ -874,8 +875,8 @@ function clearProductForm() {
   $("productId").value = "";
   $("productForm").reset();
   $("productAvailable").value = "true";
-  $("productSubmit").textContent = "Publicar producto";
-  $("formTitle").textContent = "Publicar un producto";
+  $("productSubmit").textContent = "Publicar";
+  $("formTitle").textContent = "Publicar producto o servicio";
   $("productCancel").classList.add("hidden");
   setMessage($("productMessage"), "");
 }
@@ -890,18 +891,20 @@ $("productForm").addEventListener("submit", async event => {
   const editando = Boolean($("productId").value);
 
   submit.disabled = true;
-  setMessage($("productMessage"), editando ? "Guardando cambios…" : "Publicando producto…");
+  setMessage($("productMessage"), editando ? "Guardando cambios…" : "Publicando…");
 
   try {
     const cuerpo = editando
       ? {
-          p_producto_id: $("productId").value,
+          p_publicacion_id: $("productId").value,
           p_nombre: $("productName").value.trim(),
           p_descripcion: $("productDescription").value.trim(),
           p_categoria: $("productCategory").value,
           p_precio: $("productPrice").value === "" ? null : Number($("productPrice").value),
           p_moneda: $("productCurrency").value,
-          p_disponible: $("productAvailable").value === "true"
+          p_disponible: $("productAvailable").value === "true",
+          p_tipo: $("publicationType").value,
+          p_tipo: $("publicationType").value
         }
       : {
           p_comercio_id: comercio.id,
@@ -913,7 +916,7 @@ $("productForm").addEventListener("submit", async event => {
           p_disponible: $("productAvailable").value === "true"
         };
 
-    const fn = editando ? "actualizar_producto" : "crear_producto";
+    const fn = editando ? "actualizar_publicacion" : "crear_publicacion";
 
     const response = await authenticatedRpc(fn, cuerpo);
 
@@ -943,11 +946,12 @@ function llenarParaEditar(producto) {
   $("productName").value = producto.nombre || "";
   $("productDescription").value = producto.descripcion || "";
   $("productCategory").value = producto.categoria || "";
+  $("publicationType").value = producto.tipo || "producto";
   $("productPrice").value = producto.precio ?? "";
   $("productCurrency").value = producto.moneda || "ARS";
   $("productAvailable").value = producto.disponible === false ? "false" : "true";
   $("productSubmit").textContent = "Guardar cambios";
-  $("formTitle").textContent = "Editar producto";
+  $("formTitle").textContent = producto.tipo === "servicio" ? "Editar servicio" : "Editar producto";
   $("productCancel").classList.remove("hidden");
   $("productForm").scrollIntoView({ behavior: "smooth" });
   $("productName").focus({ preventScroll: true });
@@ -959,12 +963,12 @@ async function loadMisProductos() {
 
   const status = $("productsStatus");
   const grid = $("productsGrid");
-  status.textContent = "Buscando tus productos…";
+  status.textContent = "Buscando tus publicaciones…";
   grid.innerHTML = "";
 
   try {
     const response = await authenticatedGet(
-      `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=nombre.asc`
+      `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=nombre.asc`
     );
 
     if (!response.ok) {
@@ -975,17 +979,17 @@ async function loadMisProductos() {
     const productos = await response.json();
 
     if (!productos.length) {
-      status.textContent = "Todavía no publicaste productos.";
+      status.textContent = "Todavía no publicaste productos ni servicios.";
       grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Publicá tu primer producto o servicio con el formulario de arriba.</div>';
       return;
     }
 
-    status.textContent = `${productos.length} producto(s) publicados.`;
+    status.textContent = `${productos.length} publicación(es) activas o guardadas.`;
 
     grid.innerHTML = productos.map(producto => {
       const disponible = producto.disponible !== false;
       return `<article class="product">
-        <h3>${escapeHTML(producto.nombre || "Producto")}</h3>
+        <h3>${producto.tipo === "servicio" ? "Servicio: " : "Producto: "}${escapeHTML(producto.nombre || "Publicación")}</h3>
         <p class="desc">${escapeHTML(producto.descripcion || producto.categoria || "")}</p>
         <div class="price">${escapeHTML(money(producto.precio, producto.moneda))}</div>
         <div class="meta">${escapeHTML(producto.categoria || "Sin categoría")}</div>
