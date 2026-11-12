@@ -369,6 +369,7 @@ footer strong{color:white}
 <div class="field"><label for="merchantContact">Persona de contacto</label><input id="merchantContact" name="contacto" maxlength="100"></div>
 <div class="field full"><label for="merchantAddress">Dirección</label><input id="merchantAddress" name="direccion" maxlength="180"></div>
 <div class="field full"><label for="merchantProducts">¿Qué vendés u ofrecés?</label><textarea id="merchantProducts" name="que_vende" maxlength="1000" placeholder="Contanos qué productos vendés o qué servicios brindás"></textarea></div>
+<div class="field full"><label for="merchantCoverage">Zona de cobertura (opcional)</label><textarea id="merchantCoverage" name="cobertura_localidades" maxlength="1000" placeholder="Ej.: Moreno, Paso del Rey, La Reja y Merlo"></textarea><small class="hint">Si ofrecés servicios, indicá las localidades o barrios donde trabajás.</small></div>
 <div class="hp" aria-hidden="true"><label for="website">Dejar vacío</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
 </div>
 <div class="form-foot">
@@ -509,7 +510,8 @@ function renderProducts() {
       product.categoria,
       business?.nombre,
       business?.localidad,
-      business?.provincia
+      business?.provincia,
+      business?.cobertura_localidades
     ].filter(Boolean).join(" ").toLocaleLowerCase("es-AR");
 
     return categoryMatch && (!term || text.includes(term));
@@ -537,6 +539,7 @@ function renderProducts() {
       <h3>${product.tipo === "servicio" ? "Servicio: " : ""}${escapeHTML(product.nombre || "Publicación")}</h3>
       <p class="desc">${escapeHTML(product.descripcion || product.categoria || "")}</p>
       <div class="meta">${escapeHTML(business?.nombre || "Comercio")}${business?.localidad ? " · " + escapeHTML(business.localidad) : ""}${business?.provincia ? ", " + escapeHTML(business.provincia) : ""}</div>
+      ${business?.cobertura_localidades ? `<div class="meta">Zona de cobertura: ${escapeHTML(business.cobertura_localidades)}</div>` : ""}
       <div class="price">${escapeHTML(money(product.precio, product.moneda))}</div>
       <div class="product-actions" style="flex-wrap:wrap">
         ${whatsapp
@@ -575,7 +578,7 @@ async function loadCatalog() {
       ).join(",");
 
       allBusinesses = await supabaseGet(
-        `comercios?select=id,nombre,localidad,provincia,telefono&id=in.(${encodeURIComponent(inList)})`
+        `comercios?select=id,nombre,localidad,provincia,telefono,cobertura_localidades&id=in.(${encodeURIComponent(inList)})`
       );
     }
 
@@ -775,7 +778,8 @@ merchantForm.addEventListener("submit", async event => {
     telefono: rawPhone,
     contacto: document.getElementById("merchantContact").value.trim() || null,
     direccion: document.getElementById("merchantAddress").value.trim() || null,
-    que_vende: document.getElementById("merchantProducts").value.trim() || null
+    que_vende: document.getElementById("merchantProducts").value.trim() || null,
+    cobertura_localidades: document.getElementById("merchantCoverage").value.trim() || null
   };
 
   if (
