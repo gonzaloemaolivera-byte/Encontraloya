@@ -292,6 +292,8 @@ footer strong{color:white}
     <button class="ghost" id="acceptServicePrice" type="button">Aceptar precio propuesto</button>
     <button class="ghost" id="confirmServiceArrival" type="button">Confirmar que llegó</button>
     <button class="primary" id="confirmServicePaid" type="button">Trabajo terminado y pagado</button>
+    <button class="ghost" id="cancelServiceRequest" type="button">Cancelar antes de la llegada</button>
+    <button class="ghost" id="reportServiceProblem" type="button">Reportar un problema</button>
   </div>
   <p id="serviceCustomerChatStatus" class="form-message" role="status"></p>
 </section>
@@ -947,6 +949,20 @@ document.getElementById("acceptServicePrice").addEventListener("click",async()=>
 document.getElementById("confirmServiceArrival").addEventListener("click",async()=>{
  const job=window.__eyService;if(!job?.token)return;const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirmar_llegada_cliente`,{method:"POST",headers,body:JSON.stringify({p_token:job.token})});
  document.getElementById("serviceCustomerChatStatus").textContent=response.ok?"Llegada confirmada.":"Todavía no figura la llegada del profesional.";await loadCustomerServiceChat();
+});
+document.getElementById("cancelServiceRequest").addEventListener("click",async()=>{
+ const job=window.__eyService;if(!job?.id||!job?.token)return;
+ const reason=window.prompt("¿Por qué querés cancelar la solicitud?");if(reason===null)return;
+ const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/cancelar_solicitud_servicio`,{method:"POST",headers,body:JSON.stringify({p_solicitud_id:job.id,p_token:job.token,p_motivo:reason})});
+ document.getElementById("serviceCustomerChatStatus").textContent=response.ok?"Solicitud cancelada.":"No se puede cancelar en esta etapa; si el profesional ya llegó, reportá un problema.";
+ await loadCustomerServiceChat();
+});
+document.getElementById("reportServiceProblem").addEventListener("click",async()=>{
+ const job=window.__eyService;if(!job?.id||!job?.token)return;
+ const reason=window.prompt("Contanos qué problema ocurrió. La solicitud quedará en revisión.");if(reason===null)return;
+ const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/reportar_problema_servicio`,{method:"POST",headers,body:JSON.stringify({p_solicitud_id:job.id,p_token:job.token,p_motivo:reason})});
+ document.getElementById("serviceCustomerChatStatus").textContent=response.ok?"Problema registrado. La solicitud quedó en revisión.":"No se pudo registrar el problema.";
+ await loadCustomerServiceChat();
 });
 document.getElementById("confirmServicePaid").addEventListener("click",async()=>{
  const job=window.__eyService;if(!job?.token)return;const raw=window.prompt("Confirmá el importe exacto acordado y pagado (ARS):");if(raw===null)return;
