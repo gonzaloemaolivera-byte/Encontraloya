@@ -393,7 +393,7 @@ function whatsappLink(phoneRaw, productName) {
 
   const international = "549" + national;
   const message = encodeURIComponent(
-    "Hola, vi este producto en Encontralo Ya: " +
+    "Hola, vi esta publicación en Encontralo Ya: " +
     (productName || "") +
     ". ¿Me confirmás precio y disponibilidad?"
   );
@@ -480,18 +480,18 @@ function renderProducts() {
     );
 
     return `<article class="product">
-      <h3>${escapeHTML(product.nombre || "Producto")}</h3>
+      <h3>${product.tipo === "servicio" ? "Servicio: " : ""}${escapeHTML(product.nombre || "Publicación")}</h3>
       <p class="desc">${escapeHTML(product.descripcion || product.categoria || "")}</p>
       <div class="meta">${escapeHTML(business?.nombre || "Comercio")}${business?.localidad ? " · " + escapeHTML(business.localidad) : ""}${business?.provincia ? ", " + escapeHTML(business.provincia) : ""}</div>
       <div class="price">${escapeHTML(money(product.precio, product.moneda))}</div>
       <div class="product-actions" style="flex-wrap:wrap">
         ${whatsapp
-          ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>`
+          ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">${product.tipo === "servicio" ? "Consultar / pedir presupuesto" : "Consultar por WhatsApp"}</a>`
           : '<span class="meta">Teléfono no disponible para WhatsApp</span>'
         }
-        ${product.precio !== null && Number(product.precio) > 0 && (product.moneda || "ARS") === "ARS"
+        ${product.tipo !== "servicio" && product.precio !== null && Number(product.precio) > 0 && (product.moneda || "ARS") === "ARS"
           ? `<button class="add-btn" type="button" data-add="${escapeHTML(product.id)}" data-commerce="${escapeHTML(product.comercio_id)}">Agregar al pedido</button>`
-          : '<span class="meta">Para comprar, consultá el precio al comercio</span>'
+          : '<span class="meta">Consultá disponibilidad y condiciones con quien lo ofrece</span>'
         }
       </div>
     </article>`;
@@ -499,12 +499,12 @@ function renderProducts() {
 }
 
 async function loadCatalog() {
-  status.textContent = "Buscando productos publicados…";
+  status.textContent = "Buscando productos y servicios publicados…";
   grid.innerHTML = "";
 
   try {
     allProducts = await supabaseGet(
-      "productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id&disponible=eq.true&order=nombre.asc&limit=100"
+      "productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id,tipo&disponible=eq.true&order=nombre.asc&limit=200"
     );
 
     const ids = [
@@ -524,7 +524,7 @@ async function loadCatalog() {
     }
 
     status.textContent =
-      `${allProducts.length} producto(s) encontrado(s) en el catálogo.`;
+      `${allProducts.length} publicación(es) encontrada(s) en el catálogo.`;
 
     renderProducts();
   } catch (error) {
