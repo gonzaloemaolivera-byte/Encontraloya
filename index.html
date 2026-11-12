@@ -141,7 +141,7 @@ footer strong{color:white}
 <div>
 <div class="eyebrow">Comprá mejor, cerca tuyo</div>
 <h1>Encontrá lo que necesitás. Compará y comprá.</h1>
-<p class="lead">Buscá productos de distintos comercios en un solo lugar. Desde repuestos y ferretería hasta artículos para tu hogar.</p>
+<p class="lead">Buscá productos y servicios de distintos comercios y profesionales en un solo lugar.</p>
 <form class="searchbox" id="searchForm">
 <input id="searchInput" type="search" placeholder="¿Qué producto estás buscando?" aria-label="Buscar productos">
 <button class="primary" type="submit">Buscar productos</button>
@@ -157,18 +157,96 @@ footer strong{color:white}
 <main class="wrap">
 <section>
 <div class="section-head">
-<div><h2>Explorá productos</h2><p class="sub">Resultados publicados por comercios registrados.</p></div>
+<div><h2>Explorá productos y servicios</h2><p class="sub">Productos y servicios publicados por comercios y prestadores registrados.</p></div>
 </div>
 <nav class="categories" id="categories" aria-label="Filtrar por categoría">
 <button class="chip active" data-category="Todos">Todos</button>
+<button class="chip" data-category="Almacén">Almacén</button>
+<button class="chip" data-category="Kiosco">Kiosco</button>
+<button class="chip" data-category="Supermercado">Supermercado</button>
+<button class="chip" data-category="Autoservicio">Autoservicio</button>
+<button class="chip" data-category="Mayorista">Mayorista</button>
+<button class="chip" data-category="Polirrubro">Polirrubro</button>
+<button class="chip" data-category="Pizzería">Pizzería</button>
+<button class="chip" data-category="Panadería">Panadería</button>
+<button class="chip" data-category="Confitería y pastelería">Confitería y pastelería</button>
+<button class="chip" data-category="Rotisería">Rotisería</button>
+<button class="chip" data-category="Restaurante">Restaurante</button>
+<button class="chip" data-category="Cafetería">Cafetería</button>
+<button class="chip" data-category="Heladería">Heladería</button>
+<button class="chip" data-category="Bar">Bar</button>
+<button class="chip" data-category="Carnicería">Carnicería</button>
+<button class="chip" data-category="Pollería">Pollería</button>
+<button class="chip" data-category="Pescadería">Pescadería</button>
+<button class="chip" data-category="Verdulería y frutería">Verdulería y frutería</button>
+<button class="chip" data-category="Dietética">Dietética</button>
+<button class="chip" data-category="Fábrica de pastas">Fábrica de pastas</button>
+<button class="chip" data-category="Servicio de catering">Servicio de catering</button>
+<button class="chip" data-category="Peluquería">Peluquería</button>
+<button class="chip" data-category="Barbería">Barbería</button>
+<button class="chip" data-category="Centro de estética">Centro de estética</button>
+<button class="chip" data-category="Manicuría y uñas">Manicuría y uñas</button>
+<button class="chip" data-category="Cosmética y perfumería">Cosmética y perfumería</button>
+<button class="chip" data-category="Spa y masajes">Spa y masajes</button>
+<button class="chip" data-category="Indumentaria">Indumentaria</button>
+<button class="chip" data-category="Calzado">Calzado</button>
+<button class="chip" data-category="Marroquinería">Marroquinería</button>
+<button class="chip" data-category="Accesorios y bijouterie">Accesorios y bijouterie</button>
+<button class="chip" data-category="Ropa deportiva">Ropa deportiva</button>
+<button class="chip" data-category="Lencería">Lencería</button>
 <button class="chip" data-category="Ferretería">Ferretería</button>
-<button class="chip" data-category="Repuestos">Repuestos</button>
-<button class="chip" data-category="Limpieza">Limpieza</button>
-<button class="chip" data-category="Bazar y hogar">Bazar y hogar</button>
+<button class="chip" data-category="Materiales para construcción">Materiales para construcción</button>
+<button class="chip" data-category="Pinturería">Pinturería</button>
 <button class="chip" data-category="Electricidad">Electricidad</button>
-<button class="chip" data-category="Construcción">Construcción</button>
-<button class="chip" data-category="Alimentos">Alimentos</button>
-<button class="chip" data-category="Otros">Otros</button>
+<button class="chip" data-category="Plomería y sanitarios">Plomería y sanitarios</button>
+<button class="chip" data-category="Gas y calefacción">Gas y calefacción</button>
+<button class="chip" data-category="Muebles">Muebles</button>
+<button class="chip" data-category="Bazar y hogar">Bazar y hogar</button>
+<button class="chip" data-category="Decoración">Decoración</button>
+<button class="chip" data-category="Iluminación">Iluminación</button>
+<button class="chip" data-category="Jardinería y vivero">Jardinería y vivero</button>
+<button class="chip" data-category="Limpieza">Limpieza</button>
+<button class="chip" data-category="Aberturas y vidriería">Aberturas y vidriería</button>
+<button class="chip" data-category="Repuestos automotores">Repuestos automotores</button>
+<button class="chip" data-category="Taller mecánico">Taller mecánico</button>
+<button class="chip" data-category="Gomería">Gomería</button>
+<button class="chip" data-category="Bicicletería">Bicicletería</button>
+<button class="chip" data-category="Motos y repuestos">Motos y repuestos</button>
+<button class="chip" data-category="Concesionaria de vehículos">Concesionaria de vehículos</button>
+<button class="chip" data-category="Lavadero de autos">Lavadero de autos</button>
+<button class="chip" data-category="Celulares y accesorios">Celulares y accesorios</button>
+<button class="chip" data-category="Informática">Informática</button>
+<button class="chip" data-category="Electrónica">Electrónica</button>
+<button class="chip" data-category="Audio y video">Audio y video</button>
+<button class="chip" data-category="Juguetería">Juguetería</button>
+<button class="chip" data-category="Deportes y camping">Deportes y camping</button>
+<button class="chip" data-category="Instrumentos musicales">Instrumentos musicales</button>
+<button class="chip" data-category="Fotografía">Fotografía</button>
+<button class="chip" data-category="Farmacia">Farmacia</button>
+<button class="chip" data-category="Perfumería">Perfumería</button>
+<button class="chip" data-category="Óptica">Óptica</button>
+<button class="chip" data-category="Veterinaria">Veterinaria</button>
+<button class="chip" data-category="Pet shop">Pet shop</button>
+<button class="chip" data-category="Alimentos para mascotas">Alimentos para mascotas</button>
+<button class="chip" data-category="Ortopedia">Ortopedia</button>
+<button class="chip" data-category="Librería">Librería</button>
+<button class="chip" data-category="Papelería y artículos de oficina">Papelería y artículos de oficina</button>
+<button class="chip" data-category="Imprenta y gráfica">Imprenta y gráfica</button>
+<button class="chip" data-category="Electricista">Electricista</button>
+<button class="chip" data-category="Plomero">Plomero</button>
+<button class="chip" data-category="Gasista matriculado">Gasista matriculado</button>
+<button class="chip" data-category="Pintor">Pintor</button>
+<button class="chip" data-category="Albañil y contratista">Albañil y contratista</button>
+<button class="chip" data-category="Carpintería">Carpintería</button>
+<button class="chip" data-category="Herrero">Herrero</button>
+<button class="chip" data-category="Servicio técnico">Servicio técnico</button>
+<button class="chip" data-category="Diseño y fotografía">Diseño y fotografía</button>
+<button class="chip" data-category="Clases y apoyo escolar">Clases y apoyo escolar</button>
+<button class="chip" data-category="Servicios de informática">Servicios de informática</button>
+<button class="chip" data-category="Fletes y mudanzas">Fletes y mudanzas</button>
+<button class="chip" data-category="Cerrajería">Cerrajería</button>
+<button class="chip" data-category="Costura y arreglos de ropa">Costura y arreglos de ropa</button>
+<button class="chip" data-category="Otros comercios o servicios">Otros comercios o servicios</button>
 </nav>
 <div class="status" id="catalogStatus" role="status">Conectando con el catálogo…</div>
 <div class="grid" id="productGrid"></div>
@@ -207,13 +285,13 @@ footer strong{color:white}
 <form id="merchantForm">
 <div class="form-grid">
 <div class="field"><label for="merchantName">Nombre del comercio *</label><input id="merchantName" name="nombre" required maxlength="100"></div>
-<div class="field"><label for="merchantType">Rubro *</label><select id="merchantType" name="rubro" required><option value="">Elegí un rubro</option><option>Ferretería</option><option>Repuestos</option><option>Limpieza</option><option>Bazar y hogar</option><option>Electricidad</option><option>Construcción</option><option>Alimentos</option><option>Otros</option></select></div>
+<div class="field"><label for="merchantType">Rubro *</label><select id="merchantType" name="rubro" required><option value="">Elegí el rubro de tu comercio o servicio</option><optgroup label="Comercios generales"><option>Almacén</option><option>Kiosco</option><option>Supermercado</option><option>Autoservicio</option><option>Mayorista</option><option>Polirrubro</option></optgroup><optgroup label="Gastronomía y alimentos"><option>Pizzería</option><option>Panadería</option><option>Confitería y pastelería</option><option>Rotisería</option><option>Restaurante</option><option>Cafetería</option><option>Heladería</option><option>Bar</option><option>Carnicería</option><option>Pollería</option><option>Pescadería</option><option>Verdulería y frutería</option><option>Dietética</option><option>Fábrica de pastas</option><option>Servicio de catering</option></optgroup><optgroup label="Belleza y cuidado personal"><option>Peluquería</option><option>Barbería</option><option>Centro de estética</option><option>Manicuría y uñas</option><option>Cosmética y perfumería</option><option>Spa y masajes</option></optgroup><optgroup label="Indumentaria y accesorios"><option>Indumentaria</option><option>Calzado</option><option>Marroquinería</option><option>Accesorios y bijouterie</option><option>Ropa deportiva</option><option>Lencería</option></optgroup><optgroup label="Hogar, construcción y mantenimiento"><option>Ferretería</option><option>Materiales para construcción</option><option>Pinturería</option><option>Electricidad</option><option>Plomería y sanitarios</option><option>Gas y calefacción</option><option>Muebles</option><option>Bazar y hogar</option><option>Decoración</option><option>Iluminación</option><option>Jardinería y vivero</option><option>Limpieza</option><option>Aberturas y vidriería</option></optgroup><optgroup label="Automotor, movilidad y repuestos"><option>Repuestos automotores</option><option>Taller mecánico</option><option>Gomería</option><option>Bicicletería</option><option>Motos y repuestos</option><option>Concesionaria de vehículos</option><option>Lavadero de autos</option></optgroup><optgroup label="Tecnología y entretenimiento"><option>Celulares y accesorios</option><option>Informática</option><option>Electrónica</option><option>Audio y video</option><option>Juguetería</option><option>Deportes y camping</option><option>Instrumentos musicales</option><option>Fotografía</option></optgroup><optgroup label="Salud, mascotas y óptica"><option>Farmacia</option><option>Perfumería</option><option>Óptica</option><option>Veterinaria</option><option>Pet shop</option><option>Alimentos para mascotas</option><option>Ortopedia</option></optgroup><optgroup label="Librería, educación y oficina"><option>Librería</option><option>Papelería y artículos de oficina</option><option>Imprenta y gráfica</option></optgroup><optgroup label="Servicios profesionales y personales"><option>Electricista</option><option>Plomero</option><option>Gasista matriculado</option><option>Pintor</option><option>Albañil y contratista</option><option>Carpintería</option><option>Herrero</option><option>Servicio técnico</option><option>Diseño y fotografía</option><option>Clases y apoyo escolar</option><option>Servicios de informática</option><option>Fletes y mudanzas</option><option>Cerrajería</option><option>Costura y arreglos de ropa</option></optgroup><optgroup label="Otros"><option>Otros comercios o servicios</option></optgroup></select></div>
 <div class="field"><label for="merchantCity">Localidad *</label><input id="merchantCity" name="localidad" required maxlength="80"></div>
 <div class="field"><label for="merchantProvince">Provincia *</label><input id="merchantProvince" name="provincia" required maxlength="80"></div>
 <div class="field"><label for="merchantPhone">WhatsApp o teléfono *</label><input id="merchantPhone" name="telefono" required maxlength="30" inputmode="tel" autocomplete="tel" placeholder="Ej.: 11 2345-6789"></div>
 <div class="field"><label for="merchantContact">Persona de contacto</label><input id="merchantContact" name="contacto" maxlength="100"></div>
 <div class="field full"><label for="merchantAddress">Dirección</label><input id="merchantAddress" name="direccion" maxlength="180"></div>
-<div class="field full"><label for="merchantProducts">¿Qué vendés?</label><textarea id="merchantProducts" name="que_vende" maxlength="1000" placeholder="Contanos brevemente qué productos ofrecés"></textarea></div>
+<div class="field full"><label for="merchantProducts">¿Qué vendés u ofrecés?</label><textarea id="merchantProducts" name="que_vende" maxlength="1000" placeholder="Contanos qué productos vendés o qué servicios brindás"></textarea></div>
 <div class="hp" aria-hidden="true"><label for="website">Dejar vacío</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
 </div>
 <div class="form-foot">
