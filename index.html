@@ -266,13 +266,34 @@ footer strong{color:white}
       <div class="field"><label for="serviceClientPhone">Tu teléfono *</label><input id="serviceClientPhone" required maxlength="30" inputmode="tel"></div>
       <div class="field full"><label for="serviceClientEmail">Correo (opcional)</label><input id="serviceClientEmail" type="email" maxlength="160"></div>
       <div class="field full"><label for="serviceClientDetail">¿Qué trabajo necesitás? *</label><textarea id="serviceClientDetail" required minlength="5" maxlength="2000" placeholder="Contá qué necesitás y dónde se realizaría el trabajo."></textarea></div>
+      <div class="field"><label for="serviceDestination">Dirección del trabajo *</label><input id="serviceDestination" required maxlength="250" placeholder="Calle y altura"></div>
+      <div class="field"><label for="serviceLocality">Localidad *</label><input id="serviceLocality" required maxlength="120" placeholder="Ej.: Moreno"></div>
+      <div class="field"><label for="servicePreferredDate">Día y horario preferido (opcional)</label><input id="servicePreferredDate" type="datetime-local"></div>
+      <div class="field"><label for="serviceProposedPrice">Precio que proponés (ARS, opcional)</label><input id="serviceProposedPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Dejalo vacío si querés presupuesto"></div>
     </div>
     <div class="form-foot"><button class="primary" id="serviceRequestSubmit" type="submit">Enviar solicitud gratis</button><button class="small-btn" id="serviceRequestCancel" type="button">Cancelar</button><span id="serviceRequestMessage" class="form-message" role="status"></span></div>
   </form>
   <div id="serviceRequestSuccess" class="hidden">
-    <p><strong>¡Solicitud enviada!</strong> Guardá este código: lo vas a necesitar para confirmar el trabajo cuando esté terminado.</p>
-    <p><code id="serviceCustomerToken"></code> <button class="small-btn" type="button" id="copyServiceToken">Copiar código</button></p>
+    <p><strong>¡Solicitud enviada!</strong> Guardá este código privado para entrar a tu conversación y seguir el trabajo.</p>
+    <p>Código privado: <code id="serviceCustomerToken"></code> <button class="small-btn" type="button" id="copyServiceToken">Copiar código</button></p>
+    <p>Número de solicitud: <code id="serviceRequestId"></code></p>
+    <button class="primary" type="button" id="openServiceChat">Abrir conversación y seguimiento</button>
   </div>
+</section>
+<section class="panel hidden" id="serviceCustomerChatPanel">
+  <h2>Conversación y seguimiento del trabajo</h2>
+  <p id="serviceCustomerJobState" class="sub">Estado de la solicitud</p>
+  <div id="serviceCustomerMessages" class="order-card" style="max-height:260px;overflow:auto"></div>
+  <form id="serviceCustomerChatForm">
+    <div class="field"><label for="serviceCustomerMessage">Mensaje</label><textarea id="serviceCustomerMessage" maxlength="2000" required placeholder="Escribile al profesional…"></textarea></div>
+    <button class="primary" type="submit">Enviar mensaje</button>
+  </form>
+  <div class="form-foot">
+    <button class="ghost" id="acceptServicePrice" type="button">Aceptar precio propuesto</button>
+    <button class="ghost" id="confirmServiceArrival" type="button">Confirmar que llegó</button>
+    <button class="primary" id="confirmServicePaid" type="button">Trabajo terminado y pagado</button>
+  </div>
+  <p id="serviceCustomerChatStatus" class="form-message" role="status"></p>
 </section>
 
 <section class="panel" id="serviceCustomerConfirmPanel" aria-labelledby="serviceCustomerConfirmTitle">
@@ -846,19 +867,25 @@ document.getElementById("serviceRequestForm").addEventListener("submit", async e
   submit.disabled = true;
   message.textContent = "Enviando solicitud…";
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/crear_solicitud_servicio`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/crear_solicitud_servicio_v2`, {
       method:"POST", headers,
       body:JSON.stringify({
         p_publicacion_id:document.getElementById("servicePublicationId").value,
         p_cliente_nombre:document.getElementById("serviceClientName").value.trim(),
         p_cliente_telefono:document.getElementById("serviceClientPhone").value.trim(),
         p_cliente_email:document.getElementById("serviceClientEmail").value.trim() || null,
-        p_detalle:document.getElementById("serviceClientDetail").value.trim()
+        p_detalle:document.getElementById("serviceClientDetail").value.trim(),
+        p_destino_direccion:document.getElementById("serviceDestination").value.trim(),
+        p_destino_localidad:document.getElementById("serviceLocality").value.trim(),
+        p_fecha_preferida:document.getElementById("servicePreferredDate").value ? new Date(document.getElementById("servicePreferredDate").value).toISOString() : null,
+        p_precio_propuesto:document.getElementById("serviceProposedPrice").value === "" ? null : Number(document.getElementById("serviceProposedPrice").value)
       })
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.ok) throw new Error(data.message || data.msg || "No pudimos enviar la solicitud.");
-    document.getElementById("serviceCustomerToken").textContent = data.token_cliente;
+    document.getElementById("serviceCustomerToken").textContent = data.token_chat;
+    document.getElementById("serviceRequestId").textContent = data.solicitud_id;
+    window.__eyService = {id:data.solicitud_id, token:data.token_chat};
     document.getElementById("serviceRequestForm").classList.add("hidden");
     document.getElementById("serviceRequestSuccess").classList.remove("hidden");
     message.textContent = "";
@@ -879,6 +906,34 @@ document.getElementById("copyServiceToken").addEventListener("click", async () =
     document.getElementById("serviceCustomerConfirmPanel").scrollIntoView({behavior:"smooth"});
   }
 });
+async function loadCustomerServiceChat() {
+ const job=window.__eyService;if(!job?.id||!job?.token)return;
+ const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/listar_mensajes_servicio`,{method:"POST",headers,body:JSON.stringify({p_solicitud_id:job.id,p_token:job.token})});
+ const data=await response.json().catch(()=>[]);
+ if(!response.ok){document.getElementById("serviceCustomerChatStatus").textContent="No pudimos cargar la conversación.";return;}
+ document.getElementById("serviceCustomerMessages").innerHTML=(Array.isArray(data)?data:[]).map(m=>`<p><strong>${escapeHTML(m.emisor==="prestador"?"Profesional":"Vos")}:</strong> ${escapeHTML(m.contenido)} <small>${escapeHTML(new Date(m.creado_at).toLocaleString("es-AR"))}</small></p>`).join("")||"Todavía no hay mensajes.";
+}
+document.getElementById("openServiceChat").addEventListener("click",()=>{document.getElementById("serviceCustomerChatPanel").classList.remove("hidden");document.getElementById("serviceCustomerChatPanel").scrollIntoView({behavior:"smooth"});loadCustomerServiceChat();});
+document.getElementById("serviceCustomerChatForm").addEventListener("submit",async e=>{
+ e.preventDefault();const job=window.__eyService;const input=document.getElementById("serviceCustomerMessage");if(!job?.token||!input.value.trim())return;
+ const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/enviar_mensaje_servicio`,{method:"POST",headers,body:JSON.stringify({p_token:job.token,p_contenido:input.value.trim()})});
+ if(!response.ok){document.getElementById("serviceCustomerChatStatus").textContent="No se pudo enviar el mensaje.";return;}input.value="";await loadCustomerServiceChat();
+});
+document.getElementById("acceptServicePrice").addEventListener("click",async()=>{
+ const job=window.__eyService;if(!job?.token)return;const raw=window.prompt("Ingresá el precio exacto que aceptás (ARS):");if(raw===null)return;
+ const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/aceptar_precio_servicio`,{method:"POST",headers,body:JSON.stringify({p_token:job.token,p_precio:Number(raw.replace(",","."))})});
+ document.getElementById("serviceCustomerChatStatus").textContent=response.ok?"Precio aceptado.":"No se pudo aceptar ese precio.";await loadCustomerServiceChat();
+});
+document.getElementById("confirmServiceArrival").addEventListener("click",async()=>{
+ const job=window.__eyService;if(!job?.token)return;const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirmar_llegada_cliente`,{method:"POST",headers,body:JSON.stringify({p_token:job.token})});
+ document.getElementById("serviceCustomerChatStatus").textContent=response.ok?"Llegada confirmada.":"Todavía no figura la llegada del profesional.";await loadCustomerServiceChat();
+});
+document.getElementById("confirmServicePaid").addEventListener("click",async()=>{
+ const job=window.__eyService;if(!job?.token)return;const raw=window.prompt("Confirmá el importe exacto acordado y pagado (ARS):");if(raw===null)return;
+ const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirmar_trabajo_pagado_cliente`,{method:"POST",headers,body:JSON.stringify({p_token:job.token,p_importe:Number(raw.replace(",","."))})});
+ document.getElementById("serviceCustomerChatStatus").textContent=response.ok?"Tu confirmación quedó registrada. El prestador debe confirmar que recibió el pago.":"No se pudo confirmar; revisá el importe y el estado.";await loadCustomerServiceChat();
+});
+
 document.getElementById("serviceCustomerConfirmForm").addEventListener("submit", async event => {
   event.preventDefault();
   const form = event.currentTarget;
