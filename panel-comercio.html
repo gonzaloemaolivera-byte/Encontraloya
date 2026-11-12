@@ -409,6 +409,10 @@ function showComercioView() {
   loadComerciosSinReclamar("claimMoreComercio", "claimMoreMessage");
   loadMisPedidos();
   loadMisSolicitudesServicio();
+  if (window.__eyServiceInboxTimer) clearInterval(window.__eyServiceInboxTimer);
+  window.__eyServiceInboxTimer = setInterval(() => {
+    if (comercio && document.visibilityState === "visible") loadMisSolicitudesServicio();
+  }, 15000);
   loadMisProductos();
 }
 
@@ -893,7 +897,11 @@ $("serviceRequestsList").addEventListener("click", async event => {
  const id=button.dataset.id, action=button.dataset.serviceAction;
  if(action==="open-chat"){
    const panel=$(`service-chat-${id}`);panel.classList.toggle("hidden");
-   if(!panel.classList.contains("hidden")) await loadProviderServiceMessages(id);
+   if(window.__eyProviderChatTimer)clearInterval(window.__eyProviderChatTimer);
+   if(!panel.classList.contains("hidden")){
+     await loadProviderServiceMessages(id);
+     window.__eyProviderChatTimer=setInterval(()=>loadProviderServiceMessages(id),5000);
+   }
    return;
  }
  let rpc=null,body={};
