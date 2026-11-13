@@ -808,7 +808,7 @@ async function loadMisPedidos() {
   status.textContent = "Buscando pedidos…";
   list.innerHTML = "";
   try {
-    const url = `${SUPABASE_URL}/rest/v1/pedidos?select=id,numero_pedido,estado,subtotal,total,comprador_nombre,comprador_email,comprador_telefono,direccion_entrega,notas,creado_at,pedido_productos(nombre_producto,cantidad,precio_unitario,subtotal)&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=creado_at.desc&limit=50`;
+    const url = `${SUPABASE_URL}/rest/v1/pedidos?select=id,numero_pedido,estado,subtotal,total,comprador_nombre,comprador_email,comprador_telefono,direccion_entrega,notas,creado_at,pedido_productos(nombre_producto,cantidad,precio_unitario,subtotal),pagos(medio_pago,estado,importe,fecha_confirmacion)&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=creado_at.desc&limit=50`;
     const response = await authenticatedGet(url);
     if (!response.ok) {
       const detail = await response.text();
@@ -823,6 +823,7 @@ async function loadMisPedidos() {
     status.textContent = `${orders.length} pedido(s) recibido(s).`;
     list.innerHTML = orders.map(order => {
       const items = Array.isArray(order.pedido_productos) ? order.pedido_productos : [];
+      const payment = Array.isArray(order.pagos) ? order.pagos[0] : null;
       const itemsHtml = items.map(item =>
         `<li>${escapeHTML(item.nombre_producto)} — ${escapeHTML(item.cantidad)} × ${escapeHTML(money(item.precio_unitario,"ARS"))} = ${escapeHTML(money(item.subtotal,"ARS"))}</li>`
       ).join("");
@@ -857,6 +858,7 @@ async function loadMisPedidos() {
         ${order.direccion_entrega ? `<div class="meta">Entrega: ${escapeHTML(order.direccion_entrega)}</div>` : ""}
         ${order.notas ? `<div class="meta">Aclaraciones: ${escapeHTML(order.notas)}</div>` : ""}
         <div class="order-total">Total del pedido: ${escapeHTML(money(order.total,"ARS"))}</div>
+        ${payment?.medio_pago === "efectivo" ? `<div class="meta"><strong>Medio de pago:</strong> Efectivo al retirar o recibir</div><div class="meta"><strong>Estado del pago:</strong> ${payment.estado === "aprobado" ? "Efectivo recibido y confirmado" : payment.estado === "cancelado" ? "Pago cancelado" : "Pendiente de recibir el efectivo"}${payment.fecha_confirmacion ? " · " + escapeHTML(fechaPedido(payment.fecha_confirmacion)) : ""}</div>${payment.estado === "pendiente" && !["cancelado","reembolsado"].includes(order.estado) ? `<div class="form-foot"><button class="primary" type="button" data-confirm-cash="true" data-order-id="${escapeHTML(order.id)}">Confirmar que recibí el efectivo</button></div>` : ""}` : ""}
         ${actionHtml}
       </article>`;
     }).join("");
@@ -867,6 +869,33 @@ async function loadMisPedidos() {
 }
 
 $("reloadOrders").addEventListener("click", loadMisPedidos);
+
+$("ordersList").addEventListener("click", async event => {
+  const button = event.target.closest("button[data-confirm-cash][data-order-id]");
+  if (!button || !comercio || !session?.access_token) return;
+  const pedidoId = button.dataset.orderId;
+  if (!window.confirm("¿Confirmás que el comercio recibió el dinero en efectivo de este pedido? Solo confirmalo si ya tenés el dinero.")) return;
+  button.disabled = true;
+  try {
+    const send = () => fetch(`${SUPABASE_URL}/functions/v1/confirmar-pago-efectivo`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ pedido_id: pedidoId, comercio_id: comercio.id })
+    });
+    let response = await send();
+    if (response.status === 401 && await refreshAccessToken()) response = await send();
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw new Error(data.mensaje || "No pudimos confirmar el cobro.");
+    await loadMisPedidos();
+  } catch (error) {
+    window.alert(error.message || "No pudimos conectar con el servidor.");
+    if (button.isConnected) button.disabled = false;
+  }
+});
 
 async function loadMisSolicitudesServicio() {
   if (!comercio) return;
