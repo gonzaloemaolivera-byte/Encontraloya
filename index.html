@@ -337,12 +337,13 @@ footer strong{color:white}
   </div>
   <div id="cartLines" class="cart-lines"></div>
   <div class="checkout-total"><span>Total estimado</span><span id="cartTotal">$0</span></div>
-  <div class="checkout-note">Por ahora este paso registra el pedido para que el comercio lo confirme. El pago online y el cobro automático de la comisión todavía no están habilitados.</div>
+  <div class="checkout-note">Por ahora podés pagar en efectivo al retirar o recibir el pedido. El comercio confirmará el cobro cuando haya recibido el dinero. No se realiza ningún cobro automático.</div>
   <form id="checkoutForm">
     <div class="form-grid">
       <div class="field"><label for="buyerName">Tu nombre *</label><input id="buyerName" required maxlength="120" autocomplete="name"></div>
       <div class="field"><label for="buyerPhone">Teléfono *</label><input id="buyerPhone" required maxlength="30" inputmode="tel" autocomplete="tel" placeholder="Ej.: 11 2345-6789"></div>
       <div class="field full"><label for="buyerEmail">Correo electrónico</label><input id="buyerEmail" type="email" maxlength="160" autocomplete="email"></div>
+      <div class="field full"><label for="buyerPaymentMethod">Medio de pago *</label><select id="buyerPaymentMethod" required><option value="efectivo">Efectivo al retirar o recibir el pedido</option></select><small class="hint">El pago se entrega directamente al comercio. Quedará pendiente hasta que el comercio confirme que recibió el efectivo.</small></div>
       <div class="field full"><label for="buyerAddress">Dirección de entrega (opcional)</label><input id="buyerAddress" maxlength="300" autocomplete="street-address"></div>
       <div class="field full"><label for="buyerNotes">Aclaraciones (opcional)</label><textarea id="buyerNotes" maxlength="1000" placeholder="Por ejemplo: horario para recibir el pedido"></textarea></div>
       <div class="hp" aria-hidden="true"><label for="checkoutWebsite">Dejar vacío</label><input id="checkoutWebsite" tabindex="-1" autocomplete="off"></div>
@@ -698,6 +699,7 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
         comprador_nombre:document.getElementById("buyerName").value.trim(),
         comprador_email:document.getElementById("buyerEmail").value.trim(),
         comprador_telefono:document.getElementById("buyerPhone").value.trim(),
+        medio_pago:document.getElementById("buyerPaymentMethod").value,
         direccion_entrega:document.getElementById("buyerAddress").value.trim(),
         notas:document.getElementById("buyerNotes").value.trim(),
         website:document.getElementById("checkoutWebsite").value
@@ -710,7 +712,7 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
     form.reset();
     const confirmation = document.getElementById("orderConfirmation");
     confirmation.classList.remove("hidden");
-    confirmation.textContent = `¡Pedido ${result.numero_pedido} registrado! Total: ${money(result.total,"ARS")}. El comercio deberá confirmar el pedido. Comisión estimada de la plataforma: ${money(result.comision_estimativa,"ARS")} (${result.comision_porcentaje}%). Todavía no se realizó ningún cobro.`;
+    confirmation.textContent = `¡Pedido ${result.numero_pedido} registrado! Total: ${money(result.total,"ARS")}. Medio de pago: efectivo al retirar o recibir. El comercio deberá confirmar el pedido y, cuando reciba el dinero, confirmar el cobro. Comisión estimada de la plataforma: ${money(result.comision_estimativa,"ARS")} (${result.comision_porcentaje}%). El pago todavía está pendiente.`;
     message.textContent = "Pedido guardado correctamente.";
     message.className = "form-message ok";
   } catch (error) {
