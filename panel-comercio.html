@@ -844,8 +844,11 @@ async function loadMisPedidos() {
         listo: [["enviado","Marcar como enviado"],["completado","Marcar como entregado"]],
         enviado: [["completado","Marcar como entregado"]]
       }[order.estado] || [];
-      const actionHtml = actions.length
-        ? `<div class="form-foot order-actions">${actions.map(([state,label]) => `<button class="ghost" type="button" data-order-id="${escapeHTML(order.id)}" data-next-state="${state}">${label}</button>`).join("")}</div>`
+      const availableActions = payment?.estado === "aprobado"
+        ? actions.filter(([state]) => state !== "cancelado")
+        : actions;
+      const actionHtml = availableActions.length
+        ? `<div class="form-foot order-actions">${availableActions.map(([state,label]) => `<button class="ghost" type="button" data-order-id="${escapeHTML(order.id)}" data-next-state="${state}">${label}</button>`).join("")}</div>`
         : "";
       return `<article class="order-card">
         <div class="order-head">
