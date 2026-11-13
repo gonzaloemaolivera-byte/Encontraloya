@@ -79,10 +79,10 @@ footer strong{color:white}
 <!-- ======== Acceso privado ======== -->
 <section class="card" id="authCard">
 <h2>Acceso de comercios</h2>
-<p class="sub">Entrá con tu correo y contraseña para administrar uno o varios comercios desde la misma cuenta.</p>
+<p class="sub">¿Es tu primera vez? Elegí “Crear cuenta” antes de ingresar tu correo y crear una contraseña. Si ya tenés cuenta, elegí “Iniciar sesión”.</p>
 <div class="tabs">
 <button type="button" id="tabLogin" class="active">Iniciar sesión</button>
-<button type="button" id="tabSignup">Crear cuenta</button>
+<button type="button" id="tabSignup">Crear cuenta (primera vez)</button>
 </div>
 <form id="authForm">
 <div class="form-grid">
@@ -579,7 +579,7 @@ authForm.addEventListener("submit", async event => {
       const detalle = data.error_description || data.msg || data.message || "";
       setMessage(authMessage,
         mode === "login" && response.status === 400
-          ? "Correo o contraseña incorrectos."
+          ? "No pudimos iniciar sesión. Si es tu primera vez, tocá “Crear cuenta (primera vez)” y registrá tu correo y contraseña. Si ya tenés cuenta, revisá tus datos y confirmá tu correo."
           : (detalle || "No pudimos completar la operación. Intentá nuevamente."),
         "error");
       return;
