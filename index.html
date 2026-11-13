@@ -440,7 +440,7 @@ function normalizeArgentinePhone(value) {
     digits = digits.slice(0, 2) + digits.slice(4);
   }
 
-  if (!/^[2-9]\d{9}$/.test(digits)) return "";
+  if (!/^(?:11|[2-9]\d)\d{8}$/.test(digits)) return "";
   if (/^0+$/.test(digits)) return "";
 
   return digits;
