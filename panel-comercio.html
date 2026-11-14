@@ -577,10 +577,17 @@ authForm.addEventListener("submit", async event => {
 
     if (!response.ok) {
       const detalle = data.error_description || data.msg || data.message || "";
+      const codigo = String(data.code || data.error || "").toLowerCase();
+      const correoPendiente = mode === "login" && (
+        codigo === "email_not_confirmed" ||
+        /email not confirmed|email.*not.*verified|correo.*no.*confirm/i.test(detalle)
+      );
       setMessage(authMessage,
-        mode === "login" && response.status === 400
-          ? "No pudimos iniciar sesión. Si es tu primera vez, tocá “Crear cuenta (primera vez)” y registrá tu correo y contraseña. Si ya tenés cuenta, revisá tus datos y confirmá tu correo."
-          : (detalle || "No pudimos completar la operación. Intentá nuevamente."),
+        correoPendiente
+          ? "Tu correo todavía no está confirmado. Abrí el último mensaje de Supabase y tocá “Confirmar correo”. Si ya lo hiciste o no encontrás el mensaje, usá “Reenviar correo de confirmación” y abrí el enlace más reciente."
+          : (mode === "login" && response.status === 400
+            ? "No pudimos iniciar sesión. Revisá el correo y la contraseña. Si es tu primera vez, creá tu cuenta y confirmá el correo."
+            : (detalle || "No pudimos completar la operación. Intentá nuevamente.")),
         "error");
       return;
     }
@@ -1217,9 +1224,68 @@ $("productsGrid").addEventListener("click", event => {
     .catch(error => console.error(error));
 });
 
+// ---------- Confirmación de correo y retorno desde Supabase ----------
+
+// Supabase puede devolver la sesión recién confirmada en el fragmento de la URL
+// (#access_token=...&refresh_token=...). La guardamos para que el usuario
+// entre directamente al panel, sin tener que volver a escribir sus credenciales.
+async function restoreAuthCallback() {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+  const errorCode = params.get("error_code");
+  const errorDescription = params.get("error_description");
+
+  if (errorCode || errorDescription) {
+    const detalle = (errorDescription || errorCode || "No se pudo confirmar el correo.")
+      .replace(/\+/g, " ");
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    showAuth();
+    setMessage(authMessage,
+      "No se pudo completar la confirmación: " + detalle +
+      ". Solicitá un correo nuevo y abrí el enlace más reciente.",
+      "error");
+    return true;
+  }
+
+  if (!accessToken || !refreshToken) return false;
+
+  try {
+    const response = await authFetch("user", undefined, {
+      Authorization: `Bearer ${accessToken}`
+    });
+    if (!response.ok) {
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      showAuth();
+      setMessage(authMessage,
+        "El enlace fue abierto, pero no pudimos validar la sesión. Volvé a solicitar el correo de confirmación.",
+        "error");
+      return true;
+    }
+
+    const user = await response.json();
+    saveSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      user
+    });
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    await afterAuth();
+    return true;
+  } catch (error) {
+    console.error(error);
+    showAuth();
+    setMessage(authMessage,
+      "No pudimos completar la confirmación por un problema de conexión. Intentá abrir nuevamente el enlace del correo.",
+      "error");
+    return true;
+  }
+}
+
 // ---------- Inicio ----------
 
 (async () => {
+  if (await restoreAuthCallback()) return;
   if (await restoreSession()) {
     await afterAuth();
   } else {
