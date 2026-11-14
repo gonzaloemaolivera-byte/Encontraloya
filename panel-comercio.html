@@ -152,6 +152,12 @@ footer strong{color:white}
 <button class="ghost" id="logoutBtn" type="button">Cerrar sesión</button>
 <span class="form-message">Accedés como <strong id="comercioEmail"></strong>.</span>
 </div>
+<div class="field" style="margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:12px">
+  <strong>Cuenta de Mercado Pago</strong>
+  <p class="sub" style="margin:6px 0 10px">Vinculá la cuenta de Mercado Pago de este comercio. El comprador podrá pagar en el checkout seguro y el pago se acreditará en la cuenta autorizada.</p>
+  <button class="primary" id="mpConnectButton" type="button">Conectar Mercado Pago</button>
+  <div class="form-message" id="mpConnectionMessage" role="status" style="margin-top:8px">Todavía no verificamos la conexión de este comercio.</div>
+</div>
 </section>
 
 <section class="card" id="claimMoreCard">
@@ -418,6 +424,55 @@ function showComercioView() {
   loadMisProductos();
 }
 
+async function connectMercadoPago() {
+  if (!comercio?.id || !session?.access_token) return;
+  const button = $("mpConnectButton");
+  const message = $("mpConnectionMessage");
+  button.disabled = true;
+  setMessage(message, "Conectando con Mercado Pago…");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-oauth-start`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ comercio_id: comercio.id })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok || !data.authorization_url) {
+      throw new Error(data.mensaje || "No pudimos iniciar la autorización. Revisá la configuración de Mercado Pago e intentá otra vez.");
+    }
+    setMessage(message, "Abriendo Mercado Pago para que autorices tu cuenta…");
+    window.location.assign(data.authorization_url);
+  } catch (error) {
+    console.error("Conexión Mercado Pago:", error);
+    setMessage(message, error.message || "No pudimos conectar con Mercado Pago.", "error");
+    button.disabled = false;
+  }
+}
+
+function showMercadoPagoReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get("mp");
+  if (!status) return;
+  const messages = {
+    connected: ["Cuenta de Mercado Pago vinculada correctamente. Ya podés recibir pagos por este medio.", "ok"],
+    error: ["Mercado Pago no pudo completar la vinculación. Intentá nuevamente.", "error"],
+    state_error: ["La autorización venció o ya fue utilizada. Volvé a conectar Mercado Pago.", "error"],
+    owner_changed: ["No pudimos validar que el comercio siga perteneciendo a esta cuenta.", "error"],
+    exchange_error: ["Mercado Pago rechazó la autorización. Verificá la aplicación y la URL de retorno configuradas.", "error"]
+  };
+  const result = messages[status];
+  if (result) setMessage($("mpConnectionMessage"), result[0], result[1]);
+  params.delete("mp");
+  const query = params.toString();
+  window.history.replaceState({}, document.title, window.location.pathname + (query ? "?" + query : "") + window.location.hash);
+}
+
+$("mpConnectButton").addEventListener("click", connectMercadoPago);
+
 function renderComercio() {
   $("comercioNombre").textContent = comercio.nombre || "Mi comercio";
   $("coverageInput").value = comercio.cobertura_localidades || "";
@@ -644,6 +699,7 @@ async function afterAuth() {
     const anterior = comercio?.id;
     comercio = comercios.find(item => item.id === anterior) || comercios[0];
     showComercioView();
+    showMercadoPagoReturn();
     return;
   }
 
