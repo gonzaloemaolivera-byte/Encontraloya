@@ -1124,8 +1124,9 @@ loadCatalog();
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   if (isStandalone || !bar || !installButton) return;
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const dismissed = sessionStorage.getItem("ey_install_dismissed") === "1";
-  if (!dismissed) bar.hidden = false;
+  let dismissed = false;
+  try { dismissed = sessionStorage.getItem("ey_install_dismissed") === "1"; } catch (_) {}
+  bar.hidden = dismissed;
   window.addEventListener("beforeinstallprompt", event => {
     event.preventDefault();
     deferredPrompt = event;
@@ -1147,7 +1148,7 @@ loadCatalog();
   });
   closeButton.addEventListener("click", () => {
     bar.hidden = true;
-    sessionStorage.setItem("ey_install_dismissed", "1");
+    try { sessionStorage.setItem("ey_install_dismissed", "1"); } catch (_) {}
   });
   window.addEventListener("appinstalled", () => { bar.hidden = true; });
   if ("serviceWorker" in navigator) {
