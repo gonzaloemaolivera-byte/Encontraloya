@@ -1108,6 +1108,23 @@ async function registerVisit() {
   }
 }
 
+const mpReturnParams = new URLSearchParams(window.location.search);
+const mpReturnStatus = mpReturnParams.get("pago");
+if (["exito", "pendiente", "error"].includes(mpReturnStatus)) {
+  const notice = document.createElement("div");
+  notice.className = "wrap panel";
+  const orderRef = mpReturnParams.get("pedido");
+  if (mpReturnStatus === "exito") {
+    notice.textContent = "Mercado Pago informó que el pago fue aprobado. Estamos verificando la confirmación definitiva para actualizar tu pedido" + (orderRef ? " (" + orderRef.slice(0, 8) + ")." : ".");
+  } else if (mpReturnStatus === "pendiente") {
+    notice.textContent = "Tu pago quedó pendiente en Mercado Pago. El pedido se actualizará cuando recibamos la confirmación.";
+  } else {
+    notice.textContent = "El pago no se completó. Podés volver a intentarlo desde el comercio.";
+  }
+  const main = document.querySelector("main.wrap");
+  if (main) main.prepend(notice);
+}
+
 registerVisit();
 loadCatalog();
 })();
