@@ -337,13 +337,13 @@ footer strong{color:white}
   </div>
   <div id="cartLines" class="cart-lines"></div>
   <div class="checkout-total"><span>Total estimado</span><span id="cartTotal">$0</span></div>
-  <div class="checkout-note">Por ahora podés pagar en efectivo al retirar o recibir el pedido. El comercio confirmará el cobro cuando haya recibido el dinero. No se realiza ningún cobro automático.</div>
+  <div class="checkout-note">Con Mercado Pago podés pagar con tarjeta de crédito, tarjeta de débito, saldo disponible y los demás medios habilitados en la cuenta del comercio. Las opciones y cuotas disponibles se muestran en el checkout seguro de Mercado Pago. También podés elegir efectivo.</div>
   <form id="checkoutForm">
     <div class="form-grid">
       <div class="field"><label for="buyerName">Tu nombre *</label><input id="buyerName" required maxlength="120" autocomplete="name"></div>
       <div class="field"><label for="buyerPhone">Teléfono *</label><input id="buyerPhone" required maxlength="30" inputmode="tel" autocomplete="tel" placeholder="Ej.: 11 2345-6789"></div>
       <div class="field full"><label for="buyerEmail">Correo electrónico</label><input id="buyerEmail" type="email" maxlength="160" autocomplete="email"></div>
-      <div class="field full"><label for="buyerPaymentMethod">Medio de pago *</label><select id="buyerPaymentMethod" required><option value="efectivo">Efectivo al retirar o recibir el pedido</option></select><small class="hint">El pago se entrega directamente al comercio. Quedará pendiente hasta que el comercio confirme que recibió el efectivo.</small></div>
+      <div class="field full"><label for="buyerPaymentMethod">Medio de pago *</label><select id="buyerPaymentMethod" required><option value="mercado_pago">Mercado Pago: crédito, débito o saldo</option><option value="efectivo">Efectivo al retirar o recibir el pedido</option></select><small class="hint" id="paymentMethodHint">Al elegir Mercado Pago vas a continuar en su checkout seguro. Las tarjetas y cuotas dependen de los medios habilitados para el comercio.</small></div>
       <div class="field full"><label for="buyerAddress">Dirección de entrega (opcional)</label><input id="buyerAddress" maxlength="300" autocomplete="street-address"></div>
       <div class="field full"><label for="buyerNotes">Aclaraciones (opcional)</label><textarea id="buyerNotes" maxlength="1000" placeholder="Por ejemplo: horario para recibir el pedido"></textarea></div>
       <div class="hp" aria-hidden="true"><label for="checkoutWebsite">Dejar vacío</label><input id="checkoutWebsite" tabindex="-1" autocomplete="off"></div>
@@ -707,6 +707,26 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) throw new Error(result.mensaje || "No pudimos registrar el pedido.");
+    const selectedPayment = document.getElementById("buyerPaymentMethod").value;
+    if (selectedPayment === "mercado_pago") {
+      message.textContent = "Pedido registrado. Preparando el checkout seguro de Mercado Pago…";
+      const paymentResponse = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-preference`, {
+        method:"POST",
+        headers:{apikey:SUPABASE_ANON_KEY,"Content-Type":"application/json"},
+        body:JSON.stringify({pedido_id:result.pedido_id,checkout_token:result.checkout_token})
+      });
+      const paymentResult = await paymentResponse.json().catch(() => ({}));
+      if (!paymentResponse.ok || !paymentResult.ok || !paymentResult.checkout_url) {
+        cart = {comercio_id:null,items:[]};
+        renderCart();
+        form.reset();
+        document.getElementById("orderConfirmation").classList.remove("hidden");
+        document.getElementById("orderConfirmation").textContent = `El pedido #${result.numero_pedido} quedó registrado, pero no pudimos abrir el pago. No vuelvas a enviar el pedido; contactá al comercio e informá este número. Motivo: ${paymentResult.mensaje || "Error al iniciar Mercado Pago"}`;
+        throw new Error("El pedido quedó registrado, pero el checkout no pudo iniciarse. No vuelvas a enviarlo.");
+      }
+      window.location.assign(paymentResult.checkout_url);
+      return;
+    }
     cart = {comercio_id:null,items:[]};
     renderCart();
     form.reset();
