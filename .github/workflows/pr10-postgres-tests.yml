@@ -1,4 +1,4 @@
-name: PostgreSQL tests PR #10
+name: PostgreSQL and Deno tests PR #10
 
 on:
   push:
@@ -43,6 +43,15 @@ jobs:
       PGDATABASE: encontrarlo_test
     steps:
       - uses: actions/checkout@v4
+      - name: Instalar Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Verificar TypeScript de las Edge Functions
+        run: |
+          deno check supabase/functions/estado-pedido/index.ts
+          deno check supabase/functions/mp-oauth-status/index.ts
+          deno check supabase/functions/mp-oauth-disconnect/index.ts
       - name: Preparar esquema de prueba
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/esquema-estado-pedido-prueba.sql
       - name: Aplicar migración
