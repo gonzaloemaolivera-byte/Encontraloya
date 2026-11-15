@@ -63,27 +63,48 @@ CREATE TABLE public.pagos (
 );
 
 -- Almacén de tokens de checkout (hash SHA-256 por pedido).
-CREATE TABLE private.checkout_tokens (
+CREATE TABLE public.checkout_tokens_privado (
   pedido_id uuid PRIMARY KEY,
-  token_hash bytea NOT NULL,
-  creado_en timestamptz NOT NULL DEFAULT now()
+  token_hash text NOT NULL,
+  expira_at timestamptz NOT NULL DEFAULT now() + interval '1 day',
+  creado_at timestamptz NOT NULL DEFAULT now()
 );
 
 -- Códigos de reclamo de comercios: el escaneo del estado de conexión y de
 -- tokens NO debe confundir estos datos con credenciales de Mercado Pago.
-CREATE TABLE private.comercio_codigos_reclamo (
+CREATE TABLE public.comercio_codigos_reclamo (
   comercio_id uuid PRIMARY KEY,
-  codigo_hash bytea NOT NULL
+  codigo_hash text NOT NULL
 );
 
 -- Credenciales OAuth de Mercado Pago por comercio.
-CREATE TABLE private.mp_oauth_tokens (
+CREATE TABLE public.mercado_pago_tokens_privado (
   comercio_id uuid PRIMARY KEY,
-  access_token_enc bytea NOT NULL,
-  refresh_token_enc bytea NOT NULL,
-  mp_user_id text,
-  creado_en timestamptz NOT NULL DEFAULT now()
+  access_token_enc text NOT NULL,
+  refresh_token_enc text NOT NULL,
+  public_key text,
+  live_mode boolean NOT NULL DEFAULT false,
+  scope text,
+  expires_at timestamptz,
+  actualizado_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE public.conexiones_mercado_pago (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  comercio_id uuid NOT NULL UNIQUE,
+  usuario_mercado_pago_id text,
+  estado text NOT NULL DEFAULT 'conectado',
+  alcance_autorizado text[],
+  conectado_at timestamptz,
+  desconectado_at timestamptz,
+  creado_at timestamptz NOT NULL DEFAULT now(),
+  actualizado_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE public.configuracion_plataforma (
+  id integer PRIMARY KEY,
+  porcentaje_comision numeric NOT NULL DEFAULT 5,
+  actualizado_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO public.configuracion_plataforma(id, porcentaje_comision) VALUES (1,5);
 
 -- Datos de prueba
 INSERT INTO public.comercios (id, nombre, propietario_id) VALUES
@@ -95,16 +116,18 @@ INSERT INTO public.pedidos (id, numero_pedido, estado, subtotal, total, moneda, 
 VALUES ('00000000-0000-4000-8000-000000000201', 9001, 'pendiente', 55.50, 55.50, 'ARS',
         '00000000-0000-4000-8000-000000000101', 'Comprador Prueba', 'comprador@example.test');
 
-INSERT INTO private.checkout_tokens (pedido_id, token_hash)
+INSERT INTO public.checkout_tokens_privado (pedido_id, token_hash)
 VALUES ('00000000-0000-4000-8000-000000000201',
-        sha256(convert_to(repeat('a', 64), 'UTF8')));
+        encode(sha256(convert_to(repeat('a', 64), 'UTF8')), 'hex'));
 
 INSERT INTO public.pagos (pedido_id, estado, medio_pago, importe, moneda)
 VALUES ('00000000-0000-4000-8000-000000000201', 'pendiente', 'mercado_pago', 55.50, 'ARS');
 
-INSERT INTO private.mp_oauth_tokens (comercio_id, access_token_enc, refresh_token_enc, mp_user_id)
-VALUES ('00000000-0000-4000-8000-000000000101', sha256('token-cifrado'::bytea), sha256('refresh'::bytea), '123456');
+INSERT INTO public.mercado_pago_tokens_privado (comercio_id, access_token_enc, refresh_token_enc, public_key)
+VALUES ('00000000-0000-4000-8000-000000000101', 'cifrado', 'refresh-cifrado', 'TEST-123');
+INSERT INTO public.conexiones_mercado_pago (comercio_id, estado)
+VALUES ('00000000-0000-4000-8000-000000000101', 'conectado');
 
 -- Código de reclamo pendiente de OTRO comercio: no debe dar falso positivo.
-INSERT INTO private.comercio_codigos_reclamo (comercio_id, codigo_hash)
-VALUES ('00000000-0000-4000-8000-000000000103', sha256('z'::bytea));
+INSERT INTO public.comercio_codigos_reclamo (comercio_id, codigo_hash)
+VALUES ('00000000-0000-4000-8000-000000000103', 'hash-reclamo');
