@@ -43,6 +43,18 @@ jobs:
       PGDATABASE: encontrarlo_test
     steps:
       - uses: actions/checkout@v4
+      - name: Verificar configuración JWT por función
+        run: |
+          python3 - <<'PY'
+          import tomllib
+          with open("supabase/config.toml", "rb") as f:
+              config = tomllib.load(f)
+          functions = config["functions"]
+          assert functions["estado-pedido"]["verify_jwt"] is False
+          assert functions["mp-oauth-status"]["verify_jwt"] is True
+          assert functions["mp-oauth-disconnect"]["verify_jwt"] is True
+          print("Configuración JWT correcta para las tres funciones.")
+          PY
       - name: Instalar Deno
         uses: denoland/setup-deno@v2
         with:
