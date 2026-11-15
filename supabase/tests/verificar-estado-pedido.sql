@@ -60,7 +60,26 @@ BEGIN
   IF (v_resp->>'ok') IS DISTINCT FROM 'false' THEN
     RAISE EXCEPTION 'FALLO 1.7: el hash de un código de reclamo no debe autorizar la consulta.';
   END IF;
-END $$;
+END $;
+
+-- 1.7b Un token vencido no debe autorizar la consulta.
+UPDATE public.checkout_tokens_privado
+SET expira_at = now() - interval '1 minute'
+WHERE pedido_id = '00000000-0000-4000-8000-000000000201';
+DO $
+DECLARE
+  v_resp jsonb;
+BEGIN
+  v_resp := public.consultar_estado_pedido(
+    '00000000-0000-4000-8000-000000000201', repeat('a',64)
+  );
+  IF (v_resp->>'ok') IS DISTINCT FROM 'false' THEN
+    RAISE EXCEPTION 'FALLO 1.7b: un token vencido debe rechazarse.';
+  END IF;
+END $;
+UPDATE public.checkout_tokens_privado
+SET expira_at = now() + interval '1 day'
+WHERE pedido_id = '00000000-0000-4000-8000-000000000201';
 
 -- 1.8 El pago aprobado se refleja en la consulta.
 UPDATE public.pagos SET estado = 'aprobado' WHERE pedido_id = '00000000-0000-4000-8000-000000000201';
