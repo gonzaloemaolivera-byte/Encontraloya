@@ -1147,11 +1147,13 @@ async function registerVisit() {
 // el estado verdadero se confirma consultando el servidor con el código de
 // seguimiento del pedido, que verifica la información real de Mercado Pago
 // recibida por el webhook firmado.
+// El código de seguimiento es una credencial de acceso al estado del pedido.
+// sessionStorage lo limita a esta pestaña y evita conservarlo tras cerrar el navegador.
 const SEGUIMIENTO_KEY = "ey_pedido_seguimiento";
 
 function leerSeguimiento() {
   try {
-    const guardado = JSON.parse(localStorage.getItem(SEGUIMIENTO_KEY) || "null");
+    const guardado = JSON.parse(sessionStorage.getItem(SEGUIMIENTO_KEY) || "null");
     if (guardado && guardado.pedido_id && guardado.checkout_token) return guardado;
   } catch { /* datos guardados corruptos: se ignoran */ }
   return null;
@@ -1307,7 +1309,7 @@ document.getElementById("orderStatusManualForm").addEventListener("submit", even
     numero_pedido: null
   };
   try {
-    localStorage.setItem(SEGUIMIENTO_KEY, JSON.stringify(seguimiento));
+    sessionStorage.setItem(SEGUIMIENTO_KEY, JSON.stringify(seguimiento));
   } catch { /* seguimos sin guardar */ }
   abrirEstadoPedido(seguimiento);
 });
