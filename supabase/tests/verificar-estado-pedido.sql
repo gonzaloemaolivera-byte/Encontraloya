@@ -6,14 +6,13 @@
 
 -- ============================================================================
 -- 1. consultar_estado_pedido
--- ============================================================================
-DO $$
+-- El token válido autoriza únicamente el pedido asociado.
+DO $block$
 DECLARE
   v_pedido uuid := '00000000-0000-4000-8000-000000000201';
   v_token text := repeat('a', 64);
   v_resp jsonb;
 BEGIN
-  -- 1.1 Token válido devuelve el estado y el pago.
   v_resp := public.consultar_estado_pedido(v_pedido, v_token);
   IF (v_resp->>'ok') IS DISTINCT FROM 'true' THEN
     RAISE EXCEPTION 'FALLO 1.1: el token válido debe autorizar la consulta (%).', v_resp->>'mensaje';
@@ -25,48 +24,42 @@ BEGIN
     RAISE EXCEPTION 'FALLO 1.1c: estado del pago incorrecto (%).', v_resp->'pago'->>'estado';
   END IF;
 
-  -- 1.2 El token también funciona en mayúsculas.
   v_resp := public.consultar_estado_pedido(v_pedido, upper(v_token));
   IF (v_resp->>'ok') IS DISTINCT FROM 'true' THEN
     RAISE EXCEPTION 'FALLO 1.2: el token en mayúsculas debe autorizar la consulta.';
   END IF;
 
-  -- 1.3 Formato inválido: rechazo.
   v_resp := public.consultar_estado_pedido(v_pedido, 'corto');
   IF (v_resp->>'ok') IS DISTINCT FROM 'false' THEN
     RAISE EXCEPTION 'FALLO 1.3: un token con formato inválido debe rechazarse.';
   END IF;
 
-  -- 1.4 Token correcto en formato pero equivocado: rechazo.
   v_resp := public.consultar_estado_pedido(v_pedido, repeat('b', 64));
   IF (v_resp->>'ok') IS DISTINCT FROM 'false' THEN
     RAISE EXCEPTION 'FALLO 1.4: un token incorrecto debe rechazarse.';
   END IF;
 
-  -- 1.5 Pedido inexistente: rechazo.
   v_resp := public.consultar_estado_pedido('00000000-0000-4000-8000-000000000299', v_token);
   IF (v_resp->>'ok') IS DISTINCT FROM 'false' THEN
     RAISE EXCEPTION 'FALLO 1.5: un pedido inexistente debe rechazarse.';
   END IF;
 
-  -- 1.6 El comprador no recibe sus datos personales en la respuesta.
   v_resp := public.consultar_estado_pedido(v_pedido, v_token);
   IF v_resp::text ~* 'comprador|Comprador|comprador@example' THEN
     RAISE EXCEPTION 'FALLO 1.6: la respuesta no debe contener datos personales del comprador.';
   END IF;
 
-  -- 1.7 El token de un código de reclamo no autoriza nada.
   v_resp := public.consultar_estado_pedido(v_pedido, repeat('z',64));
   IF (v_resp->>'ok') IS DISTINCT FROM 'false' THEN
     RAISE EXCEPTION 'FALLO 1.7: el hash de un código de reclamo no debe autorizar la consulta.';
   END IF;
-END $;
+END $block$;
 
 -- 1.7b Un token vencido no debe autorizar la consulta.
 UPDATE public.checkout_tokens_privado
 SET expira_at = now() - interval '1 minute'
 WHERE pedido_id = '00000000-0000-4000-8000-000000000201';
-DO $
+DO $expiry$
 DECLARE
   v_resp jsonb;
 BEGIN
@@ -76,7 +69,7 @@ BEGIN
   IF (v_resp->>'ok') IS DISTINCT FROM 'false' THEN
     RAISE EXCEPTION 'FALLO 1.7b: un token vencido debe rechazarse.';
   END IF;
-END $;
+END $expiry$;
 UPDATE public.checkout_tokens_privado
 SET expira_at = now() + interval '1 day'
 WHERE pedido_id = '00000000-0000-4000-8000-000000000201';
