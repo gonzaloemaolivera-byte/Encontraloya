@@ -1,0 +1,13 @@
+project_id = "egvchkzktjaitskcqlnr"
+
+# El comprador consulta con un token aleatorio de 256 bits, no con una sesión.
+# La función valida ese token contra el hash privado y su vencimiento.
+[functions.estado-pedido]
+verify_jwt = false
+
+# Estas dos funciones son exclusivas del panel autenticado del comercio.
+[functions.mp-oauth-status]
+verify_jwt = true
+
+[functions.mp-oauth-disconnect]
+verify_jwt = true
