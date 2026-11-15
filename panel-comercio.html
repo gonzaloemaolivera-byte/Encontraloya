@@ -97,7 +97,20 @@ footer strong{color:white}
   <button class="ghost" id="resendConfirmBtn" type="button">Reenviar correo de confirmación</button>
   <span class="form-message" id="resendConfirmMessage" role="status"></span>
 </div>
+<div class="form-foot" id="forgotPasswordWrap">
+  <button class="ghost" id="forgotPasswordBtn" type="button">¿Olvidaste tu contraseña?</button>
+  <span class="form-message" id="forgotPasswordMessage" role="status"></span>
+</div>
 </form>
+<div class="hidden" id="passwordRecoveryPanel" style="margin-top:18px;border-top:1px solid var(--line);padding-top:18px">
+  <h2>Crear una contraseña nueva</h2>
+  <p class="sub">Elegí una contraseña nueva para tu cuenta de Encontralo Ya.</p>
+  <form id="passwordRecoveryForm">
+    <div class="field"><label for="recoveryNewPassword">Nueva contraseña *</label><input id="recoveryNewPassword" type="password" required minlength="12" autocomplete="new-password"></div>
+    <div class="field" style="margin-top:10px"><label for="recoveryConfirmPassword">Repetí la nueva contraseña *</label><input id="recoveryConfirmPassword" type="password" required minlength="12" autocomplete="new-password"></div>
+    <div class="form-foot"><button class="primary" id="recoverySaveButton" type="submit">Guardar contraseña nueva</button><span class="form-message" id="passwordRecoveryMessage" role="status"></span></div>
+  </form>
+</div>
 </section>
 
 <!-- ======== Reclamar comercio ======== -->
@@ -641,6 +654,8 @@ tabSignup.addEventListener("click", () => setMode("signup"));
 
 function setMode(next) {
   mode = next;
+  authForm.classList.remove("hidden");
+  $("passwordRecoveryPanel").classList.add("hidden");
   tabLogin.classList.toggle("active", next === "login");
   tabSignup.classList.toggle("active", next === "signup");
   authSubmit.textContent = next === "login" ? "Iniciar sesión" : "Crear cuenta";
@@ -652,8 +667,80 @@ function setMode(next) {
     ? "Ingresá el correo y la contraseña de tu cuenta de Encontralo Ya."
     : "Creá tu cuenta con un correo real y una contraseña segura.");
   $("resendConfirmWrap").classList.toggle("hidden", next !== "login");
+  $("forgotPasswordWrap").classList.toggle("hidden", next !== "login");
   setMessage($("resendConfirmMessage"), "");
+  setMessage($("forgotPasswordMessage"), "");
 }
+
+$("forgotPasswordBtn").addEventListener("click", async () => {
+  const email = authEmail.value.trim();
+  const message = $("forgotPasswordMessage");
+  if (!email || !authEmail.checkValidity()) {
+    setMessage(message, "Primero escribí el correo de tu cuenta arriba.", "error");
+    authEmail.focus();
+    return;
+  }
+  const button = $("forgotPasswordBtn");
+  button.disabled = true;
+  setMessage(message, "Enviando el enlace para recuperar tu contraseña…");
+  try {
+    const redirectTo = `${window.location.origin}/panel-comercio.html`;
+    const response = await authFetch(`recover?redirect_to=${encodeURIComponent(redirectTo)}`, { email });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = data.msg || data.message || data.error_description || "";
+      setMessage(message, detail || "No pudimos enviar el correo de recuperación. Intentá nuevamente.", "error");
+      return;
+    }
+    setMessage(message, "Si el correo está registrado, Supabase enviará un enlace. Revisá Recibidos y Spam.", "ok");
+  } catch (error) {
+    console.error(error);
+    setMessage(message, "No pudimos conectar con Supabase. Intentá nuevamente.", "error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$("passwordRecoveryForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = $("passwordRecoveryForm");
+  if (!form.reportValidity()) return;
+  const password = $("recoveryNewPassword").value;
+  const confirm = $("recoveryConfirmPassword").value;
+  const strong = password.length >= 12 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+  if (!strong) {
+    setMessage($("passwordRecoveryMessage"), "Usá al menos 12 caracteres, con mayúscula, minúscula, número y símbolo.", "error");
+    return;
+  }
+  if (password !== confirm) {
+    setMessage($("passwordRecoveryMessage"), "Las contraseñas no coinciden.", "error");
+    return;
+  }
+  const button = $("recoverySaveButton");
+  button.disabled = true;
+  setMessage($("passwordRecoveryMessage"), "Guardando tu nueva contraseña…");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      method: "PUT",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session?.access_token || ""}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.msg || data.message || "Supabase no pudo actualizar la contraseña.");
+    $("passwordRecoveryPanel").classList.add("hidden");
+    authForm.classList.remove("hidden");
+    authPassword.value = "";
+    $("recoveryNewPassword").value = "";
+    $("recoveryConfirmPassword").value = "";
+    setMessage(authMessage, "Contraseña actualizada. Iniciando tu sesión…", "ok");
+    await afterAuth();
+  } catch (error) {
+    console.error(error);
+    setMessage($("passwordRecoveryMessage"), error.message || "No pudimos actualizar la contraseña. Volvé a solicitar el enlace.", "error");
+  } finally {
+    button.disabled = false;
+  }
+});
 
 $("resendConfirmBtn").addEventListener("click", async () => {
   const email = authEmail.value.trim();
@@ -1401,6 +1488,7 @@ async function restoreAuthCallback() {
   const params = new URLSearchParams(window.location.hash.slice(1));
   const accessToken = params.get("access_token");
   const refreshToken = params.get("refresh_token");
+  const callbackType = params.get("type");
   const errorCode = params.get("error_code");
   const errorDescription = params.get("error_description");
 
@@ -1438,6 +1526,13 @@ async function restoreAuthCallback() {
       user
     });
     window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    if (callbackType === "recovery") {
+      showAuth();
+      authForm.classList.add("hidden");
+      $("passwordRecoveryPanel").classList.remove("hidden");
+      setMessage($("passwordRecoveryMessage"), "Enlace verificado. Ahora elegí tu nueva contraseña.", "ok");
+      return true;
+    }
     await afterAuth();
     return true;
   } catch (error) {
