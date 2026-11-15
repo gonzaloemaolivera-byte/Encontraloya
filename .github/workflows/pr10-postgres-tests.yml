@@ -1,0 +1,49 @@
+name: PostgreSQL tests PR #10
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/20261115160000_estado_pedido_y_oauth_status.sql"
+      - "supabase/tests/fixtures/esquema-estado-pedido-prueba.sql"
+      - "supabase/tests/verificar-estado-pedido.sql"
+      - "supabase/functions/mp-oauth-status/index.ts"
+      - "supabase/functions/mp-oauth-disconnect/index.ts"
+      - "supabase/functions/estado-pedido/index.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: encontrarlo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d encontrarlo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: encontrarlo_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar esquema de prueba
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/esquema-estado-pedido-prueba.sql
+      - name: Aplicar migración
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261115160000_estado_pedido_y_oauth_status.sql
+      - name: Ejecutar verificaciones
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/verificar-estado-pedido.sql
