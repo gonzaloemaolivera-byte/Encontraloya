@@ -734,7 +734,7 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
       // Guardamos el seguimiento del pedido para que, al volver de Mercado Pago,
       // el comprador pueda consultar el estado real sin crear otro pedido.
       try {
-        localStorage.setItem("ey_pedido_seguimiento", JSON.stringify({
+        sessionStorage.setItem("ey_pedido_seguimiento", JSON.stringify({
           pedido_id: result.pedido_id,
           checkout_token: result.checkout_token,
           numero_pedido: result.numero_pedido
