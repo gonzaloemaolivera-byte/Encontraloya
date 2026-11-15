@@ -1,6 +1,8 @@
 name: PostgreSQL tests PR #10
 
 on:
+  push:
+    branches: [agent-commission-3d06]
   pull_request:
     branches: [main]
     paths:
