@@ -25,16 +25,29 @@ const CORS_HEADERS = {
   "Access-Control-Max-Age": "86400",
 };
 
-// Límite sencillo por pedido: evita que un cliente martille la consulta.
-const consultasRecientes = new Map();
-const LIMITE = 30; // máximo de consultas
+// Límite orientativo por instancia (NO es un límite global ni una barrera
+// de seguridad). La protección real del pedido es su token aleatorio de 256 bits.
+// Se acota el mapa para que pedidos inventados no provoquen crecimiento infinito.
+const consultasRecientes = new Map<string, { inicio: number; cantidad: number }>();
+const LIMITE = 30; // máximo por pedido y por instancia
 const VENTANA_MS = 60_000; // por minuto
+const MAX_REGISTROS = 5000;
 
 function permitir(pedidoId: string): boolean {
   const ahora = Date.now();
   const registro = consultasRecientes.get(pedidoId);
   if (!registro || ahora - registro.inicio > VENTANA_MS) {
     consultasRecientes.set(pedidoId, { inicio: ahora, cantidad: 1 });
+    if (consultasRecientes.size > MAX_REGISTROS) {
+      for (const [id, item] of consultasRecientes) {
+        if (ahora - item.inicio > VENTANA_MS) consultasRecientes.delete(id);
+      }
+      while (consultasRecientes.size > MAX_REGISTROS) {
+        const masAntiguo = consultasRecientes.keys().next().value;
+        if (masAntiguo === undefined) break;
+        consultasRecientes.delete(masAntiguo);
+      }
+    }
     return true;
   }
   registro.cantidad += 1;
