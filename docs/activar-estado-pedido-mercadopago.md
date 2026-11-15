@@ -68,10 +68,16 @@ Opción B (manual, desde el celular):
 2. Reemplazar el código del template por el contenido de
    [`supabase/functions/estado-pedido/index.ts`](../supabase/functions/estado-pedido/index.ts)
    y tocar **Deploy**.
-3. Repetir con `mp-oauth-status`
+3. En la configuración de `estado-pedido`, desactivar **Verify JWT / Verificar JWT**.
+   Esta función es pública para compradores: valida un código de seguimiento
+   aleatorio de 256 bits y su hash privado en la base de datos. No debe exigir
+   una sesión de usuario.
+4. Repetir con `mp-oauth-status`
    ([código](../supabase/functions/mp-oauth-status/index.ts)) y
    `mp-oauth-disconnect`
-   ([código](../supabase/functions/mp-oauth-disconnect/index.ts)).
+   ([código](../supabase/functions/mp-oauth-disconnect/index.ts)). En estas dos
+   funciones dejar **Verify JWT / Verificar JWT activado**, porque requieren
+   la sesión del titular del comercio.
 
 > Importante: la opción B no reemplaza las funciones ya desplegadas
 > (crear-pedido, mp-create-preference, mp-oauth-start, mp-oauth-callback,
@@ -90,7 +96,9 @@ curl -s -X POST https://egvchkzktjaitskcqlnr.supabase.co/functions/v1/estado-ped
 ```
 
 Resultado esperado: `{"ok":false,"mensaje":"No encontramos el pedido."}`
-Si responde eso, la función quedó publicada y activa.
+Si responde eso, la función quedó publicada y activa. La llamada debe poder
+llegar al código sin un JWT de usuario; la protección del pedido es el token
+aleatorio de seguimiento, que nunca se devuelve desde la base de datos.
 
 ---
 
