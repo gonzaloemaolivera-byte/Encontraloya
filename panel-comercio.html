@@ -837,7 +837,7 @@ authForm.addEventListener("submit", async event => {
         correoPendiente
           ? "Tu correo todavía no está confirmado. Abrí el último mensaje de Supabase y tocá “Confirmar correo”. Si ya lo hiciste o no encontrás el mensaje, usá “Reenviar correo de confirmación” y abrí el enlace más reciente."
           : (mode === "login" && response.status === 400
-            ? "No pudimos iniciar sesión. Revisá el correo y la contraseña. Si es tu primera vez, creá tu cuenta y confirmá el correo."
+            ? "No pudimos iniciar sesión. Revisá el correo y la contraseña. Si no la recordás, usá “¿Olvidaste tu contraseña?” para recuperarla sin crear otra cuenta."
             : (detalle || "No pudimos completar la operación. Intentá nuevamente.")),
         "error");
       return;
