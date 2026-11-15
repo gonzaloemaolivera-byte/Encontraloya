@@ -56,7 +56,7 @@ BEGIN
   END IF;
 
   -- 1.7 El token de un código de reclamo no autoriza nada.
-  v_resp := public.consultar_estado_pedido(v_pedido, encode(sha256('z'::bytea), 'hex'));
+  v_resp := public.consultar_estado_pedido(v_pedido, repeat('z',64));
   IF (v_resp->>'ok') IS DISTINCT FROM 'false' THEN
     RAISE EXCEPTION 'FALLO 1.7: el hash de un código de reclamo no debe autorizar la consulta.';
   END IF;
@@ -138,12 +138,12 @@ BEGIN
   IF (v_resp->>'ok') IS DISTINCT FROM 'true' THEN
     RAISE EXCEPTION 'FALLO 3.2: el titular debe poder desconectar.';
   END IF;
-  IF EXISTS (SELECT 1 FROM private.mp_oauth_tokens WHERE comercio_id = '00000000-0000-4000-8000-000000000101') THEN
+  IF EXISTS (SELECT 1 FROM public.mercado_pago_tokens_privado WHERE comercio_id = '00000000-0000-4000-8000-000000000101') THEN
     RAISE EXCEPTION 'FALLO 3.2b: las credenciales deben borrarse al desconectar.';
   END IF;
 
   -- 3.3 La desconexión no borra datos de reclamos ni la configuración.
-  IF NOT EXISTS (SELECT 1 FROM private.comercio_codigos_reclamo WHERE comercio_id = '00000000-0000-4000-8000-000000000103') THEN
+  IF NOT EXISTS (SELECT 1 FROM public.comercio_codigos_reclamo WHERE comercio_id = '00000000-0000-4000-8000-000000000103') THEN
     RAISE EXCEPTION 'FALLO 3.3: los códigos de reclamo no deben borrarse al desconectar.';
   END IF;
 END $$;
