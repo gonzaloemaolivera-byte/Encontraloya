@@ -146,6 +146,15 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.comercio_codigos_reclamo WHERE comercio_id = '00000000-0000-4000-8000-000000000103') THEN
     RAISE EXCEPTION 'FALLO 3.3: los códigos de reclamo no deben borrarse al desconectar.';
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.pedidos WHERE id = '00000000-0000-4000-8000-000000000201') THEN
+    RAISE EXCEPTION 'FALLO 3.4: los pedidos no deben borrarse al desconectar.';
+  END IF;
+  IF (SELECT porcentaje_comision FROM public.configuracion_plataforma WHERE id = 1) <> 5 THEN
+    RAISE EXCEPTION 'FALLO 3.5: la configuración de comisión debe conservarse.';
+  END IF;
+  IF (SELECT estado FROM public.conexiones_mercado_pago WHERE comercio_id = '00000000-0000-4000-8000-000000000101') <> 'desconectado' THEN
+    RAISE EXCEPTION 'FALLO 3.6: la conexión debe marcarse como desconectada.';
+  END IF;
 END $$;
 
 -- ============================================================================
