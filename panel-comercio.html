@@ -155,8 +155,12 @@ footer strong{color:white}
 <div class="field" style="margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:12px">
   <strong>Cuenta de Mercado Pago</strong>
   <p class="sub" style="margin:6px 0 10px">Vinculá la cuenta de Mercado Pago de este comercio. El comprador podrá pagar en el checkout seguro y el pago se acreditará en la cuenta autorizada.</p>
-  <button class="primary" id="mpConnectButton" type="button">Conectar Mercado Pago</button>
-  <div class="form-message" id="mpConnectionMessage" role="status" style="margin-top:8px">Todavía no verificamos la conexión de este comercio.</div>
+  <p class="form-message" id="mpConnectionState" role="status" style="margin:0 0 10px">Verificando la conexión de este comercio…</p>
+  <div class="form-foot">
+    <button class="primary" id="mpConnectButton" type="button">Conectar Mercado Pago</button>
+    <button class="ghost hidden" id="mpDisconnectButton" type="button">Desconectar cuenta</button>
+  </div>
+  <div class="form-message" id="mpConnectionMessage" role="status" style="margin-top:8px"></div>
 </div>
 </section>
 
@@ -469,9 +473,112 @@ function showMercadoPagoReturn() {
   params.delete("mp");
   const query = params.toString();
   window.history.replaceState({}, document.title, window.location.pathname + (query ? "?" + query : "") + window.location.hash);
+  if (status === "connected") {
+    // La vinculación recién hecha: se vuelve a consultar el estado real.
+    loadMercadoPagoEstado();
+  }
 }
 
 $("mpConnectButton").addEventListener("click", connectMercadoPago);
+
+// ---------- Estado de la conexión de Mercado Pago ----------
+
+// Estado de conexión por comercio, consultado al abrir el panel.
+// Solo indica "conectado" o "no conectado": nunca muestra tokens.
+let mpEstadoPorComercio = new Map();
+
+function renderMercadoPagoEstado() {
+  const state = $("mpConnectionState");
+  const connect = $("mpConnectButton");
+  const disconnect = $("mpDisconnectButton");
+  if (!comercio?.id) return;
+  const estado = mpEstadoPorComercio.get(comercio.id);
+  if (estado === undefined) {
+    state.textContent = "Verificando la conexión de este comercio…";
+    state.classList.remove("error", "ok");
+    connect.classList.remove("hidden");
+    disconnect.classList.add("hidden");
+    return;
+  }
+  if (estado === true) {
+    state.textContent = "✔ Cuenta de Mercado Pago vinculada a este comercio. Los pagos se acreditan en tu cuenta y Encontralo Ya aplica su comisión automáticamente.";
+    state.classList.add("ok");
+    state.classList.remove("error");
+    connect.textContent = "Volver a conectar";
+    connect.classList.remove("hidden");
+    disconnect.classList.remove("hidden");
+  } else if (estado === false) {
+    state.textContent = "✖ Este comercio todavía no vinculó su cuenta de Mercado Pago. Sin la vinculación, el comprador no puede pagar este pedido por Mercado Pago.";
+    state.classList.add("error");
+    state.classList.remove("ok");
+    connect.textContent = "Conectar Mercado Pago";
+    connect.classList.remove("hidden");
+    disconnect.classList.add("hidden");
+  }
+}
+
+async function loadMercadoPagoEstado() {
+  if (!session?.access_token) return;
+  const state = $("mpConnectionState");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-oauth-status`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok || !Array.isArray(data.comercios)) {
+      if (response.status === 401) {
+        saveSession(null);
+        showAuth();
+        return;
+      }
+      if (response.status === 503 || response.status === 500) {
+        state.textContent = "No pudimos verificar la conexión todavía. Podés conectar Mercado Pago igualmente.";
+        return;
+      }
+      return;
+    }
+    for (const item of data.comercios) {
+      if (item?.id) mpEstadoPorComercio.set(item.id, item.conectado === true);
+    }
+    renderMercadoPagoEstado();
+  } catch {
+    state.textContent = "No pudimos verificar la conexión. Revisá tu conexión a internet.";
+  }
+}
+
+$("mpDisconnectButton").addEventListener("click", async () => {
+  if (!comercio?.id || !session?.access_token) return;
+  if (!window.confirm("¿Desconectás la cuenta de Mercado Pago de este comercio? Los compradores no van a poder pagar con Mercado Pago hasta que la vincules otra vez.")) return;
+  const button = $("mpDisconnectButton");
+  const message = $("mpConnectionMessage");
+  button.disabled = true;
+  setMessage(message, "Desconectando la cuenta de Mercado Pago…");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-oauth-disconnect`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ comercio_id: comercio.id })
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok) {
+      throw new Error(data?.mensaje || "No pudimos desconectar la cuenta.");
+    }
+    setMessage(message, data.mensaje || "Cuenta desconectada.", "ok");
+    mpEstadoPorComercio.set(comercio.id, false);
+    renderMercadoPagoEstado();
+  } catch (error) {
+    setMessage(message, error.message || "No pudimos desconectar la cuenta.", "error");
+  } finally {
+    button.disabled = false;
+  }
+});
 
 function renderComercio() {
   $("comercioNombre").textContent = comercio.nombre || "Mi comercio";
@@ -494,6 +601,8 @@ function renderComercio() {
   }
   selector.value = comercio.id;
   $("shopSelectorWrap").classList.toggle("hidden", comercios.length < 2);
+  renderMercadoPagoEstado();
+  loadMercadoPagoEstado();
 }
 
 $("coverageSave").addEventListener("click", async () => {
@@ -855,6 +964,9 @@ $("shopSelect").addEventListener("change", () => {
   clearProductForm();
   renderComercio();
   loadMisProductos();
+  setMessage($("mpConnectionMessage"), "");
+  renderMercadoPagoEstado();
+  loadMercadoPagoEstado();
 });
 
 
