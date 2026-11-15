@@ -12,7 +12,10 @@
 
 const SUPABASE_URL =
   Deno.env.get("SUPABASE_URL") ?? Deno.env.get("SUPABASE") ?? "";
-const SERVICE_KEY =
+const PUBLIC_KEY =
+  Deno.env.get("SUPABASE_ANON_KEY") ??
+  Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+  "";\nconst SERVICE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   Deno.env.get("SUPABASE_SECRET_KEY") ??
   "";
@@ -41,7 +44,7 @@ Deno.serve(async (req) => {
     return json(405, { ok: false, mensaje: "Método no permitido." });
   }
 
-  if (!SUPABASE_URL || !SERVICE_KEY) {
+  if (!SUPABASE_URL || !SERVICE_KEY || !PUBLIC_KEY) {
     return json(500, {
       ok: false,
       mensaje: "El servicio todavía no está configurado.",
@@ -61,7 +64,7 @@ Deno.serve(async (req) => {
   try {
     const userResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
-        apikey: SERVICE_KEY,
+        apikey: PUBLIC_KEY,
         Authorization: authorization,
       },
     });
