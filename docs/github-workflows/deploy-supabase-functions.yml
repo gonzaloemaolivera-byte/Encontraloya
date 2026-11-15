@@ -13,6 +13,9 @@ name: Desplegar funciones nuevas de Mercado Pago
 # Requiere dos secretos configurados una sola vez en GitHub:
 #   SUPABASE_ACCESS_TOKEN  (token personal de Supabase)
 #   SUPABASE_PROJECT_ID    (egvchkzktjaitskcqlnr)
+# La configuración por función vive en supabase/config.toml:
+# estado-pedido no exige JWT (valida el token privado de seguimiento);
+# las dos funciones OAuth sí exigen el JWT de la sesión del comercio.
 # Solo despliega las funciones del repositorio: no toca las funciones
 # existentes que todavía no están versionadas.
 
