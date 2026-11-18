@@ -15,7 +15,7 @@ create or replace function public.procesar_pago_mercado_pago_webhook(
 ) returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
   v_pedido public.pedidos%rowtype;
@@ -65,6 +65,8 @@ begin
 
   v_estado := case p_payment_status
     when 'approved' then 'aprobado'
+    when 'authorized' then 'pendiente'
+    when 'in_mediation' then 'en_disputa'
     when 'rejected' then 'rechazado'
     when 'cancelled' then 'cancelado'
     when 'refunded' then 'reembolsado'
