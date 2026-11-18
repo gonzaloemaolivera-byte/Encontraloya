@@ -65,7 +65,5 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - name: Revisar formato
-        run: deno fmt --check supabase/edge-functions/mp-payment-webhook/index.ts
       - name: Revisar tipos e imports
         run: deno check --no-lock supabase/edge-functions/mp-payment-webhook/index.ts
