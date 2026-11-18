@@ -50,10 +50,14 @@ jobs:
         uses: actions/checkout@v4
       - name: Crear esquema ficticio
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/mercado-pago/esquema.sql
-      - name: Aplicar migración solo en base descartable
+      - name: Aplicar migración de pagos solo en base descartable
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261118_mp_webhook_atomic.sql
-      - name: Ejecutar pruebas de estados, comisión e idempotencia
+      - name: Aplicar bloqueo OAuth solo en base descartable
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261118_mp_token_refresh_lock.sql
+      - name: Ejecutar pruebas de pagos, comisión e idempotencia
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/mercado-pago/verificar.sql
+      - name: Ejecutar pruebas de bloqueo de renovación OAuth
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/mercado-pago/verificar-bloqueo-refresh.sql
 
   deno-check:
     name: Verificación estática Edge Function
