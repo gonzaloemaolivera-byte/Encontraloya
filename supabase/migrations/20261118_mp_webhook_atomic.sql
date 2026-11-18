@@ -124,14 +124,20 @@ begin
           importe_cobrado = case when estado in ('pendiente','devengada') then importe_comision else importe_cobrado end,
           actualizado_at = now()
       where pedido_id = p_pedido_id;
+    if not found then
+      raise exception 'No existe una comisión asociada al pedido';
+    end if;
   elsif v_estado = 'reembolsado' then
     update public.pedidos
       set estado = 'reembolsado', actualizado_at = now()
-      where id = p_pedido_id and estado <> 'reembolsado';
+      where id = p_pedido_id;
 
     update public.comisiones
       set estado = 'revertida', importe_cobrado = 0, actualizado_at = now()
-      where pedido_id = p_pedido_id and estado <> 'revertida';
+      where pedido_id = p_pedido_id;
+    if not found then
+      raise exception 'No existe una comisión asociada al pedido';
+    end if;
   end if;
 
   return jsonb_build_object('ok', true, 'estado', v_estado, 'pedido_id', p_pedido_id);
