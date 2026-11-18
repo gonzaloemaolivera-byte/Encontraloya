@@ -1,0 +1,71 @@
+name: Pruebas aisladas webhook Mercado Pago
+
+on:
+  push:
+    branches: [auditoria-mercado-pago]
+    paths:
+      - "supabase/edge-functions/mp-payment-webhook/**"
+      - "supabase/migrations/*mp_webhook_atomic.sql"
+      - "supabase/tests/mercado-pago/**"
+      - ".github/workflows/prueba-webhook-mercado-pago.yml"
+  pull_request:
+    paths:
+      - "supabase/edge-functions/mp-payment-webhook/**"
+      - "supabase/migrations/*mp_webhook_atomic.sql"
+      - "supabase/tests/mercado-pago/**"
+      - ".github/workflows/prueba-webhook-mercado-pago.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sql-webhook:
+    name: PostgreSQL 17 descartable
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: encontrarlo_webhook_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d encontrarlo_webhook_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: encontrarlo_webhook_test
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+      - name: Crear esquema ficticio
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/mercado-pago/esquema.sql
+      - name: Aplicar migración solo en base descartable
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261118_mp_webhook_atomic.sql
+      - name: Ejecutar pruebas de estados, comisión e idempotencia
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/mercado-pago/verificar.sql
+
+  deno-check:
+    name: Verificación estática Edge Function
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+      - name: Instalar Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Revisar formato
+        run: deno fmt --check supabase/edge-functions/mp-payment-webhook/index.ts
+      - name: Revisar tipos e imports
+        run: deno check --no-lock supabase/edge-functions/mp-payment-webhook/index.ts
