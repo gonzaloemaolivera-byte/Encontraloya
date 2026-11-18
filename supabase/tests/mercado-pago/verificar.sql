@@ -92,7 +92,7 @@ END;
 $$;
 
 -- Sin comisión asociada, no se debe confirmar ni registrar el pago.
-DO $
+DO $$
 BEGIN
   BEGIN
     PERFORM public.procesar_pago_mercado_pago_webhook(
@@ -105,9 +105,9 @@ BEGIN
     IF SQLERRM = 'Se aprobó un pedido sin comisión asociada' THEN RAISE; END IF;
   END;
 END;
-$;
+$$;
 
-DO $
+DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.pagos WHERE pedido_id='20000000-0000-4000-8000-000000000003') THEN
     RAISE EXCEPTION 'Se guardó un pago sin comisión asociada';
@@ -116,7 +116,7 @@ BEGIN
     RAISE EXCEPTION 'Se confirmó un pedido sin comisión asociada';
   END IF;
 END;
-$;
+$$;
 
 -- Una autorización no capturada no confirma el pedido ni cobra comisión.
 SELECT public.procesar_pago_mercado_pago_webhook(
@@ -125,7 +125,7 @@ SELECT public.procesar_pago_mercado_pago_webhook(
   'mp-test-authorized-9002', 'authorized', 2000, 'ARS', false, NULL, '{}'::jsonb
 );
 
-DO $
+DO $$
 BEGIN
   IF (SELECT estado FROM public.pagos WHERE pedido_id='20000000-0000-4000-8000-000000000002') <> 'pendiente' THEN
     RAISE EXCEPTION 'Una autorización se trató como pago capturado';
@@ -135,7 +135,7 @@ BEGIN
     RAISE EXCEPTION 'Una autorización confirmó el pedido o cobró la comisión';
   END IF;
 END;
-$;
+$$;
 
 -- Una mediación debe quedar en disputa, sin convertirla en venta cobrada.
 SELECT public.procesar_pago_mercado_pago_webhook(
@@ -144,7 +144,7 @@ SELECT public.procesar_pago_mercado_pago_webhook(
   'mp-test-authorized-9002', 'in_mediation', 2000, 'ARS', false, NULL, '{}'::jsonb
 );
 
-DO $
+DO $$
 BEGIN
   IF (SELECT estado FROM public.pagos WHERE pedido_id='20000000-0000-4000-8000-000000000002') <> 'en_disputa' THEN
     RAISE EXCEPTION 'La mediación no quedó en disputa';
@@ -154,7 +154,7 @@ BEGIN
     RAISE EXCEPTION 'La mediación fue tratada como una venta confirmada';
   END IF;
 END;
-$;
+$$;
 
 -- El mismo ID externo no se puede asociar a otro pedido.
 DO $$
