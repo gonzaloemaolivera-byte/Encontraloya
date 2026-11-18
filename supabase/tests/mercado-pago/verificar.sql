@@ -9,7 +9,9 @@ VALUES
   ('20000000-0000-4000-8000-000000000001', 9001,
    '10000000-0000-4000-8000-000000000001', 'pendiente', 'ARS', 1000, 0, 1000),
   ('20000000-0000-4000-8000-000000000002', 9002,
-   '10000000-0000-4000-8000-000000000001', 'pendiente', 'ARS', 2000, 0, 2000);
+   '10000000-0000-4000-8000-000000000001', 'pendiente', 'ARS', 2000, 0, 2000),
+  ('20000000-0000-4000-8000-000000000003', 9003,
+   '10000000-0000-4000-8000-000000000001', 'pendiente', 'ARS', 3000, 0, 3000);
 
 INSERT INTO public.comisiones
   (pedido_id, porcentaje, base_calculo, importe_comision, moneda, estado)
@@ -88,6 +90,33 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- Sin comisión asociada, no se debe confirmar ni registrar el pago.
+DO $
+BEGIN
+  BEGIN
+    PERFORM public.procesar_pago_mercado_pago_webhook(
+      '20000000-0000-4000-8000-000000000003',
+      '10000000-0000-4000-8000-000000000001',
+      'mp-test-no-commission', 'approved', 3000, 'ARS', false, now(), '{}'::jsonb
+    );
+    RAISE EXCEPTION 'Se aprobó un pedido sin comisión asociada';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'Se aprobó un pedido sin comisión asociada' THEN RAISE; END IF;
+  END;
+END;
+$;
+
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.pagos WHERE pedido_id='20000000-0000-4000-8000-000000000003') THEN
+    RAISE EXCEPTION 'Se guardó un pago sin comisión asociada';
+  END IF;
+  IF (SELECT estado FROM public.pedidos WHERE id='20000000-0000-4000-8000-000000000003') <> 'pendiente' THEN
+    RAISE EXCEPTION 'Se confirmó un pedido sin comisión asociada';
+  END IF;
+END;
+$;
 
 -- Una autorización no capturada no confirma el pedido ni cobra comisión.
 SELECT public.procesar_pago_mercado_pago_webhook(
