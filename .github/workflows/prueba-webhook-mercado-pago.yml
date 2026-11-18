@@ -1,5 +1,5 @@
 name: Pruebas aisladas webhook Mercado Pago
-# Reejecución tras corregir delimitadores SQL de los tests.
+# Ejecución aislada del webhook; sin acceso a credenciales de producción.
 
 on:
   push:
