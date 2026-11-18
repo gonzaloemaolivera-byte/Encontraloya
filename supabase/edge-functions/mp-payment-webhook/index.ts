@@ -59,41 +59,111 @@ async function verifySignature(req: Request, dataId: string) {
   for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ fields.v1.toLowerCase().charCodeAt(i);
   return diff === 0;
 }
-async function getSellerAccessToken(admin: any, row: any) {
-  if (new Date(row.expires_at).getTime() > Date.now() + 10 * 60 * 1000) {
-    return await decrypt(row.access_token_enc);
-  }
-  const refresh = await decrypt(row.refresh_token_enc);
-  const form = new URLSearchParams({
-    client_id: env("MP_CLIENT_ID"),
-    client_secret: env("MP_CLIENT_SECRET"),
-    grant_type: "refresh_token",
-    refresh_token: refresh,
-  });
-  const response = await fetch("https://api.mercadopago.com/oauth/token", {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
-    body: form,
-  });
-  const credentials = await response.json().catch(() => ({}));
-  if (!response.ok || !credentials.access_token || !credentials.refresh_token) {
-    throw new Error("Seller authorization expired; reconnection required");
-  }
-  const expiresAt = new Date(Date.now() + Number(credentials.expires_in || 15552000) * 1000).toISOString();
-  const update: Record<string, unknown> = {
-    access_token_enc: await encrypt(String(credentials.access_token)),
-    refresh_token_enc: await encrypt(String(credentials.refresh_token)),
-    expires_at: expiresAt,
-    actualizado_at: new Date().toISOString(),
+async function getSellerAccessToken(admin: any, initialRow: any) {
+  const isFresh = (row: any) =>
+    Boolean(row?.access_token_enc) &&
+    new Date(row.expires_at).getTime() > Date.now() + 10 * 60 * 1000;
+  const loadLatest = async () => {
+    const { data, error } = await admin.from("mercado_pago_tokens_privado")
+      .select("comercio_id,usuario_mercado_pago_id,access_token_enc,refresh_token_enc,expires_at,live_mode")
+      .eq("comercio_id", initialRow.comercio_id).maybeSingle();
+    if (error) throw error;
+    if (!data || String(data.usuario_mercado_pago_id) !== String(initialRow.usuario_mercado_pago_id)) {
+      throw new Error("Seller token connection changed; reconnection required");
+    }
+    return data;
   };
-  if (credentials.public_key) update.public_key = String(credentials.public_key);
-  if (typeof credentials.live_mode === "boolean" && credentials.live_mode !== row.live_mode) {
-    throw new Error("Mercado Pago token environment changed; seller must reconnect");
+
+  if (isFresh(initialRow)) return await decrypt(initialRow.access_token_enc);
+
+  // A lease in Postgres ensures only one webhook rotates a seller refresh token.
+  // Other concurrent webhooks wait for the winner to persist the rotated pair.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const lockToken = crypto.randomUUID();
+    const { data: acquired, error: lockError } = await admin.rpc("mp_try_lock_token_refresh", {
+      p_comercio_id: initialRow.comercio_id,
+      p_lock_token: lockToken,
+      p_lease_seconds: 45,
+    });
+    if (lockError) throw lockError;
+
+    if (!acquired) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const latest = await loadLatest();
+      if (isFresh(latest)) return await decrypt(latest.access_token_enc);
+      continue;
+    }
+
+    try {
+      // Re-read only after taking the lock: a previous request may already
+      // have refreshed the token between the first read and lock acquisition.
+      const current = await loadLatest();
+      if (isFresh(current)) return await decrypt(current.access_token_enc);
+      if (!current.refresh_token_enc) {
+        throw new Error("Seller refresh token missing; reconnection required");
+      }
+
+      const refresh = await decrypt(current.refresh_token_enc);
+      const form = new URLSearchParams({
+        client_id: env("MP_CLIENT_ID"),
+        client_secret: env("MP_CLIENT_SECRET"),
+        grant_type: "refresh_token",
+        refresh_token: refresh,
+      });
+      const response = await fetch("https://api.mercadopago.com/oauth/token", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+        body: form,
+      });
+      const credentials = await response.json().catch(() => ({}));
+
+      if (!response.ok || !credentials.access_token || !credentials.refresh_token) {
+        // If the provider rejected an old refresh token after another request
+        // rotated it, use the newly persisted access token rather than failing.
+        const afterFailure = await loadLatest();
+        if (isFresh(afterFailure)) return await decrypt(afterFailure.access_token_enc);
+        throw new Error("Seller authorization expired; reconnection required");
+      }
+
+      if (typeof credentials.live_mode === "boolean" && credentials.live_mode !== current.live_mode) {
+        throw new Error("Mercado Pago token environment changed; seller must reconnect");
+      }
+
+      const expiresAt = new Date(Date.now() + Number(credentials.expires_in || 15552000) * 1000).toISOString();
+      const update: Record<string, unknown> = {
+        access_token_enc: await encrypt(String(credentials.access_token)),
+        refresh_token_enc: await encrypt(String(credentials.refresh_token)),
+        expires_at: expiresAt,
+        actualizado_at: new Date().toISOString(),
+      };
+      if (credentials.public_key) update.public_key = String(credentials.public_key);
+
+      const { data: saved, error: saveError } = await admin.from("mercado_pago_tokens_privado")
+        .update(update)
+        .eq("comercio_id", current.comercio_id)
+        .eq("refresh_token_enc", current.refresh_token_enc)
+        .select("comercio_id")
+        .maybeSingle();
+      if (saveError) throw saveError;
+      if (!saved) {
+        const afterRace = await loadLatest();
+        if (isFresh(afterRace)) return await decrypt(afterRace.access_token_enc);
+        throw new Error("Seller token changed during refresh; retry required");
+      }
+      return String(credentials.access_token);
+    } finally {
+      const { error: releaseError } = await admin.rpc("mp_release_token_refresh_lock", {
+        p_comercio_id: initialRow.comercio_id,
+        p_lock_token: lockToken,
+      });
+      if (releaseError) {
+        // The lease expires automatically; do not log token or provider data.
+        console.error("mp-token-refresh-lock-release", releaseError.message);
+      }
+    }
   }
-  const { error } = await admin.from("mercado_pago_tokens_privado")
-    .update(update).eq("comercio_id", row.comercio_id);
-  if (error) throw error;
-  return String(credentials.access_token);
+
+  throw new Error("Seller token refresh is busy; retry notification");
 }
 
 Deno.serve(async (req: Request) => {
