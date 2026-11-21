@@ -97,7 +97,20 @@ footer strong{color:white}
   <button class="ghost" id="resendConfirmBtn" type="button">Reenviar correo de confirmación</button>
   <span class="form-message" id="resendConfirmMessage" role="status"></span>
 </div>
+<div class="form-foot" id="forgotPasswordWrap">
+  <button class="ghost" id="forgotPasswordBtn" type="button">¿Olvidaste tu contraseña?</button>
+  <span class="form-message" id="forgotPasswordMessage" role="status"></span>
+</div>
 </form>
+<div class="hidden" id="passwordRecoveryPanel" style="margin-top:18px;border-top:1px solid var(--line);padding-top:18px">
+  <h2>Crear una contraseña nueva</h2>
+  <p class="sub">Elegí una contraseña nueva para tu cuenta de Encontralo Ya.</p>
+  <form id="passwordRecoveryForm">
+    <div class="field"><label for="recoveryNewPassword">Nueva contraseña *</label><input id="recoveryNewPassword" type="password" required minlength="12" autocomplete="new-password"></div>
+    <div class="field" style="margin-top:10px"><label for="recoveryConfirmPassword">Repetí la nueva contraseña *</label><input id="recoveryConfirmPassword" type="password" required minlength="12" autocomplete="new-password"></div>
+    <div class="form-foot"><button class="primary" id="recoverySaveButton" type="submit">Guardar contraseña nueva</button><span class="form-message" id="passwordRecoveryMessage" role="status"></span></div>
+  </form>
+</div>
 </section>
 
 <!-- ======== Reclamar comercio ======== -->
@@ -155,8 +168,12 @@ footer strong{color:white}
 <div class="field" style="margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:12px">
   <strong>Cuenta de Mercado Pago</strong>
   <p class="sub" style="margin:6px 0 10px">Vinculá la cuenta de Mercado Pago de este comercio. El comprador podrá pagar en el checkout seguro y el pago se acreditará en la cuenta autorizada.</p>
-  <button class="primary" id="mpConnectButton" type="button">Conectar Mercado Pago</button>
-  <div class="form-message" id="mpConnectionMessage" role="status" style="margin-top:8px">Todavía no verificamos la conexión de este comercio.</div>
+  <p class="form-message" id="mpConnectionState" role="status" style="margin:0 0 10px">Verificando la conexión de este comercio…</p>
+  <div class="form-foot">
+    <button class="primary" id="mpConnectButton" type="button">Conectar Mercado Pago</button>
+    <button class="ghost hidden" id="mpDisconnectButton" type="button">Desconectar cuenta</button>
+  </div>
+  <div class="form-message" id="mpConnectionMessage" role="status" style="margin-top:8px"></div>
 </div>
 </section>
 
@@ -469,9 +486,112 @@ function showMercadoPagoReturn() {
   params.delete("mp");
   const query = params.toString();
   window.history.replaceState({}, document.title, window.location.pathname + (query ? "?" + query : "") + window.location.hash);
+  if (status === "connected") {
+    // La vinculación recién hecha: se vuelve a consultar el estado real.
+    loadMercadoPagoEstado();
+  }
 }
 
 $("mpConnectButton").addEventListener("click", connectMercadoPago);
+
+// ---------- Estado de la conexión de Mercado Pago ----------
+
+// Estado de conexión por comercio, consultado al abrir el panel.
+// Solo indica "conectado" o "no conectado": nunca muestra tokens.
+let mpEstadoPorComercio = new Map();
+
+function renderMercadoPagoEstado() {
+  const state = $("mpConnectionState");
+  const connect = $("mpConnectButton");
+  const disconnect = $("mpDisconnectButton");
+  if (!comercio?.id) return;
+  const estado = mpEstadoPorComercio.get(comercio.id);
+  if (estado === undefined) {
+    state.textContent = "Verificando la conexión de este comercio…";
+    state.classList.remove("error", "ok");
+    connect.classList.remove("hidden");
+    disconnect.classList.add("hidden");
+    return;
+  }
+  if (estado === true) {
+    state.textContent = "✔ Cuenta de Mercado Pago vinculada a este comercio. Los pagos se acreditan en tu cuenta y Encontralo Ya aplica su comisión automáticamente.";
+    state.classList.add("ok");
+    state.classList.remove("error");
+    connect.textContent = "Volver a conectar";
+    connect.classList.remove("hidden");
+    disconnect.classList.remove("hidden");
+  } else if (estado === false) {
+    state.textContent = "✖ Este comercio todavía no vinculó su cuenta de Mercado Pago. Sin la vinculación, el comprador no puede pagar este pedido por Mercado Pago.";
+    state.classList.add("error");
+    state.classList.remove("ok");
+    connect.textContent = "Conectar Mercado Pago";
+    connect.classList.remove("hidden");
+    disconnect.classList.add("hidden");
+  }
+}
+
+async function loadMercadoPagoEstado() {
+  if (!session?.access_token) return;
+  const state = $("mpConnectionState");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-oauth-status`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok || !Array.isArray(data.comercios)) {
+      if (response.status === 401) {
+        saveSession(null);
+        showAuth();
+        return;
+      }
+      if (response.status === 503 || response.status === 500) {
+        state.textContent = "No pudimos verificar la conexión todavía. Podés conectar Mercado Pago igualmente.";
+        return;
+      }
+      return;
+    }
+    for (const item of data.comercios) {
+      if (item?.id) mpEstadoPorComercio.set(item.id, item.conectado === true);
+    }
+    renderMercadoPagoEstado();
+  } catch {
+    state.textContent = "No pudimos verificar la conexión. Revisá tu conexión a internet.";
+  }
+}
+
+$("mpDisconnectButton").addEventListener("click", async () => {
+  if (!comercio?.id || !session?.access_token) return;
+  if (!window.confirm("¿Desconectás la cuenta de Mercado Pago de este comercio? Los compradores no van a poder pagar con Mercado Pago hasta que la vincules otra vez.")) return;
+  const button = $("mpDisconnectButton");
+  const message = $("mpConnectionMessage");
+  button.disabled = true;
+  setMessage(message, "Desconectando la cuenta de Mercado Pago…");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-oauth-disconnect`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ comercio_id: comercio.id })
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok) {
+      throw new Error(data?.mensaje || "No pudimos desconectar la cuenta.");
+    }
+    setMessage(message, data.mensaje || "Cuenta desconectada.", "ok");
+    mpEstadoPorComercio.set(comercio.id, false);
+    renderMercadoPagoEstado();
+  } catch (error) {
+    setMessage(message, error.message || "No pudimos desconectar la cuenta.", "error");
+  } finally {
+    button.disabled = false;
+  }
+});
 
 function renderComercio() {
   $("comercioNombre").textContent = comercio.nombre || "Mi comercio";
@@ -494,6 +614,8 @@ function renderComercio() {
   }
   selector.value = comercio.id;
   $("shopSelectorWrap").classList.toggle("hidden", comercios.length < 2);
+  renderMercadoPagoEstado();
+  loadMercadoPagoEstado();
 }
 
 $("coverageSave").addEventListener("click", async () => {
@@ -532,6 +654,8 @@ tabSignup.addEventListener("click", () => setMode("signup"));
 
 function setMode(next) {
   mode = next;
+  authForm.classList.remove("hidden");
+  $("passwordRecoveryPanel").classList.add("hidden");
   tabLogin.classList.toggle("active", next === "login");
   tabSignup.classList.toggle("active", next === "signup");
   authSubmit.textContent = next === "login" ? "Iniciar sesión" : "Crear cuenta";
@@ -543,8 +667,80 @@ function setMode(next) {
     ? "Ingresá el correo y la contraseña de tu cuenta de Encontralo Ya."
     : "Creá tu cuenta con un correo real y una contraseña segura.");
   $("resendConfirmWrap").classList.toggle("hidden", next !== "login");
+  $("forgotPasswordWrap").classList.toggle("hidden", next !== "login");
   setMessage($("resendConfirmMessage"), "");
+  setMessage($("forgotPasswordMessage"), "");
 }
+
+$("forgotPasswordBtn").addEventListener("click", async () => {
+  const email = authEmail.value.trim();
+  const message = $("forgotPasswordMessage");
+  if (!email || !authEmail.checkValidity()) {
+    setMessage(message, "Primero escribí el correo de tu cuenta arriba.", "error");
+    authEmail.focus();
+    return;
+  }
+  const button = $("forgotPasswordBtn");
+  button.disabled = true;
+  setMessage(message, "Enviando el enlace para recuperar tu contraseña…");
+  try {
+    const redirectTo = `${window.location.origin}/panel-comercio.html`;
+    const response = await authFetch(`recover?redirect_to=${encodeURIComponent(redirectTo)}`, { email });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = data.msg || data.message || data.error_description || "";
+      setMessage(message, detail || "No pudimos enviar el correo de recuperación. Intentá nuevamente.", "error");
+      return;
+    }
+    setMessage(message, "Si el correo está registrado, Supabase enviará un enlace. Revisá Recibidos y Spam.", "ok");
+  } catch (error) {
+    console.error(error);
+    setMessage(message, "No pudimos conectar con Supabase. Intentá nuevamente.", "error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$("passwordRecoveryForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = $("passwordRecoveryForm");
+  if (!form.reportValidity()) return;
+  const password = $("recoveryNewPassword").value;
+  const confirm = $("recoveryConfirmPassword").value;
+  const strong = password.length >= 12 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+  if (!strong) {
+    setMessage($("passwordRecoveryMessage"), "Usá al menos 12 caracteres, con mayúscula, minúscula, número y símbolo.", "error");
+    return;
+  }
+  if (password !== confirm) {
+    setMessage($("passwordRecoveryMessage"), "Las contraseñas no coinciden.", "error");
+    return;
+  }
+  const button = $("recoverySaveButton");
+  button.disabled = true;
+  setMessage($("passwordRecoveryMessage"), "Guardando tu nueva contraseña…");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      method: "PUT",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session?.access_token || ""}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.msg || data.message || "Supabase no pudo actualizar la contraseña.");
+    $("passwordRecoveryPanel").classList.add("hidden");
+    authForm.classList.remove("hidden");
+    authPassword.value = "";
+    $("recoveryNewPassword").value = "";
+    $("recoveryConfirmPassword").value = "";
+    setMessage(authMessage, "Contraseña actualizada. Iniciando tu sesión…", "ok");
+    await afterAuth();
+  } catch (error) {
+    console.error(error);
+    setMessage($("passwordRecoveryMessage"), error.message || "No pudimos actualizar la contraseña. Volvé a solicitar el enlace.", "error");
+  } finally {
+    button.disabled = false;
+  }
+});
 
 $("resendConfirmBtn").addEventListener("click", async () => {
   const email = authEmail.value.trim();
@@ -641,7 +837,7 @@ authForm.addEventListener("submit", async event => {
         correoPendiente
           ? "Tu correo todavía no está confirmado. Abrí el último mensaje de Supabase y tocá “Confirmar correo”. Si ya lo hiciste o no encontrás el mensaje, usá “Reenviar correo de confirmación” y abrí el enlace más reciente."
           : (mode === "login" && response.status === 400
-            ? "No pudimos iniciar sesión. Revisá el correo y la contraseña. Si es tu primera vez, creá tu cuenta y confirmá el correo."
+            ? "No pudimos iniciar sesión. Revisá el correo y la contraseña. Si no la recordás, usá “¿Olvidaste tu contraseña?” para recuperarla sin crear otra cuenta."
             : (detalle || "No pudimos completar la operación. Intentá nuevamente.")),
         "error");
       return;
@@ -855,6 +1051,9 @@ $("shopSelect").addEventListener("change", () => {
   clearProductForm();
   renderComercio();
   loadMisProductos();
+  setMessage($("mpConnectionMessage"), "");
+  renderMercadoPagoEstado();
+  loadMercadoPagoEstado();
 });
 
 
@@ -1289,6 +1488,7 @@ async function restoreAuthCallback() {
   const params = new URLSearchParams(window.location.hash.slice(1));
   const accessToken = params.get("access_token");
   const refreshToken = params.get("refresh_token");
+  const callbackType = params.get("type");
   const errorCode = params.get("error_code");
   const errorDescription = params.get("error_description");
 
@@ -1326,6 +1526,13 @@ async function restoreAuthCallback() {
       user
     });
     window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    if (callbackType === "recovery") {
+      showAuth();
+      authForm.classList.add("hidden");
+      $("passwordRecoveryPanel").classList.remove("hidden");
+      setMessage($("passwordRecoveryMessage"), "Enlace verificado. Ahora elegí tu nueva contraseña.", "ok");
+      return true;
+    }
     await afterAuth();
     return true;
   } catch (error) {

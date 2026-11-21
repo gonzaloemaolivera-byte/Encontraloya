@@ -1,0 +1,67 @@
+# CÓMO ACTIVAR ESTE WORKFLOW:
+# GitHub solo permite crear o modificar archivos de .github/workflows/ desde
+# la web y con un usuario humano (la App de GitHub de Netlify no tiene el
+# permiso "workflows", por eso este PR no pudo incluirlos directamente).
+# Activación (una sola vez, desde la web de GitHub):
+#   1. Add file → Create new file → ruta: .github/workflows/prueba-estado-pedido.yml
+#   2. Pegar TODO el contenido de este archivo (sin estas líneas de guía).
+#   3. Commit.
+
+name: Prueba de estado de pedidos y Mercado Pago
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20261115160000_estado_pedido_y_oauth_status.sql"
+      - "supabase/tests/fixtures/esquema-estado-pedido-prueba.sql"
+      - "supabase/tests/verificar-estado-pedido.sql"
+      - "supabase/functions/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-17:
+    name: PostgreSQL 17 aislado
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: encontrarlo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d encontrarlo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: encontrarlo_test
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Crear esquema ficticio de Supabase
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/esquema-estado-pedido-prueba.sql
+
+      - name: Ejecutar la migración de estado de pedidos
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261115160000_estado_pedido_y_oauth_status.sql
+
+      - name: Verificar consulta de estado, OAuth y comisión
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/verificar-estado-pedido.sql
+
+      - name: Validar sintaxis de las Edge Functions
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh -s -- -y
+          ~/.deno/bin/deno check supabase/functions/estado-pedido/index.ts
+          ~/.deno/bin/deno check supabase/functions/mp-oauth-status/index.ts
+          ~/.deno/bin/deno check supabase/functions/mp-oauth-disconnect/index.ts

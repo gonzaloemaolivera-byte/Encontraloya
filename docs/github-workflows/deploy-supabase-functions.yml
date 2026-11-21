@@ -1,0 +1,75 @@
+# CÓMO ACTIVAR ESTE WORKFLOW:
+# GitHub solo permite crear o modificar archivos de .github/workflows/ desde
+# la web y con un usuario humano (la App de GitHub de Netlify no tiene el
+# permiso "workflows", por eso este PR no pudo incluirlos directamente).
+# Activación (una sola vez, desde la web de GitHub):
+#   1. Add file → Create new file → ruta: .github/workflows/deploy-supabase-functions.yml
+#   2. Pegar TODO el contenido de este archivo (sin estas líneas de guía).
+#   3. Commit.
+
+name: Desplegar funciones nuevas de Mercado Pago
+
+# Publica en Supabase las funciones que viven en este repositorio.
+# Requiere dos secretos configurados una sola vez en GitHub:
+#   SUPABASE_ACCESS_TOKEN  (token personal de Supabase)
+#   SUPABASE_PROJECT_ID    (egvchkzktjaitskcqlnr)
+# La configuración por función vive en supabase/config.toml:
+# estado-pedido no exige JWT (valida el token privado de seguimiento);
+# las dos funciones OAuth sí exigen el JWT de la sesión del comercio.
+# Solo despliega las funciones del repositorio: no toca las funciones
+# existentes que todavía no están versionadas.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Publicar funciones
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Verificar token de Supabase
+        id: token
+        run: |
+          if [ -n "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
+            echo "disponible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "disponible=false" >> "$GITHUB_OUTPUT"
+            echo "Sin SUPABASE_ACCESS_TOKEN configurado en GitHub: se omite la publicación."
+          fi
+
+      - name: Instalar CLI de Supabase
+        if: steps.token.outputs.disponible == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Publicar estado-pedido
+        if: steps.token.outputs.disponible == 'true'
+        run: supabase functions deploy estado-pedido --project-ref "$SUPABASE_PROJECT_ID"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+      - name: Publicar mp-oauth-status
+        if: steps.token.outputs.disponible == 'true'
+        run: supabase functions deploy mp-oauth-status --project-ref "$SUPABASE_PROJECT_ID"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+      - name: Publicar mp-oauth-disconnect
+        if: steps.token.outputs.disponible == 'true'
+        run: supabase functions deploy mp-oauth-disconnect --project-ref "$SUPABASE_PROJECT_ID"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}

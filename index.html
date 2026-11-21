@@ -50,6 +50,8 @@ main{padding:30px 0 60px}
 .section-head{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:16px}
 h2{font-size:1.45rem;margin:0;color:var(--navy);letter-spacing:-.4px}
 .sub{color:var(--muted);font-size:.9rem;margin:4px 0 0}
+.sub.ok{color:var(--green);font-weight:700}
+.sub.error{color:#c0392b;font-weight:700}
 .categories{display:flex;gap:8px;overflow:auto;padding:3px 0 14px}
 .chip{white-space:nowrap;border:1px solid var(--line);background:white;color:#486581;border-radius:999px;padding:8px 13px;font-size:.88rem;font-weight:700}
 .chip.active{background:var(--navy);border-color:var(--navy);color:white}
@@ -256,6 +258,25 @@ footer strong{color:white}
 <div class="status" id="catalogStatus" role="status">Conectando con el catálogo…</div>
 <div class="grid" id="productGrid"></div>
 
+<section class="panel hidden" id="orderStatusPanel" aria-labelledby="orderStatusTitle">
+  <h2 id="orderStatusTitle">Estado de tu pedido</h2>
+  <p id="orderStatusMessage" class="sub" role="status">Consultando el estado real de tu pago con Mercado Pago…</p>
+  <p id="orderStatusDetail" class="sub"></p>
+  <div class="form-foot" id="orderStatusActions">
+    <button class="primary" id="orderStatusRefresh" type="button">Consultar de nuevo</button>
+    <button class="ghost" id="orderStatusCancel" type="button">Cerrar</button>
+  </div>
+  <details id="orderStatusManualBox" class="hidden" style="margin-top:10px">
+    <summary>Consultar con el código de seguimiento</summary>
+    <form id="orderStatusManualForm">
+      <div class="form-grid">
+        <div class="field full"><label for="orderStatusManualId">Identificador del pedido</label><input id="orderStatusManualId" required maxlength="36" placeholder="Pegá el identificador del pedido"></div>
+        <div class="field full"><label for="orderStatusManualToken">Código de seguimiento</label><input id="orderStatusManualToken" required maxlength="64" placeholder="Pegá el código de seguimiento de 64 caracteres"></div>
+      </div>
+      <div class="form-foot"><button class="primary" type="submit">Consultar estado</button></div>
+    </form>
+  </details>
+</section>
 <section class="panel hidden" id="serviceRequestPanel" aria-labelledby="serviceRequestTitle">
   <h2 id="serviceRequestTitle">Solicitar este servicio</h2>
   <p id="serviceRequestName" class="sub"></p>
@@ -710,6 +731,15 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
     const selectedPayment = document.getElementById("buyerPaymentMethod").value;
     if (selectedPayment === "mercado_pago") {
       message.textContent = "Pedido registrado. Preparando el checkout seguro de Mercado Pago…";
+      // Guardamos el seguimiento del pedido para que, al volver de Mercado Pago,
+      // el comprador pueda consultar el estado real sin crear otro pedido.
+      try {
+        sessionStorage.setItem("ey_pedido_seguimiento", JSON.stringify({
+          pedido_id: result.pedido_id,
+          checkout_token: result.checkout_token,
+          numero_pedido: result.numero_pedido
+        }));
+      } catch { /* si el navegador no permite guardar, seguimos igual */ }
       const paymentResponse = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-preference`, {
         method:"POST",
         headers:{apikey:SUPABASE_ANON_KEY,"Content-Type":"application/json"},
@@ -721,7 +751,11 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
         renderCart();
         form.reset();
         document.getElementById("orderConfirmation").classList.remove("hidden");
-        document.getElementById("orderConfirmation").textContent = `El pedido #${result.numero_pedido} quedó registrado, pero no pudimos abrir el pago. No vuelvas a enviar el pedido; contactá al comercio e informá este número. Motivo: ${paymentResult.mensaje || "Error al iniciar Mercado Pago"}`;
+        document.getElementById("orderConfirmation").textContent = `El pedido #${result.numero_pedido} quedó registrado, pero no pudimos abrir el pago. No vuelvas a enviar el pedido; podés consultar su estado abajo con el código de seguimiento o contactar al comercio e informar este número. Motivo: ${paymentResult.mensaje || "Error al iniciar Mercado Pago"}`;
+        const seguimiento = leerSeguimiento();
+        if (seguimiento && seguimiento.pedido_id === result.pedido_id) {
+          abrirEstadoPedido(seguimiento);
+        }
         throw new Error("El pedido quedó registrado, pero el checkout no pudo iniciarse. No vuelvas a enviarlo.");
       }
       window.location.assign(paymentResult.checkout_url);
@@ -1108,21 +1142,200 @@ async function registerVisit() {
   }
 }
 
+// Estado real del pedido al volver del checkout de Mercado Pago.
+// La respuesta de Mercado Pago (?pago=exito|pendiente|error) es solo una pista:
+// el estado verdadero se confirma consultando el servidor con el código de
+// seguimiento del pedido, que verifica la información real de Mercado Pago
+// recibida por el webhook firmado.
+// El código de seguimiento es una credencial de acceso al estado del pedido.
+// sessionStorage lo limita a esta pestaña y evita conservarlo tras cerrar el navegador.
+const SEGUIMIENTO_KEY = "ey_pedido_seguimiento";
+
+function leerSeguimiento() {
+  try {
+    const guardado = JSON.parse(sessionStorage.getItem(SEGUIMIENTO_KEY) || "null");
+    if (guardado && guardado.pedido_id && guardado.checkout_token) return guardado;
+  } catch { /* datos guardados corruptos: se ignoran */ }
+  return null;
+}
+
+function clasificarPago(estadoPedido, estadoPago) {
+  const texto = `${estadoPago || ""} ${estadoPedido || ""}`.toLowerCase();
+  if (/aprob|approved|pagado|acreditado|confirmado|paid|completed|succeeded/.test(texto)) {
+    return "aprobado";
+  }
+  if (/rechaz|reject|cancel|refused|devuelto|failed|anulad/.test(texto)) {
+    return "rechazado";
+  }
+  if (/pendiente|pending|in_process|en_proceso|authorized|autorizado|deferred/.test(texto)) {
+    return "pendiente";
+  }
+  if (estadoPago) return "otro";
+  return "sin_pago";
+}
+
+const orderStatusPanel = document.getElementById("orderStatusPanel");
+const orderStatusMessage = document.getElementById("orderStatusMessage");
+const orderStatusDetail = document.getElementById("orderStatusDetail");
+const orderStatusRefresh = document.getElementById("orderStatusRefresh");
+const orderStatusCancel = document.getElementById("orderStatusCancel");
+const orderStatusManualBox = document.getElementById("orderStatusManualBox");
+
+let orderStatusTimer = null;
+let orderStatusIntentos = 0;
+
+function abrirEstadoPedido(seguimiento) {
+  orderStatusPanel.classList.remove("hidden");
+  orderStatusPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  orderStatusMessage.textContent = "Consultando el estado real de tu pago con Mercado Pago…";
+  orderStatusMessage.className = "sub";
+  orderStatusDetail.textContent = seguimiento.numero_pedido ? `Pedido #${seguimiento.numero_pedido}` : "";
+  orderStatusRefresh.disabled = true;
+  orderStatusIntentos = 0;
+  consultarEstadoPedido(seguimiento);
+}
+
+function mostrarEstadoPedido(seguimiento, data) {
+  const estadoPago = data?.pago?.estado || "";
+  const estadoPedido = data?.estado || "";
+  const resultado = clasificarPago(estadoPedido, estadoPago);
+  orderStatusRefresh.disabled = false;
+
+  if (resultado === "aprobado") {
+    orderStatusMessage.textContent = "Pago aprobado y confirmado. Tu pedido quedó registrado con el pago verificado.";
+    orderStatusMessage.className = "sub ok";
+    detenerAutoEstado();
+    return;
+  }
+
+  if (resultado === "rechazado") {
+    orderStatusMessage.textContent = "El pago fue rechazado o cancelado. No se cobró el pedido: podés hablar con el comercio o volver a intentar el pago.";
+    orderStatusMessage.className = "sub error";
+    detenerAutoEstado();
+    return;
+  }
+
+  if (resultado === "pendiente") {
+    orderStatusMessage.textContent = "Tu pago está pendiente en Mercado Pago. En cuanto se acredite, el pedido se actualiza solo. Podés consultar de nuevo cuantas veces quieras: no se genera ningún cargo extra.";
+    orderStatusMessage.className = "sub";
+    programarAutoEstado(seguimiento);
+    return;
+  }
+
+  if (resultado === "sin_pago") {
+    orderStatusMessage.textContent = "El pedido está registrado, pero todavía no hay ningún pago informado por Mercado Pago. Si ya pagaste, esperá unos segundos y consultá de nuevo.";
+    orderStatusMessage.className = "sub";
+    programarAutoEstado(seguimiento);
+    return;
+  }
+
+  orderStatusMessage.textContent = `El pago figura como "${estadoPago}". El comercio recibió la información de Mercado Pago y lo está procesando.`;
+  orderStatusMessage.className = "sub";
+  programarAutoEstado(seguimiento);
+}
+
+function fallarEstadoPedido(seguimiento, mensaje) {
+  orderStatusRefresh.disabled = false;
+  orderStatusMessage.textContent = mensaje || "No pudimos consultar el estado del pedido.";
+  orderStatusMessage.className = "sub error";
+  orderStatusManualBox.classList.remove("hidden");
+  detenerAutoEstado();
+}
+
+async function consultarEstadoPedido(seguimiento) {
+  if (orderStatusIntentos > 30) {
+    detenerAutoEstado();
+    return;
+  }
+  orderStatusIntentos += 1;
+  orderStatusRefresh.disabled = true;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/estado-pedido`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pedido_id: seguimiento.pedido_id,
+        checkout_token: seguimiento.checkout_token
+      })
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data) {
+      fallarEstadoPedido(seguimiento, data?.mensaje);
+      return;
+    }
+    if (data.ok === false) {
+      // Token vencido o pedido inexistente: se muestra el motivo exacto.
+      orderStatusRefresh.disabled = false;
+      orderStatusMessage.textContent = data.mensaje || "No pudimos validar el código de seguimiento.";
+      orderStatusMessage.className = "sub error";
+      orderStatusManualBox.classList.remove("hidden");
+      detenerAutoEstado();
+      return;
+    }
+    mostrarEstadoPedido(seguimiento, data);
+  } catch {
+    fallarEstadoPedido(seguimiento, "No pudimos conectarnos. Revisá tu conexión y consultá de nuevo.");
+  }
+}
+
+function programarAutoEstado(seguimiento) {
+  detenerAutoEstado();
+  if (orderStatusIntentos >= 6) return; // hasta 6 intentos automáticos (~1 minuto)
+  orderStatusTimer = setTimeout(() => consultarEstadoPedido(seguimiento), 10000);
+}
+
+function detenerAutoEstado() {
+  if (orderStatusTimer) {
+    clearTimeout(orderStatusTimer);
+    orderStatusTimer = null;
+  }
+}
+
+orderStatusRefresh.addEventListener("click", () => {
+  const seguimiento = leerSeguimiento();
+  if (seguimiento) consultarEstadoPedido(seguimiento);
+});
+
+orderStatusCancel.addEventListener("click", () => {
+  detenerAutoEstado();
+  orderStatusPanel.classList.add("hidden");
+});
+
+document.getElementById("orderStatusManualForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const seguimiento = {
+    pedido_id: document.getElementById("orderStatusManualId").value.trim(),
+    checkout_token: document.getElementById("orderStatusManualToken").value.trim(),
+    numero_pedido: null
+  };
+  try {
+    sessionStorage.setItem(SEGUIMIENTO_KEY, JSON.stringify(seguimiento));
+  } catch { /* seguimos sin guardar */ }
+  abrirEstadoPedido(seguimiento);
+});
+
+// Al volver de Mercado Pago: se consulta el estado real del pedido.
 const mpReturnParams = new URLSearchParams(window.location.search);
 const mpReturnStatus = mpReturnParams.get("pago");
-if (["exito", "pendiente", "error"].includes(mpReturnStatus)) {
-  const notice = document.createElement("div");
-  notice.className = "wrap panel";
-  const orderRef = mpReturnParams.get("pedido");
-  if (mpReturnStatus === "exito") {
-    notice.textContent = "Mercado Pago informó que el pago fue aprobado. Estamos verificando la confirmación definitiva para actualizar tu pedido" + (orderRef ? " (" + orderRef.slice(0, 8) + ")." : ".");
-  } else if (mpReturnStatus === "pendiente") {
-    notice.textContent = "Tu pago quedó pendiente en Mercado Pago. El pedido se actualizará cuando recibamos la confirmación.";
+const mpReturnPedido = mpReturnParams.get("pedido");
+if (["exito", "pendiente", "error"].includes(mpReturnStatus) || mpReturnPedido) {
+  const seguimiento = leerSeguimiento();
+  if (seguimiento) {
+    abrirEstadoPedido(seguimiento);
   } else {
-    notice.textContent = "El pago no se completó. Podés volver a intentarlo desde el comercio.";
+    const notice = document.createElement("div");
+    notice.className = "wrap panel";
+    notice.innerHTML = "<h2>Estado de tu pago</h2>" +
+      '<p class="sub">Recibimos el aviso de Mercado Pago. Para mostrarte el estado real y confirmado del pago necesitamos el código de seguimiento del pedido.</p>';
+    orderStatusMessage.textContent = "Completá el identificador del pedido y su código de seguimiento para ver el estado real del pago.";
+    orderStatusDetail.textContent = "";
+    orderStatusManualBox.classList.remove("hidden");
+    notice.appendChild(orderStatusPanel);
+    orderStatusPanel.classList.remove("hidden");
+    const main = document.querySelector("main.wrap");
+    if (main) main.prepend(notice);
+    else orderStatusPanel.classList.remove("hidden");
   }
-  const main = document.querySelector("main.wrap");
-  if (main) main.prepend(notice);
 }
 
 registerVisit();
