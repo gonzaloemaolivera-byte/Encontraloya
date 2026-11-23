@@ -25,12 +25,28 @@ main{padding:26px 0 54px}.card{background:white;border:1px solid var(--line);bor
 <main class="wrap">
 <section class="card auth" id="loginCard">
 <h1>Administración de Encontralo Ya</h1>
-<p class="sub">Ingresá con el correo oficial. Te enviaremos un enlace seguro para iniciar sesión.</p>
-<form id="loginForm"><div class="field"><label for="email">Correo de administración</label><input id="email" type="email" value="administracionencontraloya@gmail.com" readonly></div><button class="primary" id="sendLink" type="submit">Enviar enlace de acceso</button></form>
-<p class="msg" id="loginMessage" role="status">El acceso está protegido y se valida nuevamente en el servidor.</p>
+<p class="sub">Ingresá con tu contraseña. El enlace por correo queda como alternativa de recuperación.</p>
+<form id="passwordLoginForm">
+ <div class="field"><label for="email">Correo de administración</label><input id="email" type="email" value="administracionencontraloya@gmail.com" readonly></div>
+ <div class="field"><label for="adminPassword">Contraseña</label><input id="adminPassword" type="password" autocomplete="current-password" minlength="12" placeholder="Tu contraseña segura" required></div>
+ <button class="primary" id="passwordLogin" type="submit">Ingresar al panel</button>
+</form>
+<div class="divider" style="text-align:center;margin:14px 0;color:#64748b">O usar acceso por correo</div>
+<form id="loginForm"><button class="secondary" id="sendLink" type="submit">Enviar enlace seguro al correo</button></form>
+<p class="msg" id="loginMessage" role="status">El acceso está protegido y se valida nuevamente en el servidor. Si ya configuraste contraseña, no necesitás pedir un correo nuevo.</p>
 </section>
 <section id="dashboard" class="hidden">
 <div class="toolbar"><div class="muted" id="signedInAs"></div><div class="actions"><button class="secondary" id="refreshBtn" type="button">Actualizar datos</button><button class="secondary" id="logoutBtn" type="button">Cerrar sesión</button></div></div>
+<section class="card" style="margin-bottom:16px">
+ <h2 style="margin:0 0 6px">Acceso permanente con contraseña</h2>
+ <p class="sub">Configurá o actualizá tu contraseña una vez. Después vas a poder entrar sin solicitar enlaces por correo.</p>
+ <form id="setPasswordForm" class="actions" style="align-items:end">
+  <div class="field" style="flex:1;min-width:220px"><label for="newAdminPassword">Nueva contraseña (mínimo 12 caracteres)</label><input id="newAdminPassword" type="password" autocomplete="new-password" minlength="12" required></div>
+  <div class="field" style="flex:1;min-width:220px"><label for="confirmAdminPassword">Repetir contraseña</label><input id="confirmAdminPassword" type="password" autocomplete="new-password" minlength="12" required></div>
+  <button class="primary" id="saveAdminPassword" type="submit">Guardar contraseña</button>
+ </form>
+ <p class="msg" id="passwordSettingsMessage" role="status"></p>
+</section>
 <div class="heading"><h1>Resumen de la plataforma</h1><div class="updated" id="updatedAt">Actualizado al consultar</div></div>
 <div class="metrics">
 <div class="metric"><small>Comercios registrados</small><strong id="shops">—</strong></div>
@@ -144,6 +160,28 @@ async function loadDashboard(){
  await loadCommerceManagement();
  $("dashboardMessage").textContent="";
 }
+$("passwordLoginForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const password=$("adminPassword").value;
+ const button=$("passwordLogin");button.disabled=true;button.textContent="Ingresando…";
+ const {data,error}=await client.auth.signInWithPassword({email:ADMIN_EMAIL,password});
+ button.disabled=false;button.textContent="Ingresar al panel";
+ if(error){$("loginMessage").textContent="No se pudo ingresar: "+error.message;$("loginMessage").className="msg error";return;}
+ if(String(data.user?.email||"").toLowerCase()!==ADMIN_EMAIL){await client.auth.signOut();$("loginMessage").textContent="Cuenta no autorizada.";$("loginMessage").className="msg error";}
+});
+$("setPasswordForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const password=$("newAdminPassword").value;
+ const confirm=$("confirmAdminPassword").value;
+ if(password.length<12){$("passwordSettingsMessage").textContent="Usá al menos 12 caracteres.";$("passwordSettingsMessage").className="msg error";return;}
+ if(password!==confirm){$("passwordSettingsMessage").textContent="Las contraseñas no coinciden.";$("passwordSettingsMessage").className="msg error";return;}
+ const button=$("saveAdminPassword");button.disabled=true;button.textContent="Guardando…";
+ const {error}=await client.auth.updateUser({password});
+ button.disabled=false;button.textContent="Guardar contraseña";
+ $("passwordSettingsMessage").textContent=error?"No se pudo guardar: "+error.message:"Contraseña guardada. La próxima vez podés ingresar con correo y contraseña, sin pedir un enlace.";
+ $("passwordSettingsMessage").className="msg "+(error?"error":"ok");
+ if(!error){$("newAdminPassword").value="";$("confirmAdminPassword").value="";}
+});
 $("loginForm").addEventListener("submit",async e=>{
  e.preventDefault();$("sendLink").disabled=true;$("loginMessage").textContent="Enviando enlace seguro…";
  const {error}=await client.auth.signInWithOtp({email:ADMIN_EMAIL,options:{emailRedirectTo:window.location.href.split("#")[0]}});
