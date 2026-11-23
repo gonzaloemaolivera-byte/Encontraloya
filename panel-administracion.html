@@ -49,6 +49,22 @@ main{padding:26px 0 54px}.card{background:white;border:1px solid var(--line);bor
 <section class="card"><h2>Comercios recientes</h2><div class="table-wrap"><table class="table"><thead><tr><th>Comercio</th><th>Localidad</th><th>Alta</th></tr></thead><tbody id="shopsRows"></tbody></table></div></section>
 <section class="card"><h2>Pedidos recientes</h2><div class="table-wrap"><table class="table"><thead><tr><th>Pedido</th><th>Comercio</th><th>Estado</th><th>Total</th></tr></thead><tbody id="ordersRows"></tbody></table></div></section>
 </div>
+<section class="card" style="margin-top:15px">
+  <div class="toolbar">
+    <div><h2>Administrar comercios</h2><p class="sub" style="margin:4px 0 0">Controlá la visibilidad de cada comercio. Los cambios se aplican al catálogo público.</p></div>
+    <div class="actions">
+      <input id="shopSearch" type="search" placeholder="Buscar comercio o localidad" aria-label="Buscar comercio o localidad" style="max-width:240px">
+      <select id="shopStateFilter" aria-label="Filtrar por estado" style="padding:10px;border:1px solid #bcccdc;border-radius:9px">
+        <option value="todos">Todos los estados</option><option value="activo">Activos</option><option value="pausado">Pausados</option><option value="suspendido">Suspendidos</option>
+      </select>
+    </div>
+  </div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Comercio y contacto</th><th>Ubicación</th><th>Publicaciones</th><th>Estado</th><th>Acción</th></tr></thead>
+    <tbody id="shopsAdminRows"><tr><td colspan="5" class="empty">Cargando comercios…</td></tr></tbody>
+  </table></div>
+  <p class="msg" id="shopsAdminMessage" role="status"></p>
+</section>
 <p class="msg" id="dashboardMessage" role="status"></p>
 <p class="muted" style="font-size:.8rem">Los importes muestran operaciones que ya figuran en la base de datos. No representan cobros confirmados de Mercado Pago si la integración todavía no está conectada.</p>
 </section>
@@ -67,7 +83,49 @@ const ars=n=>Number(n||0).toLocaleString("es-AR",{style:"currency",currency:"ARS
 const safe=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const date=v=>v?new Date(v).toLocaleDateString("es-AR"):"—";
 function showDashboard(on){$("loginCard").classList.toggle("hidden",on);$("dashboard").classList.toggle("hidden",!on);}
-function setMessage(id,text,kind=""){$(id).textContent=text;$ (id).className="msg "+kind;}
+function setMessage(id,text,kind=""){$(id).textContent=text;$(id).className="msg "+kind;}
+let adminBusinesses=[];
+function renderAdminBusinesses(){
+ const query=$("shopSearch").value.trim().toLocaleLowerCase("es-AR");
+ const state=$("shopStateFilter").value;
+ const filtered=adminBusinesses.filter(x=>{
+  const haystack=[x.nombre,x.rubro,x.localidad,x.provincia,x.contacto,x.telefono].filter(Boolean).join(" ").toLocaleLowerCase("es-AR");
+  return (!query||haystack.includes(query))&&(state==="todos"||x.estado_publicacion===state);
+ });
+ $("shopsAdminRows").innerHTML=filtered.map(x=>{
+  const status=x.estado_publicacion||"activo";
+  const owner=x.propietario_id?"Cuenta vinculada":"Sin cuenta vinculada";
+  return "<tr><td><strong>"+safe(x.nombre)+"</strong><br><span class='muted'>"+safe(x.rubro||"Sin rubro")+"</span><br><span class='muted'>"+safe(x.contacto||"Sin contacto")+" · "+safe(x.telefono||"Sin teléfono")+"</span><br><span class='muted'>"+owner+"</span></td><td>"+safe([x.localidad,x.provincia].filter(Boolean).join(", ")||"—")+"</td><td>"+number(x.productos_total)+"</td><td><span class='pill'>"+safe(status)+"</span></td><td><div style='display:grid;gap:6px;min-width:145px'><select data-shop-state='"+safe(x.id)+"' aria-label='Estado de "+safe(x.nombre)+"' style='padding:7px;border:1px solid #bcccdc;border-radius:8px'><option value='activo' "+(status==="activo"?"selected":"")+">Activo</option><option value='pausado' "+(status==="pausado"?"selected":"")+">Pausado</option><option value='suspendido' "+(status==="suspendido"?"selected":"")+">Suspendido</option></select><button class='secondary' type='button' data-save-shop='"+safe(x.id)+"'>Guardar estado</button></div></td></tr>";
+ }).join("")||"<tr><td colspan='5' class='empty'>No hay comercios que coincidan con la búsqueda.</td></tr>";
+}
+async function loadCommerceManagement(){
+ $("shopsAdminRows").innerHTML="<tr><td colspan='5' class='empty'>Cargando comercios…</td></tr>";
+ const {data,error}=await client.rpc("listar_comercios_administracion");
+ if(error){$("shopsAdminRows").innerHTML="<tr><td colspan='5' class='empty'>No se pudieron cargar los comercios: "+safe(error.message)+"</td></tr>";return;}
+ adminBusinesses=Array.isArray(data)?data:[];
+ renderAdminBusinesses();
+}
+$("shopSearch").addEventListener("input",renderAdminBusinesses);
+$("shopStateFilter").addEventListener("change",renderAdminBusinesses);
+$("shopsAdminRows").addEventListener("click",async event=>{
+ const button=event.target.closest("[data-save-shop]");
+ if(!button)return;
+ const id=button.getAttribute("data-save-shop");
+ const select=$("shopsAdminRows").querySelector("[data-shop-state='"+CSS.escape(id)+"']");
+ if(!select)return;
+ const state=select.value;
+ const shop=adminBusinesses.find(x=>x.id===id);
+ if(!shop)return;
+ if(state===shop.estado_publicacion){$("shopsAdminMessage").textContent="Ese comercio ya tiene ese estado.";return;}
+ const labels={activo:"volver a publicar",pausado:"pausar",suspendido:"suspender"};
+ if(!window.confirm("¿Confirmás "+labels[state]+" el comercio “"+shop.nombre+"”?"))return;
+ button.disabled=true;button.textContent="Guardando…";
+ const {data,error}=await client.rpc("administrar_estado_comercio",{p_comercio_id:id,p_estado:state});
+ button.disabled=false;button.textContent="Guardar estado";
+ if(error||!data?.ok){$("shopsAdminMessage").textContent="No se pudo actualizar: "+(error?.message||"respuesta no válida");return;}
+ $("shopsAdminMessage").textContent="Estado actualizado: "+data.nombre+" → "+state+".";
+ await loadCommerceManagement();
+});
 async function loadDashboard(){
  $("dashboardMessage").textContent="Cargando información…";
  const {data:{session}}=await client.auth.getSession();
@@ -83,6 +141,7 @@ async function loadDashboard(){
  $("shopsRows").innerHTML=(d.comercios_recientes||[]).map(x=>"<tr><td><strong>"+safe(x.nombre)+"</strong><br><span class='muted'>"+safe(x.rubro||"Sin rubro")+"</span></td><td>"+safe([x.localidad,x.provincia].filter(Boolean).join(", ")||"—")+"</td><td>"+date(x.fecha)+"</td></tr>").join("")||"<tr><td colspan='3' class='empty'>Todavía no hay comercios.</td></tr>";
  $("ordersRows").innerHTML=(d.pedidos_recientes||[]).map(x=>"<tr><td>#"+safe(x.numero)+"<br><span class='muted'>"+date(x.fecha)+"</span></td><td>"+safe(x.comercio||"—")+"</td><td><span class='pill'>"+safe(x.estado)+"</span></td><td>"+ars(x.total)+"</td></tr>").join("")||"<tr><td colspan='4' class='empty'>Todavía no hay pedidos.</td></tr>";
  $("updatedAt").textContent="Actualizado: "+new Date().toLocaleString("es-AR");
+ await loadCommerceManagement();
  $("dashboardMessage").textContent="";
 }
 $("loginForm").addEventListener("submit",async e=>{
