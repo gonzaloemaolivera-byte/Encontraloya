@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#102a43">
+<meta name="robots" content="noindex,nofollow">
+<title>Encontralo Ya | Panel de administración</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--cyan:#65d6df;--ink:#172b4d;--muted:#627d98;--line:#d9e2ec;--paper:#f3f7fb;--green:#16845b;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.6;cursor:wait}
+header{background:var(--navy);color:white;padding:17px 0}.wrap{width:min(1120px,calc(100% - 28px));margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.brand{font-size:1.3rem;font-weight:850}.brand span{color:var(--cyan)}.tag{font-size:.82rem;color:#d7e7f5}.back{color:white;text-decoration:none;border:1px solid #8fb5d4;border-radius:999px;padding:8px 13px;font-weight:700;font-size:.9rem}
+main{padding:26px 0 54px}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 24px #102a4310;margin-bottom:15px}.auth{max-width:520px;margin:25px auto}.card h1,.card h2{margin:0 0 7px;color:var(--navy)}.sub,.muted{color:var(--muted)}.sub{margin:0 0 16px;font-size:.92rem}
+.field{display:grid;gap:6px;margin:12px 0}label{font-weight:750;font-size:.88rem}input{width:100%;padding:12px;border:1px solid #bcccdc;border-radius:9px;color:var(--ink)}
+.primary,.secondary{border-radius:9px;padding:11px 15px;font-weight:800}.primary{border:0;background:var(--blue);color:white}.secondary{border:1px solid var(--blue);background:white;color:var(--blue)}.msg{font-size:.88rem;color:var(--muted);margin-top:10px}.msg.error{color:#a8201a}.msg.ok{color:var(--green)}.hidden{display:none!important}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:15px}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.heading{margin:4px 0 15px}.heading h1{margin:0;color:var(--navy);font-size:1.65rem}.updated{font-size:.82rem;color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}.metric{background:white;border:1px solid var(--line);border-radius:14px;padding:15px;min-width:0}.metric small{display:block;color:var(--muted);font-weight:700}.metric strong{display:block;color:var(--navy);font-size:1.7rem;line-height:1.25;margin-top:5px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.metric.money strong{font-size:1.35rem;color:var(--green)}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.card h2{font-size:1.08rem}.table-wrap{overflow-x:auto}.table{width:100%;border-collapse:collapse;font-size:.87rem}.table th,.table td{text-align:left;padding:9px 7px;border-bottom:1px solid #edf2f7;vertical-align:top}.table th{color:var(--muted);font-size:.78rem}.table td:last-child,.table th:last-child{text-align:right;white-space:nowrap}.empty{color:var(--muted);padding:12px 0;font-size:.9rem}.pill{display:inline-block;padding:3px 8px;border-radius:99px;background:#edf4fa;color:#34536d;font-size:.75rem;font-weight:800}
+@media(max-width:820px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}}@media(max-width:390px){.metric{padding:12px}.metric strong{font-size:1.45rem}.metric.money strong{font-size:1.18rem}}
+</style>
+</head>
+<body>
+<header><div class="wrap top"><div><div class="brand">Encontralo <span>Ya</span></div><div class="tag">Panel privado de administración</div></div><a class="back" href="index.html">Volver a la plataforma</a></div></header>
+<main class="wrap">
+<section class="card auth" id="loginCard">
+<h1>Administración de Encontralo Ya</h1>
+<p class="sub">Ingresá con el correo oficial. Te enviaremos un enlace seguro para iniciar sesión.</p>
+<form id="loginForm"><div class="field"><label for="email">Correo de administración</label><input id="email" type="email" value="administracionencontraloya@gmail.com" readonly></div><button class="primary" id="sendLink" type="submit">Enviar enlace de acceso</button></form>
+<p class="msg" id="loginMessage" role="status">El acceso está protegido y se valida nuevamente en el servidor.</p>
+</section>
+<section id="dashboard" class="hidden">
+<div class="toolbar"><div class="muted" id="signedInAs"></div><div class="actions"><button class="secondary" id="refreshBtn" type="button">Actualizar datos</button><button class="secondary" id="logoutBtn" type="button">Cerrar sesión</button></div></div>
+<div class="heading"><h1>Resumen de la plataforma</h1><div class="updated" id="updatedAt">Actualizado al consultar</div></div>
+<div class="metrics">
+<div class="metric"><small>Comercios registrados</small><strong id="shops">—</strong></div>
+<div class="metric"><small>Productos publicados</small><strong id="products">—</strong></div>
+<div class="metric"><small>Productos disponibles</small><strong id="available">—</strong></div>
+<div class="metric"><small>Pedidos registrados</small><strong id="orders">—</strong></div>
+<div class="metric"><small>Pedidos pendientes</small><strong id="pending">—</strong></div>
+<div class="metric"><small>Solicitudes de servicios</small><strong id="services">—</strong></div>
+<div class="metric"><small>Consultas recibidas</small><strong id="queries">—</strong></div>
+<div class="metric"><small>Visitas registradas</small><strong id="visits">—</strong></div>
+<div class="metric money"><small>Pagos aprobados registrados</small><strong id="payments">—</strong></div>
+<div class="metric money"><small>Comisiones generadas</small><strong id="generated">—</strong></div>
+<div class="metric money"><small>Comisiones cobradas registradas</small><strong id="collected">—</strong></div>
+</div>
+<div class="columns">
+<section class="card"><h2>Comercios recientes</h2><div class="table-wrap"><table class="table"><thead><tr><th>Comercio</th><th>Localidad</th><th>Alta</th></tr></thead><tbody id="shopsRows"></tbody></table></div></section>
+<section class="card"><h2>Pedidos recientes</h2><div class="table-wrap"><table class="table"><thead><tr><th>Pedido</th><th>Comercio</th><th>Estado</th><th>Total</th></tr></thead><tbody id="ordersRows"></tbody></table></div></section>
+</div>
+<p class="msg" id="dashboardMessage" role="status"></p>
+<p class="muted" style="font-size:.8rem">Los importes muestran operaciones que ya figuran en la base de datos. No representan cobros confirmados de Mercado Pago si la integración todavía no está conectada.</p>
+</section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(() => {
+"use strict";
+const SUPABASE_URL="https://egvchkzktjaitskcqlnr.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_MhdqvUOMFQrImKw0ePCH1g_FU2BpGxj";
+const ADMIN_EMAIL="administracionencontraloya@gmail.com";
+const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=id=>document.getElementById(id);
+const number=n=>Number(n||0).toLocaleString("es-AR");
+const ars=n=>Number(n||0).toLocaleString("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:2});
+const safe=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const date=v=>v?new Date(v).toLocaleDateString("es-AR"):"—";
+function showDashboard(on){$("loginCard").classList.toggle("hidden",on);$("dashboard").classList.toggle("hidden",!on);}
+function setMessage(id,text,kind=""){$(id).textContent=text;$ (id).className="msg "+kind;}
+async function loadDashboard(){
+ $("dashboardMessage").textContent="Cargando información…";
+ const {data:{session}}=await client.auth.getSession();
+ if(!session||String(session.user.email||"").toLowerCase()!==ADMIN_EMAIL){showDashboard(false);return;}
+ const {data,error}=await client.rpc("obtener_panel_administracion");
+ if(error){$("dashboardMessage").textContent="No se pudieron cargar los datos: "+error.message;return;}
+ const d=data||{};
+ const values={shops:d.comercios_total,products:d.productos_total,available:d.productos_disponibles,orders:d.pedidos_total,pending:d.pedidos_pendientes,services:d.servicios_total,queries:d.consultas_total,visits:d.visitas_total};
+ for(const [id,value] of Object.entries(values))$(id).textContent=number(value);
+ $("payments").textContent=ars(d.pagos_aprobados_total);
+ $("generated").textContent=ars(d.comisiones_generadas);
+ $("collected").textContent=ars(d.comisiones_cobradas);
+ $("shopsRows").innerHTML=(d.comercios_recientes||[]).map(x=>"<tr><td><strong>"+safe(x.nombre)+"</strong><br><span class='muted'>"+safe(x.rubro||"Sin rubro")+"</span></td><td>"+safe([x.localidad,x.provincia].filter(Boolean).join(", ")||"—")+"</td><td>"+date(x.fecha)+"</td></tr>").join("")||"<tr><td colspan='3' class='empty'>Todavía no hay comercios.</td></tr>";
+ $("ordersRows").innerHTML=(d.pedidos_recientes||[]).map(x=>"<tr><td>#"+safe(x.numero)+"<br><span class='muted'>"+date(x.fecha)+"</span></td><td>"+safe(x.comercio||"—")+"</td><td><span class='pill'>"+safe(x.estado)+"</span></td><td>"+ars(x.total)+"</td></tr>").join("")||"<tr><td colspan='4' class='empty'>Todavía no hay pedidos.</td></tr>";
+ $("updatedAt").textContent="Actualizado: "+new Date().toLocaleString("es-AR");
+ $("dashboardMessage").textContent="";
+}
+$("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();$("sendLink").disabled=true;$("loginMessage").textContent="Enviando enlace seguro…";
+ const {error}=await client.auth.signInWithOtp({email:ADMIN_EMAIL,options:{emailRedirectTo:window.location.href.split("#")[0]}});
+ $("sendLink").disabled=false;
+ $("loginMessage").textContent=error?"No se pudo enviar el enlace: "+error.message:"Revisá el correo de administración y abrí el enlace desde este dispositivo.";
+ $("loginMessage").className="msg "+(error?"error":"ok");
+});
+$("refreshBtn").addEventListener("click",loadDashboard);
+$("logoutBtn").addEventListener("click",async()=>{await client.auth.signOut();showDashboard(false);});
+client.auth.onAuthStateChange((_event,session)=>{
+ if(session&&String(session.user.email||"").toLowerCase()===ADMIN_EMAIL){showDashboard(true);setTimeout(loadDashboard,0);}
+ else showDashboard(false);
+});
+(async()=>{
+ const {data:{session}}=await client.auth.getSession();
+ if(session&&String(session.user.email||"").toLowerCase()===ADMIN_EMAIL){showDashboard(true);await loadDashboard();}
+})();
+})();
+</script>
+</body>
+</html>
