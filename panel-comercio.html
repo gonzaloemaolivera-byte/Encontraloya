@@ -479,7 +479,8 @@ function showMercadoPagoReturn() {
     error: ["Mercado Pago no pudo completar la vinculación. Intentá nuevamente.", "error"],
     state_error: ["La autorización venció o ya fue utilizada. Volvé a conectar Mercado Pago.", "error"],
     owner_changed: ["No pudimos validar que el comercio siga perteneciendo a esta cuenta.", "error"],
-    exchange_error: ["Mercado Pago rechazó la autorización. Verificá la aplicación y la URL de retorno configuradas.", "error"]
+    exchange_error: ["Mercado Pago rechazó la autorización. Verificá la aplicación y la URL de retorno configuradas.", "error"],
+    offline_access_missing: ["La cuenta se vinculó sin el permiso para renovar la conexión automáticamente. Volvé a conectar Mercado Pago para habilitar la renovación.", "error"]
   };
   const result = messages[status];
   if (result) setMessage($("mpConnectionMessage"), result[0], result[1]);
