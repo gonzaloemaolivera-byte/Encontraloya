@@ -117,6 +117,7 @@ footer strong{color:white}
 <section class="card hidden" id="claimCard">
 <h2>Registrá tu comercio</h2>
 <p class="sub">Si sos responsable de un comercio o prestás un servicio, completá estos datos. Tu cuenta quedará vinculada y vas a poder publicar lo que ofrecés.</p>
+<div class="form-foot" style="margin:0 0 16px"><button class="ghost" id="claimLogoutBtn" type="button">Cambiar de cuenta</button><span class="form-message">¿Entraste con otro correo? Cerrá esta sesión para ingresar con el tuyo.</span></div>
 <form id="newCommerceForm">
 <div class="form-grid">
 <div class="field full"><label for="newCommerceName">Nombre de tu negocio o de tu profesión *</label><input id="newCommerceName" required maxlength="120" autocomplete="organization"><small class="hint">Si trabajás por tu cuenta, podés poner tu nombre y oficio. Ejemplo: Juan – Pintor.</small></div>
@@ -863,19 +864,32 @@ authForm.addEventListener("submit", async event => {
   }
 });
 
-$("logoutBtn").addEventListener("click", async () => {
+async function cerrarSesionYVolverAlAcceso() {
   try {
-    await authFetch("logout", {}, {
-      Authorization: `Bearer ${session?.access_token || ""}`
-    });
-  } catch {
-    // Cerramos igual aunque el servidor no responda.
+    if (session?.access_token) {
+      await authFetch("logout", {}, {
+        Authorization: `Bearer ${session.access_token}`
+      });
+    }
+  } catch (error) {
+    console.warn("No se pudo revocar la sesión en el servidor; se limpia la sesión local.", error);
   }
   saveSession(null);
   comercio = null;
   comercios = [];
+  mpEstadoPorComercio.clear();
+  if (window.__eyServiceInboxTimer) clearInterval(window.__eyServiceInboxTimer);
+  if (window.__eyProviderChatTimer) clearInterval(window.__eyProviderChatTimer);
   showAuth();
-});
+  setMode("login");
+  authEmail.value = "";
+  authPassword.value = "";
+  setMessage(authMessage, "Sesión cerrada. Ahora podés ingresar con otro correo y contraseña.", "ok");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+$("logoutBtn").addEventListener("click", cerrarSesionYVolverAlAcceso);
+$("claimLogoutBtn").addEventListener("click", cerrarSesionYVolverAlAcceso);
 
 // Después de iniciar sesión: ¿el usuario ya tiene comercio reclamado?
 async function afterAuth() {
