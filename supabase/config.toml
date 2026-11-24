@@ -5,6 +5,15 @@ project_id = "egvchkzktjaitskcqlnr"
 [functions.estado-pedido]
 verify_jwt = false
 
+# El inicio del flujo OAuth es exclusivo del panel autenticado del comercio.
+[functions.mp-oauth-start]
+verify_jwt = true
+
+# mp-oauth-callback es pública: la llama el navegador que vuelve de Mercado
+# Pago. Su protección es el estado de un solo uso guardado en la base.
+[functions.mp-oauth-callback]
+verify_jwt = false
+
 # Estas dos funciones son exclusivas del panel autenticado del comercio.
 [functions.mp-oauth-status]
 verify_jwt = true

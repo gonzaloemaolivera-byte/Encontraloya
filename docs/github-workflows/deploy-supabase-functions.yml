@@ -14,8 +14,10 @@ name: Desplegar funciones nuevas de Mercado Pago
 #   SUPABASE_ACCESS_TOKEN  (token personal de Supabase)
 #   SUPABASE_PROJECT_ID    (egvchkzktjaitskcqlnr)
 # La configuración por función vive en supabase/config.toml:
-# estado-pedido no exige JWT (valida el token privado de seguimiento);
-# las dos funciones OAuth sí exigen el JWT de la sesión del comercio.
+# estado-pedido y mp-oauth-callback no exigen JWT (la primera valida el
+# token privado de seguimiento; la segunda, el estado de un solo uso);
+# mp-oauth-start, mp-oauth-status y mp-oauth-disconnect exigen el JWT de
+# la sesión del comercio.
 # Solo despliega las funciones del repositorio: no toca las funciones
 # existentes que todavía no están versionadas.
 
@@ -56,6 +58,20 @@ jobs:
       - name: Publicar estado-pedido
         if: steps.token.outputs.disponible == 'true'
         run: supabase functions deploy estado-pedido --project-ref "$SUPABASE_PROJECT_ID"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+      - name: Publicar mp-oauth-start
+        if: steps.token.outputs.disponible == 'true'
+        run: supabase functions deploy mp-oauth-start --project-ref "$SUPABASE_PROJECT_ID"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+      - name: Publicar mp-oauth-callback
+        if: steps.token.outputs.disponible == 'true'
+        run: supabase functions deploy mp-oauth-callback --project-ref "$SUPABASE_PROJECT_ID"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
