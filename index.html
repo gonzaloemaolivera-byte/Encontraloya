@@ -911,11 +911,25 @@ merchantForm.addEventListener("submit", async event => {
   }
 });
 
+// Conserva el borrador del formulario y recupera la conversación si Safari recarga la página.
+const serviceDraftKey = "ey_service_request_draft_v1";
+const serviceJobKey = "ey_service_customer_job_v1";
+const serviceDraftFields = ["servicePublicationId","serviceClientName","serviceClientPhone","serviceClientEmail","serviceClientDetail","serviceDestination","serviceLocality","servicePreferredDate","serviceProposedPrice"];
+function saveServiceDraft() {
+  try { const draft={}; serviceDraftFields.forEach(id=>{const el=document.getElementById(id);if(el)draft[id]=el.value;}); sessionStorage.setItem(serviceDraftKey,JSON.stringify(draft)); } catch {}
+}
+function restoreServiceDraft() {
+  try { const draft=JSON.parse(sessionStorage.getItem(serviceDraftKey)||"null"); if(!draft)return; serviceDraftFields.forEach(id=>{const el=document.getElementById(id);if(el&&typeof draft[id]==="string")el.value=draft[id];}); if(draft.servicePublicationId)document.getElementById("serviceRequestPanel").classList.remove("hidden"); } catch {}
+}
+serviceDraftFields.forEach(id=>{const el=document.getElementById(id);if(el){el.addEventListener("input",saveServiceDraft);el.addEventListener("change",saveServiceDraft);}});
+restoreServiceDraft();
+
 // Solicitudes de trabajo: el comprador recibe un código privado para confirmar al finalizar.
 grid.addEventListener("click", event => {
   const button = event.target.closest("button[data-request-service]");
   if (!button) return;
   document.getElementById("servicePublicationId").value = button.dataset.requestService;
+  saveServiceDraft();
   document.getElementById("serviceRequestName").textContent = button.dataset.serviceName || "Servicio seleccionado";
   document.getElementById("serviceRequestForm").classList.remove("hidden");
   document.getElementById("serviceRequestSuccess").classList.add("hidden");
@@ -953,6 +967,7 @@ document.getElementById("serviceRequestForm").addEventListener("submit", async e
     document.getElementById("serviceCustomerToken").textContent = data.token_chat;
     document.getElementById("serviceRequestId").textContent = data.solicitud_id;
     window.__eyService = {id:data.solicitud_id, token:data.token_chat};
+    try { sessionStorage.setItem(serviceJobKey, JSON.stringify(window.__eyService)); sessionStorage.removeItem(serviceDraftKey); } catch {}
     document.getElementById("serviceRequestForm").classList.add("hidden");
     document.getElementById("serviceRequestSuccess").classList.remove("hidden");
     message.textContent = "";
@@ -1010,6 +1025,12 @@ document.getElementById("serviceResumeForm").addEventListener("submit",e=>{
  if(window.__eyCustomerChatTimer)clearInterval(window.__eyCustomerChatTimer);
  window.__eyCustomerChatTimer=setInterval(loadCustomerServiceChat,5000);
 });
+
+// Recupera automáticamente la conversación después de volver desde otra app o recargar Safari.
+try {
+  const savedJob=JSON.parse(sessionStorage.getItem(serviceJobKey)||"null");
+  if(savedJob?.id&&savedJob?.token){window.__eyService=savedJob;document.getElementById("serviceCustomerChatPanel").classList.remove("hidden");loadCustomerServiceChat();window.__eyCustomerChatTimer=setInterval(loadCustomerServiceChat,5000);}
+} catch {}
 
 document.getElementById("serviceCustomerChatForm").addEventListener("submit",async e=>{
  e.preventDefault();const job=window.__eyService;const input=document.getElementById("serviceCustomerMessage");if(!job?.token||!input.value.trim())return;
