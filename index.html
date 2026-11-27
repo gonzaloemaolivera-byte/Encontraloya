@@ -57,6 +57,7 @@ h2{font-size:1.45rem;margin:0;color:var(--navy);letter-spacing:-.4px}
 .chip.active{background:var(--navy);border-color:var(--navy);color:white}
 .status{font-size:.9rem;color:var(--muted);padding:10px 0 16px}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.product-image{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:11px;background:#edf2f7;margin:0 0 12px}
 .product{background:white;border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:0 4px 14px rgba(16,42,67,.04);display:flex;flex-direction:column;min-height:210px}
 .product h3{font-size:1.03rem;margin:0 0 5px;color:var(--navy)}
 .desc{font-size:.88rem;color:var(--muted);margin:0 0 12px}
@@ -563,6 +564,7 @@ function renderProducts() {
     );
 
     return `<article class="product">
+      ${product.imagen_url ? `<img class="product-image" src="${escapeHTML(product.imagen_url)}" alt="Foto de ${escapeHTML(product.nombre || "publicación")}" loading="lazy">` : ""}
       <h3>${product.tipo === "servicio" ? "Servicio: " : ""}${escapeHTML(product.nombre || "Publicación")}</h3>
       <p class="desc">${escapeHTML(product.descripcion || product.categoria || "")}</p>
       <div class="meta">${escapeHTML(business?.nombre || "Comercio")}${business?.localidad ? " · " + escapeHTML(business.localidad) : ""}${business?.provincia ? ", " + escapeHTML(business.provincia) : ""}</div>
@@ -590,7 +592,7 @@ async function loadCatalog() {
 
   try {
     allProducts = await supabaseGet(
-      "productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id,tipo&disponible=eq.true&order=nombre.asc&limit=200"
+      "productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id,tipo,imagen_url&disponible=eq.true&order=nombre.asc&limit=200"
     );
 
     const ids = [
