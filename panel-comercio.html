@@ -71,6 +71,16 @@ footer strong{color:white}
 .start-guide-reassurance{margin:12px 0 0;text-align:center;color:var(--muted);font-size:.82rem;line-height:1.5}
 .start-invite-link{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;background:#e8f7ef;color:#12613f;border:1px solid #b9e4ca;border-radius:10px;padding:11px 16px;font-weight:850;text-align:center;min-height:44px}
 .start-invite-link:focus-visible{outline:3px solid #65d6a0;outline-offset:2px}
+.onboarding-card{max-width:900px;margin:0 auto 18px;background:linear-gradient(135deg,#eef7fc,#f0f8f3);border:1px solid #cfe1e8;border-radius:16px;padding:18px}
+.onboarding-card h2{margin:0 0 5px;color:var(--navy);font-size:1.2rem}
+.onboarding-card p{margin:0;color:var(--muted);font-size:.9rem}
+.onboarding-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.onboarding-step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.onboarding-step strong{display:block;color:var(--navy);font-size:.9rem;margin-bottom:4px}
+.onboarding-step a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;margin-top:9px;padding:8px 12px;border-radius:9px;background:#e8f7ef;color:#12613f;text-decoration:none;font-size:.83rem;font-weight:850}
+.onboarding-status{margin-top:12px!important;font-weight:750;color:#17633b!important}
+@media(max-width:640px){.onboarding-steps{grid-template-columns:1fr}.onboarding-step{display:block}}
+
 @media(max-width:640px){.start-guide{padding:17px}.start-steps{grid-template-columns:1fr}.start-step{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:start}.start-step-num{grid-row:span 2;margin:0}.start-step strong{margin:1px 0 3px}}
 @media(max-width:640px){.form-grid{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.card{padding:17px}}
 
@@ -213,6 +223,16 @@ footer strong{color:white}
 
 <!-- ======== Administración del comercio ======== -->
 <div class="hidden" id="comercioView">
+<section class="onboarding-card" aria-labelledby="onboardingTitle">
+  <h2 id="onboardingTitle">¡Bienvenido! Vamos a preparar tu primera publicación</h2>
+  <p>Seguí estos tres pasos para que las personas puedan conocer lo que ofrecés. Podés completar lo esencial ahora y mejorar tu presentación después.</p>
+  <div class="onboarding-steps">
+    <article class="onboarding-step"><strong>1. Revisá los datos de tu comercio</strong><p>Confirmá nombre, localidad, contacto y zona de atención.</p><a href="#comercioCard">Revisar mi comercio</a></article>
+    <article class="onboarding-step"><strong>2. Publicá algo que ofrecés</strong><p>Elegí producto o servicio, agregá un nombre claro y una descripción. La foto y el precio son opcionales.</p><a href="#publicationCard">Crear publicación</a></article>
+    <article class="onboarding-step"><strong>3. Comprobá que quedó guardado</strong><p>Encontrá tu publicación en el listado y verificá que figure disponible.</p><a href="#productsCard">Ver mis publicaciones</a></article>
+  </div>
+  <p class="onboarding-status" id="onboardingStatus" role="status" aria-live="polite">Cargando el estado de tus publicaciones…</p>
+</section>
 <nav class="dashboard-nav" aria-label="Accesos rápidos del panel">
 <a href="#comercioCard">Mi comercio</a>
 <a href="#ordersCard">Pedidos</a>
@@ -1763,6 +1783,10 @@ async function loadMisProductos() {
     }
 
     const productos = await response.json();
+    const onboardingStatus = $("onboardingStatus");
+    if (onboardingStatus) onboardingStatus.textContent = productos.length
+      ? `¡Buen comienzo! Ya tenés ${productos.length} publicación(es). Revisá que estén disponibles y con datos actualizados.`
+      : "Todavía no tenés publicaciones. Empezá por el botón «Crear publicación»; podés publicar sin foto y dejar el precio para consultar.";
 
     if (!productos.length) {
       status.textContent = "Todavía no publicaste productos ni servicios.";
