@@ -1595,9 +1595,7 @@ function clearProductForm() {
   $("productSubmit").textContent = "Publicar";
   $("formTitle").textContent = "Publicar producto o servicio";
   $("productCancel").classList.add("hidden");
-  if (productPreviewObjectUrl) URL.revokeObjectURL(productPreviewObjectUrl);
-  productPreviewObjectUrl = null;
-  setProductImagePreview("");
+  resetProductImageSelection();
   setMessage($("productMessage"), "");
   syncPublicationFields();
 }
