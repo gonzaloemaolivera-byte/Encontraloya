@@ -205,6 +205,7 @@ footer strong{color:white}
 <select id="shopSelect" aria-label="Elegir comercio"></select>
 </div>
 <div class="field" style="margin-top:14px"><label for="coverageInput">Zona de cobertura (opcional)</label><textarea id="coverageInput" maxlength="1000" placeholder="Ej.: Moreno, Paso del Rey, La Reja y Merlo"></textarea><small class="hint">Localidades, barrios o zonas donde ofrecés tus servicios o atendés clientes.</small><div class="form-foot"><button class="ghost" id="coverageSave" type="button">Guardar zona de cobertura</button><span class="form-message" id="coverageMessage" role="status"></span></div></div>
+<div class="field" style="margin-top:14px"><label for="businessDescriptionInput">Presentación pública de tu comercio (opcional)</label><textarea id="businessDescriptionInput" maxlength="1000" placeholder="Contá qué ofrecés, qué te diferencia y qué deberían saber tus clientes."></textarea><small class="hint">Este texto aparecerá en tu ficha pública, para que los compradores conozcan mejor tu comercio antes de consultarte.</small><div class="form-foot"><button class="ghost" id="businessDescriptionSave" type="button">Guardar presentación</button><span class="form-message" id="businessDescriptionMessage" role="status"></span></div></div>
 <div class="form-foot">
 <button class="ghost" id="logoutBtn" type="button">Cerrar sesión</button>
 <span class="form-message">Accedés como <strong id="comercioEmail"></strong>.</span>
@@ -706,7 +707,9 @@ $("mpDisconnectButton").addEventListener("click", async () => {
 function renderComercio() {
   $("comercioNombre").textContent = comercio.nombre || "Mi comercio";
   $("coverageInput").value = comercio.cobertura_localidades || "";
+  $("businessDescriptionInput").value = comercio.que_vende || "";
   setMessage($("coverageMessage"), "");
+  setMessage($("businessDescriptionMessage"), "");
   const partes = [comercio.localidad, comercio.provincia, comercio.rubro]
     .filter(Boolean).join(" · ");
   $("comercioDetalle").textContent = partes
@@ -727,6 +730,29 @@ function renderComercio() {
   renderMercadoPagoEstado();
   loadMercadoPagoEstado();
 }
+
+$("businessDescriptionSave").addEventListener("click", async () => {
+  if (!comercio?.id || !session?.access_token) return;
+  const button = $("businessDescriptionSave");
+  button.disabled = true;
+  setMessage($("businessDescriptionMessage"), "Guardando presentación…");
+  const description = $("businessDescriptionInput").value.trim() || null;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/comercios?id=eq.${encodeURIComponent(comercio.id)}`, {
+      method: "PATCH",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ que_vende: description })
+    });
+    if (!response.ok) throw new Error(`No se pudo guardar (error ${response.status}).`);
+    comercio.que_vende = description;
+    const linked = comercios.find(item => item.id === comercio.id);
+    if (linked) linked.que_vende = description;
+    setMessage($("businessDescriptionMessage"), "Presentación guardada. Ya puede mostrarse en tu ficha pública.", "ok");
+  } catch (error) {
+    console.error(error);
+    setMessage($("businessDescriptionMessage"), error.message || "No pudimos guardar la presentación.", "error");
+  } finally { button.disabled = false; }
+});
 
 $("coverageSave").addEventListener("click", async () => {
   if (!comercio?.id || !session?.access_token) return;
@@ -1015,6 +1041,18 @@ async function afterAuth() {
     : (result.data && result.data.id ? [result.data] : []);
 
   if (comercios.length) {
+    // Completa los datos públicos del comercio usando la sesión autenticada y RLS.
+    try {
+      const ids = comercios.map(item => item.id).filter(Boolean);
+      const inList = ids.map(id => `\"${String(id).replace(/"/g, "")}\"`).join(",");
+      if (inList) {
+        const detailResponse = await authenticatedGet(`${SUPABASE_URL}/rest/v1/comercios?select=id,nombre,rubro,que_vende,localidad,provincia,telefono,cobertura_localidades&id=in.(${encodeURIComponent(inList)})`);
+        if (detailResponse.ok) {
+          const details = await detailResponse.json();
+          comercios = comercios.map(item => ({ ...item, ...(details.find(detail => detail.id === item.id) || {}) }));
+        }
+      }
+    } catch (error) { console.warn("No se pudieron cargar todos los datos de presentación del comercio.", error); }
     const anterior = comercio?.id;
     comercio = comercios.find(item => item.id === anterior) || comercios[0];
     showComercioView();
