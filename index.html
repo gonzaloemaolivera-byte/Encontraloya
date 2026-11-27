@@ -590,7 +590,7 @@ async function loadCatalog() {
 
   try {
     allProducts = await supabaseGet(
-      "productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id,tipo&disponible=eq.true&order=nombre.asc&limit=200"
+      "productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id,tipo,imagen_url&disponible=eq.true&order=nombre.asc&limit=200"
     );
 
     const ids = [
