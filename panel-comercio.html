@@ -69,6 +69,7 @@ footer strong{color:white}
 @media(max-width:640px){.start-guide{padding:17px}.start-steps{grid-template-columns:1fr}.start-step{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:start}.start-step-num{grid-row:span 2;margin:0}.start-step strong{margin:1px 0 3px}}
 @media(max-width:640px){.form-grid{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.card{padding:17px}}
 
+.publication-tip{display:flex;flex-direction:column;gap:4px;background:#edf7fb;border:1px solid #cfe1e8;border-radius:12px;padding:13px 15px;margin:0 0 16px;color:#486581;font-size:.88rem}.publication-tip strong{color:var(--navy)}
 .product-image{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:11px;background:#edf2f7;margin:0 0 12px}
 .image-upload-help{display:block;color:var(--muted);font-size:.82rem;margin-top:4px}
 .image-preview{display:block;width:min(100%,320px);max-height:220px;object-fit:cover;border-radius:12px;border:1px solid var(--line);margin-top:10px}
@@ -256,14 +257,15 @@ footer strong{color:white}
 
 <section class="card">
 <h2 id="formTitle">Publicar un producto o servicio</h2>
-<p class="sub">Los productos y servicios publicados aparecen en el catálogo público si están disponibles. Si ofrecés un servicio, elegí “Servicio / trabajo”, poné un nombre claro y describilo; dejá el precio vacío si trabajás con presupuesto. Si hacés varios oficios, publicá cada servicio por separado (por ejemplo: “Pintura de interiores” y “Trabajos de albañilería”) para que puedan encontrarte al buscar cada uno. No se puede borrar: si ya no lo ofrecés, marcálo como no disponible.</p>
+<p class="sub">Publicá lo que vendés o el trabajo que realizás. Completá los datos principales y agregá una foto si tenés; no es obligatorio.</p>
+<div class="publication-tip" id="publicationTip"><strong>Antes de publicar</strong><span>Usá un nombre que tus clientes buscarían. Indicá marca, medida o presentación en el nombre o la descripción cuando corresponda. El precio puede quedar vacío si necesitás confirmar el valor.</span></div>
 <form id="productForm">
 <input type="hidden" id="productId">
 <div class="form-grid">
 <div class="field"><label for="publicationType">¿Qué vas a publicar? *</label><select id="publicationType" required><option value="producto">Producto</option><option value="servicio">Servicio / trabajo</option></select></div>
 <div class="field full"><label for="productName">Nombre del producto o servicio *</label><input id="productName" required maxlength="120"></div>
 <div class="field"><label for="productCategory">Categoría</label><select id="productCategory"><option value="">Sin categoría</option><optgroup label="Comercios generales"><option>Almacén</option><option>Kiosco</option><option>Supermercado</option><option>Autoservicio</option><option>Mayorista</option><option>Polirrubro</option></optgroup><optgroup label="Gastronomía y alimentos"><option>Pizzería</option><option>Panadería</option><option>Confitería y pastelería</option><option>Rotisería</option><option>Restaurante</option><option>Cafetería</option><option>Heladería</option><option>Bar</option><option>Carnicería</option><option>Pollería</option><option>Pescadería</option><option>Verdulería y frutería</option><option>Dietética</option><option>Fábrica de pastas</option><option>Servicio de catering</option></optgroup><optgroup label="Belleza y cuidado personal"><option>Peluquería</option><option>Barbería</option><option>Centro de estética</option><option>Manicuría y uñas</option><option>Cosmética y perfumería</option><option>Spa y masajes</option></optgroup><optgroup label="Indumentaria y accesorios"><option>Indumentaria</option><option>Calzado</option><option>Marroquinería</option><option>Accesorios y bijouterie</option><option>Ropa deportiva</option><option>Lencería</option></optgroup><optgroup label="Hogar, construcción y mantenimiento"><option>Ferretería</option><option>Materiales para construcción</option><option>Pinturería</option><option>Electricidad</option><option>Plomería y sanitarios</option><option>Gas y calefacción</option><option>Muebles</option><option>Bazar y hogar</option><option>Decoración</option><option>Iluminación</option><option>Jardinería y vivero</option><option>Vivero</option><option>Energía solar y paneles solares</option><option>Limpieza</option><option>Aberturas y vidriería</option></optgroup><optgroup label="Automotor, movilidad y repuestos"><option>Repuestos automotores</option><option>Taller mecánico</option><option>Gomería</option><option>Bicicletería</option><option>Motos y repuestos</option><option>Concesionaria de vehículos</option><option>Lavadero de autos</option></optgroup><optgroup label="Tecnología y entretenimiento"><option>Celulares y accesorios</option><option>Informática</option><option>Electrónica</option><option>Audio y video</option><option>Juguetería</option><option>Deportes y camping</option><option>Instrumentos musicales</option><option>Fotografía</option></optgroup><optgroup label="Salud, mascotas y óptica"><option>Farmacia</option><option>Perfumería</option><option>Óptica</option><option>Veterinaria</option><option>Pet shop</option><option>Alimentos para mascotas</option><option>Ortopedia</option></optgroup><optgroup label="Librería, educación y oficina"><option>Librería</option><option>Papelería y artículos de oficina</option><option>Imprenta y gráfica</option></optgroup><optgroup label="Servicios profesionales y personales"><option>Electricista</option><option>Plomero</option><option>Gasista matriculado</option><option>Pintor</option><option>Albañil y contratista</option><option>Carpintería</option><option>Herrero</option><option>Servicio técnico</option><option>Diseño y fotografía</option><option>Clases y apoyo escolar</option><option>Servicios de informática</option><option>Fletes y mudanzas</option><option>Cerrajería</option><option>Costura y arreglos de ropa</option></optgroup><optgroup label="Otros"><option>Otros comercios o servicios</option></optgroup></select></div>
-<div class="field"><label for="productPrice">Precio</label><input id="productPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Vacío = consultar precio"></div>
+<div class="field"><label for="productPrice">Precio de referencia (opcional)</label><input id="productPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Dejá vacío si es a consultar"><small class="image-upload-help" id="priceHelp">Indicá el precio vigente o aproximado. El comercio debe confirmarlo antes de la compra.</small></div>
 <div class="field"><label for="productCurrency">Moneda</label><select id="productCurrency"><option value="ARS">ARS</option><option value="USD">USD</option></select></div>
 <div class="field"><label for="productAvailable">Disponibilidad</label><select id="productAvailable"><option value="true">Disponible</option><option value="false">No disponible</option></select></div>
 <div class="field full"><label for="productDescription">Descripción</label><textarea id="productDescription" maxlength="500" placeholder="Contá qué ofrecés, tus habilidades, experiencia, zona de trabajo, materiales o detalles importantes…"></textarea></div>
@@ -1463,9 +1465,31 @@ function clearProductForm() {
   productPreviewObjectUrl = null;
   setProductImagePreview("");
   setMessage($("productMessage"), "");
+  syncPublicationFields();
 }
 
 $("productCancel").addEventListener("click", clearProductForm);
+
+// Ajusta las indicaciones según el tipo de publicación elegido.
+function syncPublicationFields() {
+  const isService = $("publicationType").value === "servicio";
+  $("formTitle").textContent = isService ? "Publicar un servicio o trabajo" : "Publicar un producto";
+  $("productSubmit").textContent = $("productId").value ? "Guardar cambios" : (isService ? "Publicar servicio" : "Publicar producto");
+  $("productName").placeholder = isService
+    ? "Ej. Pintura de interiores, colocación de cerámicos, manicura"
+    : "Ej. Rodillo para pintar, cemento 50 kg, esmalte semipermanente";
+  $("productDescription").placeholder = isService
+    ? "Describí qué trabajo realizás, experiencia, materiales incluidos y zonas donde trabajás. Si el valor depende del trabajo, dejá el precio vacío."
+    : "Agregá marca, modelo, medida, peso, presentación, color u otros detalles que ayuden a identificar el producto.";
+  $("priceHelp").textContent = isService
+    ? "Si cada trabajo requiere presupuesto, dejá el precio vacío. Podés indicar un valor desde o por hora si corresponde."
+    : "Indicá un precio vigente o aproximado. El comercio debe confirmar el valor y la disponibilidad antes de la compra.";
+  $("publicationTip").querySelector("span").textContent = isService
+    ? "Publicá cada trabajo por separado y nombralo como lo buscaría un cliente. Aclarar las localidades o barrios donde trabajás ayuda a recibir consultas adecuadas."
+    : "Incluí marca, medida, peso o presentación cuando corresponda. Una foto clara ayuda a reconocer el producto; si no tenés foto, podés publicar igual.";
+}
+$("publicationType").addEventListener("change", syncPublicationFields);
+syncPublicationFields();
 
 $("productForm").addEventListener("submit", async event => {
   event.preventDefault();
@@ -1557,6 +1581,7 @@ function llenarParaEditar(producto) {
   $("productPrice").value = producto.precio ?? "";
   $("productCurrency").value = producto.moneda || "ARS";
   $("productAvailable").value = producto.disponible === false ? "false" : "true";
+  syncPublicationFields();
   $("productImageFile").value = "";
   if (productPreviewObjectUrl) URL.revokeObjectURL(productPreviewObjectUrl);
   productPreviewObjectUrl = null;
