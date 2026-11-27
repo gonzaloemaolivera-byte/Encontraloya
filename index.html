@@ -177,6 +177,21 @@ footer strong{color:white}
 .business-profile-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
 .business-profile-actions a{flex:1 1 180px}
 @media(max-width:520px){.business-profile-backdrop{padding:8px}.business-profile{max-height:94vh;border-radius:15px}.business-profile-head,.business-profile-body{padding:17px}.business-profile-facts{grid-template-columns:1fr}}
+.merchant-invite{margin:30px 0;padding:clamp(20px,4vw,32px);border:1px solid #c5e4d7;border-radius:20px;background:linear-gradient(135deg,#effaf5,#fff 72%);box-shadow:0 8px 24px rgba(16,42,67,.05)}
+.merchant-invite-head{max-width:720px;margin:0 auto 20px;text-align:center}
+.merchant-invite-kicker{display:inline-block;margin-bottom:7px;color:#13734f;font-size:.75rem;font-weight:850;letter-spacing:1px;text-transform:uppercase}
+.merchant-invite-head h2{font-size:clamp(1.35rem,3vw,1.9rem);line-height:1.15}
+.merchant-invite-head p{margin:9px 0 0;color:#486581}
+.merchant-invite-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.merchant-invite-benefit{padding:16px;border:1px solid #d9e9e1;border-radius:14px;background:rgba(255,255,255,.9)}
+.merchant-invite-benefit span{display:block;margin-bottom:7px;font-size:1.45rem}
+.merchant-invite-benefit strong{display:block;color:var(--navy);font-size:.98rem}
+.merchant-invite-benefit p{margin:5px 0 0;color:var(--muted);font-size:.86rem}
+.merchant-invite-examples{margin:17px 0 0;color:#486581;text-align:center;font-size:.88rem}
+.merchant-invite-action{display:flex;justify-content:center;margin-top:18px}
+.merchant-invite-action a{display:inline-block;text-align:center;text-decoration:none;background:var(--green);color:white;border-radius:11px;padding:13px 20px;font-weight:850}
+.merchant-invite-note{margin:10px 0 0;text-align:center;color:var(--muted);font-size:.78rem}
+@media(max-width:680px){.merchant-invite-grid{grid-template-columns:1fr}.merchant-invite-benefit{display:grid;grid-template-columns:36px 1fr;column-gap:10px;align-items:start}.merchant-invite-benefit span{grid-row:span 2;margin:0}.merchant-invite-benefit p{margin-top:3px}.merchant-invite-action a{width:100%}}
 </style>
 </head>
 <body>
@@ -476,6 +491,22 @@ footer strong{color:white}
     </div>
   </form>
   <div id="orderConfirmation" class="info hidden" role="status"></div>
+</section>
+
+<section class="merchant-invite" aria-labelledby="merchantInviteTitle">
+  <div class="merchant-invite-head">
+    <span class="merchant-invite-kicker">Para comercios y trabajadores independientes</span>
+    <h2 id="merchantInviteTitle">Hacé que más personas conozcan lo que ofrecés</h2>
+    <p>Sumá tu negocio, oficio o servicio a Encontralo Ya y mostrá tu propuesta en un espacio donde los compradores buscan qué necesitan.</p>
+  </div>
+  <div class="merchant-invite-grid">
+    <article class="merchant-invite-benefit"><span aria-hidden="true">🏪</span><div><strong>Tu comercio, visible</strong><p>Creá una ficha con nombre, rubro, localidad, presentación y datos de contacto.</p></div></article>
+    <article class="merchant-invite-benefit"><span aria-hidden="true">📸</span><div><strong>Mostrá lo que ofrecés</strong><p>Publicá productos o servicios con fotos, descripciones y precios de referencia.</p></div></article>
+    <article class="merchant-invite-benefit"><span aria-hidden="true">💬</span><div><strong>Recibí consultas directas</strong><p>Los interesados pueden conocer tu propuesta y contactarte por WhatsApp.</p></div></article>
+  </div>
+  <p class="merchant-invite-examples">Almacenes · Ferreterías · Gastronomía · Belleza · Oficios · Profesionales · Servicios</p>
+  <div class="merchant-invite-action"><a href="panel-comercio.html">Sumar mi comercio gratis →</a></div>
+  <p class="merchant-invite-note">El registro es gratuito. Publicar no garantiza ventas; cada comercio administra su información y responde sus consultas.</p>
 </section>
 
 <section class="panel" id="registerPanel">
