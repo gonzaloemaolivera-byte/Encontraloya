@@ -192,6 +192,15 @@ footer strong{color:white}
 .merchant-invite-action a{display:inline-block;text-align:center;text-decoration:none;background:var(--green);color:white;border-radius:11px;padding:13px 20px;font-weight:850}
 .merchant-invite-note{margin:10px 0 0;text-align:center;color:var(--muted);font-size:.78rem}
 @media(max-width:680px){.merchant-invite-grid{grid-template-columns:1fr}.merchant-invite-benefit{display:grid;grid-template-columns:36px 1fr;column-gap:10px;align-items:start}.merchant-invite-benefit span{grid-row:span 2;margin:0}.merchant-invite-benefit p{margin-top:3px}.merchant-invite-action a{width:100%}}
+
+/* Compartir Encontralo Ya: difusión simple para compradores */
+.buyer-share{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 auto 28px;padding:18px 20px;border:1px solid #cfe1ec;border-radius:16px;background:linear-gradient(115deg,#eef7fb,#fff)}
+.buyer-share-copy{min-width:0}
+.buyer-share-copy strong{display:block;color:var(--navy);font-size:1rem}
+.buyer-share-copy p{margin:4px 0 0;color:var(--muted);font-size:.86rem}
+.buyer-share-link{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:10px;background:#16845b;color:#fff;text-decoration:none;font-weight:850;text-align:center}
+.buyer-share-link:hover{background:#116b49}
+@media(max-width:560px){.buyer-share{align-items:stretch;flex-direction:column;gap:12px}.buyer-share-link{width:100%}}
 </style>
 </head>
 <body>
@@ -265,6 +274,14 @@ footer strong{color:white}
 <div class="buyer-benefit"><span class="benefit-icon" aria-hidden="true">🤝</span><div><strong>Consultá antes de comprar</strong><small>Confirmá precio y disponibilidad con cada comercio.</small></div></div>
 </div>
 </div>
+
+<section class="wrap buyer-share" aria-label="Compartir Encontralo Ya">
+  <div class="buyer-share-copy">
+    <strong>¿Conocés a alguien que esté buscando algo?</strong>
+    <p>Compartile Encontralo Ya para que también pueda buscar productos, comercios y servicios.</p>
+  </div>
+  <a class="buyer-share-link" id="buyerShare" href="https://wa.me/?text=Encontr%C3%A9%20Encontralo%20Ya%3A%20un%20lugar%20para%20buscar%20productos%2C%20comercios%2C%20profesionales%20y%20servicios.%20Exploralo%20ac%C3%A1%3A%20https%3A%2F%2Fgenuine-nasturtium-f4db10.netlify.app%2F%3Futm_source%3Dwhatsapp%26utm_medium%3Dshare%26utm_campaign%3Dcompradores" target="_blank" rel="noopener noreferrer">💬 Compartir por WhatsApp</a>
+</section>
 
 <main class="wrap">
 <section>
