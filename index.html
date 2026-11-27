@@ -98,6 +98,54 @@ footer strong{color:white}
 .checkout-note{background:#fff8e8;border:1px solid #f0d99c;border-radius:11px;padding:12px;color:#765719;font-size:.88rem;margin:12px 0}
 @media(max-width:520px){.cart-line{align-items:flex-start;flex-direction:column}.qty-controls{width:100%;justify-content:flex-end}}
 
+
+/* Presentación comercial: jerarquía visual, lectura móvil y llamadas a la acción */
+:root{--blue:#1769aa;--green:#16845b;--navy:#102a43}
+header{position:relative;background:linear-gradient(112deg,#0d263d 0%,#123b5d 58%,#1769aa 100%);box-shadow:0 5px 22px rgba(16,42,67,.16)}
+.brand{font-size:1.55rem;letter-spacing:-.8px}
+.brand span{color:#70e1d0}
+.register-link{transition:background .18s,border-color .18s,transform .18s}
+.register-link:hover{background:rgba(255,255,255,.12);border-color:#fff;transform:translateY(-1px)}
+.welcome{padding:24px 0 26px;background:linear-gradient(180deg,#fff 0%,#f8fbfd 100%)}
+.welcome-intro h2{font-size:clamp(1.25rem,3.3vw,1.8rem);line-height:1.2;letter-spacing:-.6px;margin:0 0 8px;color:var(--navy)}
+.welcome-intro p{font-size:.98rem;max-width:680px;margin:0 auto}
+.access-card{position:relative;overflow:hidden;min-height:158px;padding:21px 22px;border-radius:19px;box-shadow:0 8px 24px rgba(16,42,67,.055)}
+.access-card:after{content:"";position:absolute;width:110px;height:110px;border-radius:50%;right:-42px;top:-48px;background:rgba(23,105,170,.055)}
+.access-card.merchant:after{background:rgba(22,132,91,.09)}
+.access-card strong{font-size:1.16rem}
+.access-card .access-cta{font-size:.92rem}
+.hero{position:relative;overflow:hidden;padding:54px 0 48px;background:radial-gradient(circle at 90% 10%,rgba(101,214,223,.27),transparent 30%),linear-gradient(125deg,#e4f5f7 0%,#edf5fb 55%,#f8fbfd 100%)}
+.hero:before{content:"";position:absolute;width:360px;height:360px;border:1px solid rgba(23,105,170,.09);border-radius:50%;right:-170px;bottom:-245px;box-shadow:0 0 0 35px rgba(23,105,170,.025),0 0 0 70px rgba(23,105,170,.02)}
+.hero-grid{position:relative;z-index:1;gap:36px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(23,105,170,.09);letter-spacing:.8px}
+h1{font-size:clamp(2.15rem,5vw,3.65rem);max-width:700px}
+.lead{font-size:1.12rem;line-height:1.6}
+.searchbox{max-width:680px;padding:9px;border-radius:17px;box-shadow:0 15px 38px rgba(16,42,67,.12)}
+.searchbox input{font-size:1rem;padding:13px}
+.primary{background:linear-gradient(135deg,#1769aa,#14568c);box-shadow:0 5px 13px rgba(23,105,170,.2);transition:transform .18s,box-shadow .18s}
+.primary:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(23,105,170,.25)}
+.hero-note{border-radius:20px;padding:25px;box-shadow:0 16px 40px rgba(16,42,67,.09)}
+.hero-note strong{font-size:1.2rem}
+.value-strip{padding:18px 0;background:#fff;border-bottom:1px solid var(--line)}
+.value-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.value-item{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1px solid #e4edf4;border-radius:14px;background:#fbfdff}
+.value-icon{display:grid;place-items:center;flex:0 0 38px;height:38px;border-radius:12px;background:#eaf4fa;font-size:1.15rem}
+.value-item strong{display:block;color:var(--navy);font-size:.9rem}
+.value-item span:last-child{display:block;color:var(--muted);font-size:.79rem;line-height:1.35}
+main{padding-top:34px}
+.section-head{align-items:center}
+.section-head h2{font-size:1.55rem}
+.categories{scrollbar-width:thin;scrollbar-color:#b8cddd transparent}
+.chip{transition:background .16s,border-color .16s,color .16s}
+.chip:not(.active):hover{border-color:var(--blue);color:var(--blue)}
+.product{border-radius:17px;transition:transform .18s,box-shadow .18s,border-color .18s}
+.product:hover{transform:translateY(-3px);border-color:#b9d3e5;box-shadow:0 12px 28px rgba(16,42,67,.09)}
+.panel{border-radius:20px}
+footer{background:linear-gradient(112deg,#0d263d,#123b5d)}
+@media(max-width:760px){.hero{padding:40px 0 36px}.value-grid{grid-template-columns:1fr}.value-item{padding:10px 12px}.hero-note{display:block}}
+@media(max-width:520px){.brand{font-size:1.35rem}.welcome{padding:20px 0}.access-card{min-height:138px;padding:17px}.hero{padding:32px 0 30px}h1{font-size:2.25rem;letter-spacing:-1.2px}.lead{font-size:1rem}.hero-note{padding:17px}.value-strip{padding:12px 0}.value-grid{gap:8px}.value-item{border-radius:12px}.section-head h2{font-size:1.3rem}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+
 </style>
 </head>
 <body>
@@ -118,7 +166,7 @@ footer strong{color:white}
 <section class="welcome" aria-labelledby="welcomeTitle">
   <div class="wrap">
     <div class="welcome-intro">
-      <h1 id="welcomeTitle">¡Bienvenido a Encontralo Ya!</h1>
+      <h2 id="welcomeTitle">Todo lo que necesitás, en un solo lugar</h2>
       <p>Una sola plataforma para encontrar productos, profesionales y servicios de toda Argentina.</p>
     </div>
     <div class="access-grid">
@@ -143,7 +191,7 @@ footer strong{color:white}
 <div>
 <div class="eyebrow">Comprá mejor, cerca tuyo</div>
 <h1>Encontrá lo que necesitás. Compará y comprá.</h1>
-<p class="lead">Buscá productos y servicios de distintos comercios y profesionales en un solo lugar.</p>
+<p class="lead">Buscá productos, compará alternativas y encontrá profesionales y servicios para resolver lo que necesitás.</p>
 <form class="searchbox" id="searchForm">
 <input id="searchInput" type="search" placeholder="¿Qué necesitás? Producto, oficio o servicio…" aria-label="Buscar productos, oficios o servicios">
 <button class="primary" type="submit">Buscar</button>
@@ -151,9 +199,17 @@ footer strong{color:white}
 </div>
 <aside class="hero-note">
 <strong>Una búsqueda, distintas opciones.</strong>
-<p>Encontrá comercios, consultá precios y contactate directamente. La información publicada depende de cada comercio.</p>
+<p>Encontrá distintas opciones, consultá directamente y elegí con más información. Cada comercio confirma sus precios y disponibilidad.</p>
 </aside>
 </div>
+</section>
+
+<section class="value-strip" aria-label="Ventajas de Encontralo Ya">
+  <div class="wrap value-grid">
+    <div class="value-item"><span class="value-icon" aria-hidden="true">🔎</span><div><strong>Buscá y compará</strong><span>Productos, profesionales y servicios en un mismo lugar.</span></div></div>
+    <div class="value-item"><span class="value-icon" aria-hidden="true">📍</span><div><strong>Encontrá opciones</strong><span>Explorá comercios y prestadores por lo que ofrecen.</span></div></div>
+    <div class="value-item"><span class="value-icon" aria-hidden="true">🤝</span><div><strong>Conectá directamente</strong><span>Consultá disponibilidad y condiciones con cada comercio.</span></div></div>
+  </div>
 </section>
 
 <main class="wrap">
