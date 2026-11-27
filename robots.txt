@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /panel-administracion.html
+Disallow: /admin-visitas.html
+Disallow: /estadisticas.html
+Disallow: /panel-comercio.html
+
+Sitemap: https://genuine-nasturtium-f4db10.netlify.app/sitemap.xml
