@@ -449,11 +449,11 @@ footer strong{color:white}
 
 <section class="panel hidden" id="missingActivityPanel" aria-labelledby="missingActivityTitle">
   <h2 id="missingActivityTitle">¿No encontraste ese producto o servicio?</h2>
-  <p>Contanos qué actividad o profesional estás buscando. Vamos a registrar cada pedido para detectar rubros que faltan y en qué localidades se necesitan.</p>
+  <p>Decinos qué producto, comercio, profesional u oficio necesitás y en qué localidad. Registramos tu pedido para identificar qué publicaciones y rubros hacen falta. Enviar la solicitud no garantiza disponibilidad ni una respuesta inmediata.</p>
   <form id="missingActivityForm">
     <div class="form-grid">
-      <div class="field"><label for="missingActivityName">¿Qué servicio o actividad buscás? *</label><input id="missingActivityName" required maxlength="120" placeholder="Ej.: pintor, albañil, plomero"></div>
-      <div class="field"><label for="missingActivityCity">Localidad *</label><input id="missingActivityCity" required maxlength="80" placeholder="Ej.: Moreno"></div>
+      <div class="field"><label for="missingActivityName">¿Qué producto o servicio buscás? *</label><input id="missingActivityName" required maxlength="120" placeholder="Ej.: rodillo para pintar, pinturería, plomero"></div>
+      <div class="field"><label for="missingActivityCity">¿En qué localidad? *</label><input id="missingActivityCity" required maxlength="80" placeholder="Ej.: Moreno">
       <div class="field"><label for="missingActivityProvince">Provincia</label><input id="missingActivityProvince" maxlength="80" placeholder="Ej.: Buenos Aires"></div>
       <div class="field"><label for="missingActivityContact">Contacto (opcional)</label><input id="missingActivityContact" maxlength="100" placeholder="Teléfono o correo"></div>
       <div class="field full"><label for="missingActivityDetail">¿Qué necesitás? (opcional)</label><textarea id="missingActivityDetail" maxlength="700" placeholder="Contanos brevemente qué trabajo necesitás realizar."></textarea></div>
@@ -687,12 +687,19 @@ function renderProducts() {
   });
 
   if (!filtered.length) {
-    grid.innerHTML =
-      '<div class="empty">Todavía no encontramos publicaciones para esa búsqueda. Podés ayudarnos a incorporar esa actividad.</div>';
     const missingPanel = document.getElementById("missingActivityPanel");
-    missingPanel.classList.remove("hidden");
     const activityInput = document.getElementById("missingActivityName");
-    activityInput.value = searchInput.value.trim() || (selectedCategory !== "Todos" ? selectedCategory : "");
+    const requestedTerm = searchInput.value.trim();
+    const hasFilter = Boolean(requestedTerm) || selectedCategory !== "Todos";
+
+    grid.innerHTML = hasFilter
+      ? '<div class="empty"><strong>No encontramos publicaciones que coincidan con tu búsqueda.</strong><p>Puede que todavía no haya un comercio o profesional que haya publicado eso en Encontralo Ya.</p><p>Probá con una palabra más general, revisá la categoría o buscá también en localidades cercanas.</p><p>Si todavía no aparece, contanos qué necesitás y en qué localidad para ayudarnos a detectar qué oferta falta.</p></div>'
+      : '<div class="empty"><strong>Todavía no hay publicaciones disponibles en el catálogo.</strong><p>Podés contarnos qué producto o servicio necesitás y en qué localidad. Eso nos ayuda a detectar qué comercios y profesionales sumar.</p></div>';
+
+    missingPanel.classList.remove("hidden");
+    activityInput.value = requestedTerm || (selectedCategory !== "Todos" ? selectedCategory : "");
+    document.getElementById("missingActivityTitle").textContent =
+      hasFilter ? "¿No encontraste lo que buscabas?" : "¿Qué te gustaría encontrar en Encontralo Ya?";
     return;
   }
   document.getElementById("missingActivityPanel").classList.add("hidden");
