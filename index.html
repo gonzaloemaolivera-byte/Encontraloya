@@ -243,6 +243,11 @@ footer strong{color:white}
 .merchant-share-link:hover{background:#d9f1e4}
 @media(max-width:520px){.merchant-invite-actions{align-items:stretch;flex-direction:column}.merchant-invite-actions a{width:100%}}
 
+
+/* Compartir fichas públicas de comercios y profesionales */
+.business-profile-share{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:11px 16px;border:1px solid #b9d8e8;border-radius:10px;background:#eef7fb;color:#17577d;text-decoration:none;font-weight:800;text-align:center}
+.business-profile-share:hover{background:#e1f0f7}
+
 </style>
 </head>
 <body>
@@ -904,7 +909,13 @@ function openBusinessProfile(businessId) {
       : '<span class="business-profile-item-price">Consultar precio</span>';
     return '<div class="business-profile-item">' + image + '<div class="business-profile-item-copy"><span class="business-profile-item-type">' + (isService ? 'Servicio / trabajo' : 'Producto') + '</span><strong>' + escapeHTML(item.nombre || 'Publicación') + '</strong><p>' + escapeHTML(item.categoria || 'Sin categoría') + (item.descripcion ? ' · ' + escapeHTML(item.descripcion) : '') + '</p>' + price + '</div></div>';
   }).join('') : '<p class="sub">Este comercio todavía no tiene publicaciones disponibles.</p>';
-  document.getElementById('businessProfileActions').innerHTML = whatsapp ? '<a class="primary" href="' + escapeHTML(whatsapp) + '" target="_blank" rel="noopener noreferrer" style="text-align:center;text-decoration:none">Consultar por WhatsApp</a>' : '<span class="sub">El comercio no informó un WhatsApp de contacto.</span>';
+  const shareUrl = new URL(window.location.href);
+  shareUrl.searchParams.set('comercio', String(business.id));
+  const shareText = 'Conocé ' + (business.nombre || 'este comercio') + ' en Encontralo Ya: ' + [business.rubro, location].filter(Boolean).join(' · ') + '. Mirá sus publicaciones y consultá directamente: ' + shareUrl.toString();
+  const shareLink = 'https://wa.me/?text=' + encodeURIComponent(shareText);
+  document.getElementById('businessProfileActions').innerHTML =
+    (whatsapp ? '<a class="primary" href="' + escapeHTML(whatsapp) + '" target="_blank" rel="noopener noreferrer" style="text-align:center;text-decoration:none">Consultar por WhatsApp</a>' : '<span class="sub">El comercio no informó un WhatsApp de contacto.</span>') +
+    '<a class="business-profile-share" href="' + escapeHTML(shareLink) + '" target="_blank" rel="noopener noreferrer">Compartir este comercio</a>';
   modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; document.getElementById('closeBusinessProfile').focus();
 }
 function closeBusinessProfile() { document.getElementById('businessProfileModal').classList.add('hidden'); document.body.style.overflow = ''; }
@@ -942,6 +953,11 @@ async function loadCatalog() {
       `${allProducts.length} publicación(es) encontrada(s) en el catálogo.`;
 
     renderProducts();
+    const sharedBusinessId = new URLSearchParams(window.location.search).get('comercio');
+    if (sharedBusinessId) {
+      const sharedBusiness = allBusinesses.find(item => String(item.id) === String(sharedBusinessId));
+      if (sharedBusiness) openBusinessProfile(sharedBusiness.id);
+    }
   } catch (error) {
     console.error(error);
     status.textContent =
