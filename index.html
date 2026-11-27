@@ -164,10 +164,16 @@ footer strong{color:white}
 .business-profile-fact{padding:12px;border:1px solid var(--line);border-radius:12px;background:#f8fbfd;overflow-wrap:anywhere}
 .business-profile-fact strong{display:block;color:var(--navy);font-size:.78rem;margin-bottom:4px}
 .business-profile-fact span{font-size:.9rem;color:#486581}
-.business-profile-list{display:grid;gap:9px;margin-top:10px}
-.business-profile-item{padding:12px;border:1px solid var(--line);border-radius:11px}
-.business-profile-item strong{display:block;color:var(--navy)}
-.business-profile-item p{margin:4px 0 0;color:var(--muted);font-size:.86rem}
+.business-profile-list{display:grid;gap:10px;margin-top:10px}
+.business-profile-item{display:flex;align-items:center;gap:12px;padding:11px;border:1px solid var(--line);border-radius:13px;background:#fff;min-width:0}
+.business-profile-item img,.business-profile-item-placeholder{width:76px;height:68px;flex:0 0 76px;object-fit:cover;border-radius:9px;background:#edf4f8}
+.business-profile-item-placeholder{display:flex;align-items:center;justify-content:center;font-size:1.7rem;color:#486581}
+.business-profile-item-copy{min-width:0;flex:1}
+.business-profile-item strong{display:block;color:var(--navy);line-height:1.3}
+.business-profile-item p{margin:4px 0 0;color:var(--muted);font-size:.82rem;line-height:1.4}
+.business-profile-item-type{display:inline-block;margin-bottom:4px;color:#486581;font-size:.68rem;font-weight:850;letter-spacing:.4px;text-transform:uppercase}
+.business-profile-item-price{display:block;margin-top:5px;color:#13734f;font-size:.9rem;font-weight:850}
+.business-profile-count{margin:5px 0 0;color:#486581;font-size:.78rem;font-weight:700}
 .business-profile-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
 .business-profile-actions a{flex:1 1 180px}
 @media(max-width:520px){.business-profile-backdrop{padding:8px}.business-profile{max-height:94vh;border-radius:15px}.business-profile-head,.business-profile-body{padding:17px}.business-profile-facts{grid-template-columns:1fr}}
@@ -744,7 +750,24 @@ function openBusinessProfile(businessId) {
   const facts = [['Localidad y provincia', location || 'No informadas'], ['Zona de atención', business.cobertura_localidades || 'No informada'], ['WhatsApp', whatsapp ? 'Disponible para consultas' : 'No disponible'], ['Teléfono informado', phone || 'No informado']];
   document.getElementById('businessProfileFacts').innerHTML = facts.map(([label,value]) => '<div class="business-profile-fact"><strong>' + escapeHTML(label) + '</strong><span>' + escapeHTML(value) + '</span></div>').join('');
   const publications = allProducts.filter(item => String(item.comercio_id) === String(business.id));
-  document.getElementById('businessProfilePublications').innerHTML = publications.length ? publications.map(item => '<div class="business-profile-item"><strong>' + escapeHTML(item.nombre || 'Publicación') + '</strong><p>' + escapeHTML(item.categoria || (item.tipo === 'servicio' ? 'Servicio / trabajo' : 'Producto')) + (item.descripcion ? ' · ' + escapeHTML(item.descripcion) : '') + '</p></div>').join('') : '<p class="sub">Este comercio todavía no tiene publicaciones disponibles.</p>';
+  const publicationList = document.getElementById('businessProfilePublications');
+  const publicationHeading = publicationList.previousElementSibling;
+  if (publicationHeading) {
+    publicationHeading.innerHTML = 'Lo que ofrece este comercio';
+    let count = publicationHeading.querySelector('.business-profile-count');
+    if (!count) { count = document.createElement('span'); count.className = 'business-profile-count'; publicationHeading.appendChild(count); }
+    count.textContent = publications.length + (publications.length === 1 ? ' publicación disponible' : ' publicaciones disponibles');
+  }
+  publicationList.innerHTML = publications.length ? publications.map(item => {
+    const isService = item.tipo === 'servicio';
+    const image = item.imagen_url
+      ? '<img src="' + escapeHTML(item.imagen_url) + '" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement(\'div\'),{className:\'business-profile-item-placeholder\',textContent:\'' + (isService ? '🛠️' : '📦') + '\'}))">'
+      : '<div class="business-profile-item-placeholder" aria-hidden="true">' + (isService ? '🛠️' : '📦') + '</div>';
+    const price = item.precio !== null && item.precio !== undefined && item.precio !== ''
+      ? '<span class="business-profile-item-price">Precio de referencia: ' + escapeHTML(money(item.precio, item.moneda)) + '</span>'
+      : '<span class="business-profile-item-price">Consultar precio</span>';
+    return '<div class="business-profile-item">' + image + '<div class="business-profile-item-copy"><span class="business-profile-item-type">' + (isService ? 'Servicio / trabajo' : 'Producto') + '</span><strong>' + escapeHTML(item.nombre || 'Publicación') + '</strong><p>' + escapeHTML(item.categoria || 'Sin categoría') + (item.descripcion ? ' · ' + escapeHTML(item.descripcion) : '') + '</p>' + price + '</div></div>';
+  }).join('') : '<p class="sub">Este comercio todavía no tiene publicaciones disponibles.</p>';
   document.getElementById('businessProfileActions').innerHTML = whatsapp ? '<a class="primary" href="' + escapeHTML(whatsapp) + '" target="_blank" rel="noopener noreferrer" style="text-align:center;text-decoration:none">Consultar por WhatsApp</a>' : '<span class="sub">El comercio no informó un WhatsApp de contacto.</span>';
   modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; document.getElementById('closeBusinessProfile').focus();
 }
