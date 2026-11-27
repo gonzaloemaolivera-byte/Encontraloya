@@ -1444,7 +1444,9 @@ function llenarParaEditar(producto) {
   $("publicationType").value = producto.tipo || "producto";
   $("productPrice").value = producto.precio ?? "";
   $("productCurrency").value = producto.moneda || "ARS";
-  $("productAvailable").value = producto.disponible === false ? "false" : "true";\n  $("productImage").value = "";\n  $("productImagePreview").textContent = producto.imagen_url ? "Ya tiene una foto. Elegí otra para reemplazarla." : "Todavía no tiene foto.";
+  $("productAvailable").value = producto.disponible === false ? "false" : "true";
+  $("productImage").value = "";
+  $("productImagePreview").textContent = producto.imagen_url ? "Ya tiene una foto. Elegí otra para reemplazarla." : "Todavía no tiene foto.";\n  $("productImage").value = "";\n  $("productImagePreview").textContent = producto.imagen_url ? "Ya tiene una foto. Elegí otra para reemplazarla." : "Todavía no tiene foto.";
   $("productSubmit").textContent = "Guardar cambios";
   $("formTitle").textContent = producto.tipo === "servicio" ? "Editar servicio" : "Editar producto";
   $("productCancel").classList.remove("hidden");
@@ -1505,7 +1507,7 @@ $("productsGrid").addEventListener("click", event => {
   if (!button) return;
 
   authenticatedGet(
-    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo&id=eq.${encodeURIComponent(button.dataset.edit)}`
+    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo,imagen_url&id=eq.${encodeURIComponent(button.dataset.edit)}`
   )
     .then(response => response.json())
     .then(rows => {
