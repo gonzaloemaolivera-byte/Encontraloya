@@ -235,6 +235,14 @@ footer strong{color:white}
 .faq-footnote{margin:16px 0 0;color:var(--muted);font-size:.8rem;text-align:center}
 @media(max-width:650px){.faq-list{grid-template-columns:1fr}.faq-section{padding:18px}.faq-item summary{padding:13px}}
 
+
+/* Invitación compartible para sumar comercios desde la página principal */
+.merchant-invite-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:15px}
+.merchant-invite-actions .merchant-invite-action{margin:0}
+.merchant-share-link{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:11px 16px;border:1px solid #b9e4ca;border-radius:10px;background:#e8f7ef;color:#12613f;text-decoration:none;font-weight:850;text-align:center}
+.merchant-share-link:hover{background:#d9f1e4}
+@media(max-width:520px){.merchant-invite-actions{align-items:stretch;flex-direction:column}.merchant-invite-actions a{width:100%}}
+
 </style>
 </head>
 <body>
@@ -592,7 +600,10 @@ footer strong{color:white}
     <article class="merchant-invite-benefit"><span aria-hidden="true">💬</span><div><strong>Recibí consultas directas</strong><p>Los interesados pueden conocer tu propuesta y contactarte por WhatsApp.</p></div></article>
   </div>
   <p class="merchant-invite-examples">Almacenes · Ferreterías · Gastronomía · Belleza · Oficios · Profesionales · Servicios</p>
-  <div class="merchant-invite-action"><a href="panel-comercio.html">Sumar mi comercio gratis →</a></div>
+  <div class="merchant-invite-actions">
+    <div class="merchant-invite-action"><a href="panel-comercio.html">Sumar mi comercio gratis →</a></div>
+    <a class="merchant-share-link" id="inviteLocalBusiness" href="https://wa.me/?text=%C2%A1Hola!%20Te%20comparto%20Encontralo%20Ya%2C%20una%20plataforma%20argentina%20para%20que%20comercios%2C%20profesionales%20y%20trabajadores%20independientes%20muestren%20sus%20productos%20y%20servicios.%20El%20registro%20es%20gratuito%20y%20pod%C3%A9s%20recibir%20consultas%20de%20potenciales%20clientes.%20Conocela%20y%20sum%C3%A1%20tu%20negocio%3A%20https%3A%2F%2Fgenuine-nasturtium-f4db10.netlify.app%2F%3Futm_source%3Dwhatsapp%26utm_medium%3Dreferral%26utm_campaign%3Dinvitar_comercio" target="_blank" rel="noopener noreferrer">Invitar un comercio por WhatsApp</a>
+  </div>
   <p class="merchant-invite-note">El registro es gratuito. Publicar no garantiza ventas; cada comercio administra su información y responde sus consultas.</p>
 </section>
 
