@@ -69,6 +69,9 @@ footer strong{color:white}
 @media(max-width:640px){.start-guide{padding:17px}.start-steps{grid-template-columns:1fr}.start-step{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:start}.start-step-num{grid-row:span 2;margin:0}.start-step strong{margin:1px 0 3px}}
 @media(max-width:640px){.form-grid{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.card{padding:17px}}
 
+.product-image{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:11px;background:#edf2f7;margin:0 0 12px}
+.image-upload-help{display:block;color:var(--muted);font-size:.82rem;margin-top:4px}
+.image-preview{display:block;width:min(100%,320px);max-height:220px;object-fit:cover;border-radius:12px;border:1px solid var(--line);margin-top:10px}
 .order-card{border:1px solid var(--line);border-radius:14px;padding:15px;margin:10px 0;background:#fff}
 .order-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .order-head strong{color:var(--navy)}
@@ -264,6 +267,7 @@ footer strong{color:white}
 <div class="field"><label for="productCurrency">Moneda</label><select id="productCurrency"><option value="ARS">ARS</option><option value="USD">USD</option></select></div>
 <div class="field"><label for="productAvailable">Disponibilidad</label><select id="productAvailable"><option value="true">Disponible</option><option value="false">No disponible</option></select></div>
 <div class="field full"><label for="productDescription">Descripción</label><textarea id="productDescription" maxlength="500" placeholder="Contá qué ofrecés, tus habilidades, experiencia, zona de trabajo, materiales o detalles importantes…"></textarea></div>
+<div class="field full"><label for="productImageFile">Foto de portada (opcional)</label><input id="productImageFile" type="file" accept="image/jpeg,image/png,image/webp"><small class="image-upload-help">JPG, PNG o WEBP. Máximo 5 MB. Una foto clara ayuda a que las personas reconozcan lo que ofrecés.</small><img id="productImagePreview" class="image-preview hidden" alt="Vista previa de la foto de la publicación"></div>
 </div>
 <div class="form-foot">
 <button class="primary" id="productSubmit" type="submit">Publicar producto</button>
@@ -402,6 +406,69 @@ async function authenticatedRpc(name, body) {
     response = await send();
   }
   return response;
+}
+
+let productPreviewObjectUrl = null;
+function setProductImagePreview(url, altText) {
+  const preview = $("productImagePreview");
+  if (!url) {
+    preview.removeAttribute("src");
+    preview.alt = "Vista previa de la foto de la publicación";
+    preview.classList.add("hidden");
+    return;
+  }
+  preview.src = url;
+  preview.alt = altText || "Vista previa de la foto de la publicación";
+  preview.classList.remove("hidden");
+}
+$("productImageFile").addEventListener("change", () => {
+  const file = $("productImageFile").files?.[0];
+  if (!file) return;
+  if (productPreviewObjectUrl) URL.revokeObjectURL(productPreviewObjectUrl);
+  productPreviewObjectUrl = URL.createObjectURL(file);
+  setProductImagePreview(productPreviewObjectUrl, file.name);
+});
+function validateProductImage(file) {
+  if (!file) return true;
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    setMessage($("productMessage"), "La foto debe ser JPG, PNG o WEBP.", "error");
+    return false;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    setMessage($("productMessage"), "La foto no puede superar los 5 MB.", "error");
+    return false;
+  }
+  return true;
+}
+async function uploadPublicationImage(publicationId, file) {
+  const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" })[file.type];
+  const path = `${comercio.id}/${publicationId}/${crypto.randomUUID()}.${extension}`;
+  const url = `${SUPABASE_URL}/storage/v1/object/productos/${path}`;
+  const send = () => fetch(url, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token || ""}`,
+      "Content-Type": file.type,
+      "x-upsert": "false"
+    },
+    body: file
+  });
+  let response = await send();
+  if (response.status === 401 && await refreshAccessToken()) response = await send();
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    throw new Error(detail.message || detail.error || "No pudimos subir la foto.");
+  }
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/productos/${path}`;
+  const saved = await authenticatedRpc("actualizar_imagen_publicacion", {
+    p_publicacion_id: publicationId,
+    p_imagen_url: publicUrl
+  });
+  const data = await saved.json().catch(() => ({}));
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!saved.ok || !result?.ok) throw new Error(result?.mensaje || "La foto se subió, pero no pudimos asociarla a la publicación.");
+  return publicUrl;
 }
 
 // Las funciones RPC consultadas aquí son STABLE y admiten GET sin cuerpo.
@@ -1392,6 +1459,9 @@ function clearProductForm() {
   $("productSubmit").textContent = "Publicar";
   $("formTitle").textContent = "Publicar producto o servicio";
   $("productCancel").classList.add("hidden");
+  if (productPreviewObjectUrl) URL.revokeObjectURL(productPreviewObjectUrl);
+  productPreviewObjectUrl = null;
+  setProductImagePreview("");
   setMessage($("productMessage"), "");
 }
 
@@ -1400,6 +1470,9 @@ $("productCancel").addEventListener("click", clearProductForm);
 $("productForm").addEventListener("submit", async event => {
   event.preventDefault();
   if (!$("productForm").reportValidity() || !comercio) return;
+
+  const imageFile = $("productImageFile").files?.[0] || null;
+  if (!validateProductImage(imageFile)) return;
 
   const submit = $("productSubmit");
   const editando = Boolean($("productId").value);
@@ -1444,8 +1517,28 @@ $("productForm").addEventListener("submit", async event => {
       return;
     }
 
-    setMessage($("productMessage"), resultado.mensaje, "ok");
-    clearProductForm();
+    let successText = resultado.mensaje;
+    let imageSaved = true;
+    const publicationId = resultado.id || $("productId").value;
+    if (imageFile && publicationId) {
+      try {
+        await uploadPublicationImage(publicationId, imageFile);
+        successText += " Foto guardada correctamente.";
+      } catch (imageError) {
+        console.error(imageError);
+        imageSaved = false;
+        successText += " La publicación quedó guardada, pero la foto no se pudo asociar. Editala y volvé a intentar.";
+      }
+    }
+    if (imageSaved) {
+      clearProductForm();
+    } else {
+      $("productId").value = publicationId || "";
+      $("productSubmit").textContent = "Guardar cambios";
+      $("formTitle").textContent = $("publicationType").value === "servicio" ? "Editar servicio" : "Editar producto";
+      $("productCancel").classList.remove("hidden");
+    }
+    setMessage($("productMessage"), successText, imageSaved ? "ok" : "error");
     loadMisProductos();
   } catch (error) {
     console.error(error);
@@ -1464,6 +1557,10 @@ function llenarParaEditar(producto) {
   $("productPrice").value = producto.precio ?? "";
   $("productCurrency").value = producto.moneda || "ARS";
   $("productAvailable").value = producto.disponible === false ? "false" : "true";
+  $("productImageFile").value = "";
+  if (productPreviewObjectUrl) URL.revokeObjectURL(productPreviewObjectUrl);
+  productPreviewObjectUrl = null;
+  setProductImagePreview(producto.imagen_url || "", producto.nombre || "Foto de la publicación");
   $("productSubmit").textContent = "Guardar cambios";
   $("formTitle").textContent = producto.tipo === "servicio" ? "Editar servicio" : "Editar producto";
   $("productCancel").classList.remove("hidden");
@@ -1482,7 +1579,7 @@ async function loadMisProductos() {
 
   try {
     const response = await authenticatedGet(
-      `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=nombre.asc`
+      `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo,imagen_url&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=nombre.asc`
     );
 
     if (!response.ok) {
@@ -1503,6 +1600,7 @@ async function loadMisProductos() {
     grid.innerHTML = productos.map(producto => {
       const disponible = producto.disponible !== false;
       return `<article class="product">
+        ${producto.imagen_url ? `<img class="product-image" src="${escapeHTML(producto.imagen_url)}" alt="Foto de ${escapeHTML(producto.nombre || "publicación")}" loading="lazy">` : ""}
         <h3>${producto.tipo === "servicio" ? "Servicio: " : "Producto: "}${escapeHTML(producto.nombre || "Publicación")}</h3>
         <p class="desc">${escapeHTML(producto.descripcion || producto.categoria || "")}</p>
         <div class="price">${escapeHTML(money(producto.precio, producto.moneda))}</div>
@@ -1524,7 +1622,7 @@ $("productsGrid").addEventListener("click", event => {
   if (!button) return;
 
   authenticatedGet(
-    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo&id=eq.${encodeURIComponent(button.dataset.edit)}`
+    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo,imagen_url&id=eq.${encodeURIComponent(button.dataset.edit)}`
   )
     .then(response => response.json())
     .then(rows => {
