@@ -1530,7 +1530,14 @@ $("productForm").addEventListener("submit", async event => {
         successText += " La publicación quedó guardada, pero la foto no se pudo asociar. Editala y volvé a intentar.";
       }
     }
-    clearProductForm();
+    if (imageSaved) {
+      clearProductForm();
+    } else {
+      $("productId").value = publicationId || "";
+      $("productSubmit").textContent = "Guardar cambios";
+      $("formTitle").textContent = $("publicationType").value === "servicio" ? "Editar servicio" : "Editar producto";
+      $("productCancel").classList.remove("hidden");
+    }
     setMessage($("productMessage"), successText, imageSaved ? "ok" : "error");
     loadMisProductos();
   } catch (error) {
