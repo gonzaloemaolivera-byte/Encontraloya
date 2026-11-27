@@ -1489,6 +1489,7 @@ function syncPublicationFields() {
     : "Incluí marca, medida, peso o presentación cuando corresponda. Una foto clara ayuda a reconocer el producto; si no tenés foto, podés publicar igual.";
 }
 $("publicationType").addEventListener("change", syncPublicationFields);
+syncPublicationFields();
 
 $("productForm").addEventListener("submit", async event => {
   event.preventDefault();
