@@ -564,16 +564,27 @@ function normalizeArgentinePhone(value) {
 }
 
 // WhatsApp usa el formato internacional argentino 549 + número nacional.
-function whatsappLink(phoneRaw, productName) {
+function whatsappLink(phoneRaw, productName, context = {}) {
   const national = normalizeArgentinePhone(phoneRaw);
   if (!national) return "";
 
   const international = "549" + national;
-  const message = encodeURIComponent(
-    "Hola, vi esta publicación en Encontralo Ya: " +
-    (productName || "") +
-    ". ¿Me confirmás precio y disponibilidad?"
-  );
+  const businessName = String(context.businessName || "").trim();
+  const location = String(context.location || "").trim();
+  const isService = context.isService === true;
+  const price = context.price !== null && context.price !== undefined && context.price !== ""
+    ? money(context.price, context.currency || "ARS")
+    : "";
+  const details = [
+    "Hola, vi esta publicación en Encontralo Ya: " + (productName || "una publicación"),
+    businessName ? "Comercio/prestador: " + businessName : "",
+    location ? "Localidad: " + location : "",
+    price ? "Precio de referencia publicado: " + price : ""
+  ].filter(Boolean);
+  details.push(isService
+    ? "¿Me contás si trabajás en mi zona y cómo puedo pedir un presupuesto?"
+    : "¿Me confirmás el precio final, la disponibilidad y las opciones de entrega o retiro?");
+  const message = encodeURIComponent(details.join("\n"));
 
   return `https://wa.me/${international}?text=${message}`;
 }
@@ -651,7 +662,7 @@ function renderProducts() {
 
   grid.innerHTML = filtered.map(product => {
     const business = businessMap.get(product.comercio_id);
-    const whatsapp = whatsappLink(business?.telefono, product.nombre);
+    const whatsapp = whatsappLink(business?.telefono, product.nombre, { businessName: business?.nombre, location: [business?.localidad, business?.provincia].filter(Boolean).join(", "), isService: product.tipo === "servicio", price: product.precio, currency: product.moneda });
     const isService = product.tipo === "servicio";
     const category = product.categoria
       ? `<span class="product-category">${escapeHTML(product.categoria)}</span>`
