@@ -67,6 +67,8 @@ footer strong{color:white}
 .start-guide-foot{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:16px}
 .start-guide-foot p{margin:0;color:#486581;font-size:.86rem}
 .start-guide-foot a{display:inline-block;text-decoration:none;background:var(--green);color:white;border-radius:10px;padding:11px 16px;font-weight:850}
+.start-guide-foot a.start-login-link{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.start-guide-reassurance{margin:12px 0 0;text-align:center;color:var(--muted);font-size:.82rem;line-height:1.5}
 @media(max-width:640px){.start-guide{padding:17px}.start-steps{grid-template-columns:1fr}.start-step{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:start}.start-step-num{grid-row:span 2;margin:0}.start-step strong{margin:1px 0 3px}}
 @media(max-width:640px){.form-grid{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.card{padding:17px}}
 
@@ -125,9 +127,10 @@ footer strong{color:white}
     </article>
   </div>
   <div class="start-guide-foot">
-    <p>¿Ya tenés una cuenta? Iniciá sesión directamente.</p>
-    <a href="#authCard">Comenzar ahora</a>
+    <a href="#authCard" id="startSignupLink">Crear mi cuenta gratis</a>
+    <a href="#authCard" id="startLoginLink" class="start-login-link">Ya tengo una cuenta</a>
   </div>
+  <p class="start-guide-reassurance">No necesitás tener un local físico para ofrecer tus servicios. Podés publicar sin foto y dejar el precio para consultar cuando necesites preparar un presupuesto. El registro es gratuito; las ventas no están garantizadas.</p>
 </section>
 <!-- ======== Acceso privado ======== -->
 <section class="card" id="authCard">
@@ -880,6 +883,19 @@ $("coverageSave").addEventListener("click", async () => {
 });
 
 // ---------- Flujo de acceso ----------
+
+$("startSignupLink").addEventListener("click", event => {
+  event.preventDefault();
+  setMode("signup");
+  authCard.scrollIntoView({ behavior:"smooth", block:"start" });
+  authEmail.focus({ preventScroll:true });
+});
+$("startLoginLink").addEventListener("click", event => {
+  event.preventDefault();
+  setMode("login");
+  authCard.scrollIntoView({ behavior:"smooth", block:"start" });
+  authEmail.focus({ preventScroll:true });
+});
 
 tabLogin.addEventListener("click", () => setMode("login"));
 tabSignup.addEventListener("click", () => setMode("signup"));
