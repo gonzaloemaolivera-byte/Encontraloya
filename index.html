@@ -348,7 +348,7 @@ footer strong{color:white}
 <div class="grid" id="productGrid"></div>
 <section class="business-profile-backdrop hidden" id="businessProfileModal" role="dialog" aria-modal="true" aria-labelledby="businessProfileTitle">
  <article class="business-profile">
-  <div class="business-profile-head"><div class="business-profile-top"><div><span class="business-profile-kicker">Conocé quién está detrás</span><h2 id="businessProfileTitle">Comercio</h2><p class="sub" id="businessProfileSubtitle"></p></div><button class="business-profile-close" id="closeBusinessProfile" type="button" aria-label="Cerrar ficha">Cerrar ✕</button></div></div>
+  <div class="business-profile-head"><div class="business-profile-top"><div style="display:flex;align-items:center;gap:14px"><img id="businessProfileLogo" class="hidden" alt="Logo del comercio" style="width:76px;height:76px;object-fit:contain;border-radius:16px;background:#fff;padding:5px"><div><span class="business-profile-kicker">Conocé quién está detrás</span><h2 id="businessProfileTitle">Comercio</h2><p class="sub" id="businessProfileSubtitle"></p></div></div><button class="business-profile-close" id="closeBusinessProfile" type="button" aria-label="Cerrar ficha">Cerrar ✕</button></div></div>
   <div class="business-profile-body"><h3 style="margin:0 0 8px;color:var(--navy)">Sobre este comercio</h3><p id="businessProfilePresentation" style="margin:0 0 18px;color:#486581;white-space:pre-wrap"></p><div class="business-profile-facts" id="businessProfileFacts"></div><h3 style="margin:0;color:var(--navy)">Publicaciones de este comercio</h3><div class="business-profile-list" id="businessProfilePublications"></div><div class="business-profile-actions" id="businessProfileActions"></div><p class="sub" style="margin:16px 0 0">La disponibilidad, los precios y las condiciones deben confirmarse directamente con el comercio.</p></div>
  </article>
 </section>
@@ -722,6 +722,10 @@ function openBusinessProfile(businessId) {
   const whatsapp = whatsappLink(phone, 'tu comercio');
   document.getElementById('businessProfileTitle').textContent = business.nombre || 'Comercio o prestador';
   document.getElementById('businessProfileSubtitle').textContent = [business.rubro, location || 'Localidad no informada'].filter(Boolean).join(' · ');
+  const logo = document.getElementById('businessProfileLogo');
+  logo.onerror = () => logo.classList.add('hidden');
+  if (business.logo_url) { logo.src = business.logo_url; logo.classList.remove('hidden'); }
+  else { logo.removeAttribute('src'); logo.classList.add('hidden'); }
   const presentation = String(business.que_vende || '').trim();
   const presentationBox = document.getElementById('businessProfilePresentation');
   presentationBox.textContent = presentation || 'Este comercio todavía no agregó una presentación.';
@@ -760,7 +764,7 @@ async function loadCatalog() {
       ).join(",");
 
       allBusinesses = await supabaseGet(
-        `comercios?select=id,nombre,rubro,que_vende,localidad,provincia,telefono,cobertura_localidades&id=in.(${encodeURIComponent(inList)})`
+        `comercios?select=id,nombre,rubro,que_vende,localidad,provincia,telefono,cobertura_localidades,logo_url&id=in.(${encodeURIComponent(inList)})`
       );
     }
 

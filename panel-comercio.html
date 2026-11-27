@@ -200,6 +200,7 @@ footer strong{color:white}
 <section class="card" id="comercioCard">
 <h2 id="comercioNombre">Mi comercio</h2>
 <p class="sub" id="comercioDetalle"></p>
+<div class="field" style="margin-top:14px"><label for="businessLogoFile">Logo o foto representativa (opcional)</label><input id="businessLogoFile" type="file" accept="image/jpeg,image/png,image/webp"><small class="hint">JPG, PNG o WEBP. Máximo 5 MB. Se mostrará en la ficha pública de tu comercio.</small><img id="businessLogoPreview" class="hidden" alt="Vista previa del logo" style="display:block;max-width:120px;max-height:120px;object-fit:contain;margin-top:10px;border-radius:14px;background:#f4f7fb;padding:6px"><div class="form-foot"><button class="ghost" id="businessLogoSave" type="button">Guardar logo</button><span class="form-message" id="businessLogoMessage" role="status"></span></div></div>
 <div class="field" id="shopSelectorWrap" style="margin-top:14px">
 <label for="shopSelect">Comercio que estás administrando</label>
 <select id="shopSelect" aria-label="Elegir comercio"></select>
@@ -707,6 +708,9 @@ $("mpDisconnectButton").addEventListener("click", async () => {
 function renderComercio() {
   $("comercioNombre").textContent = comercio.nombre || "Mi comercio";
   $("coverageInput").value = comercio.cobertura_localidades || "";
+  $("businessLogoPreview").classList.toggle("hidden", !comercio.logo_url);
+  if (comercio.logo_url) $("businessLogoPreview").src = comercio.logo_url;
+  setMessage($("businessLogoMessage"), "");
   $("businessDescriptionInput").value = comercio.que_vende || "";
   setMessage($("coverageMessage"), "");
   setMessage($("businessDescriptionMessage"), "");
@@ -730,6 +734,64 @@ function renderComercio() {
   renderMercadoPagoEstado();
   loadMercadoPagoEstado();
 }
+
+let businessLogoPreviewUrl = null;
+$("businessLogoFile").addEventListener("change", () => {
+  const file = $("businessLogoFile").files?.[0];
+  if (!file) return;
+  if (businessLogoPreviewUrl) URL.revokeObjectURL(businessLogoPreviewUrl);
+  businessLogoPreviewUrl = URL.createObjectURL(file);
+  $("businessLogoPreview").src = businessLogoPreviewUrl;
+  $("businessLogoPreview").classList.remove("hidden");
+  setMessage($("businessLogoMessage"), "");
+});
+
+$("businessLogoSave").addEventListener("click", async () => {
+  if (!comercio?.id || !session?.access_token) return;
+  const file = $("businessLogoFile").files?.[0];
+  if (!file) { setMessage($("businessLogoMessage"), "Elegí primero una imagen.", "error"); return; }
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    setMessage($("businessLogoMessage"), "La imagen debe ser JPG, PNG o WEBP.", "error"); return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    setMessage($("businessLogoMessage"), "La imagen no puede superar los 5 MB.", "error"); return;
+  }
+  const button = $("businessLogoSave");
+  button.disabled = true;
+  setMessage($("businessLogoMessage"), "Subiendo imagen…");
+  try {
+    const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" })[file.type];
+    const path = `${comercio.id}/logo/${crypto.randomUUID()}.${extension}`;
+    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/productos/${path}`;
+    const send = () => fetch(uploadUrl, {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session?.access_token || ""}`, "Content-Type": file.type, "x-upsert": "false" },
+      body: file
+    });
+    let uploaded = await send();
+    if (uploaded.status === 401 && await refreshAccessToken()) uploaded = await send();
+    if (!uploaded.ok) {
+      const detail = await uploaded.json().catch(() => ({}));
+      throw new Error(detail.message || detail.error || "No pudimos subir la imagen.");
+    }
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/productos/${path}`;
+    const saved = await fetch(`${SUPABASE_URL}/rest/v1/comercios?id=eq.${encodeURIComponent(comercio.id)}`, {
+      method: "PATCH",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ logo_url: publicUrl })
+    });
+    if (!saved.ok) throw new Error("La imagen se subió, pero no pudimos asociarla al comercio.");
+    comercio.logo_url = publicUrl;
+    const linked = comercios.find(item => item.id === comercio.id);
+    if (linked) linked.logo_url = publicUrl;
+    $("businessLogoPreview").src = publicUrl;
+    $("businessLogoFile").value = "";
+    setMessage($("businessLogoMessage"), "Logo guardado. Ya puede verse en tu ficha pública.", "ok");
+  } catch (error) {
+    console.error(error);
+    setMessage($("businessLogoMessage"), error.message || "No pudimos guardar el logo.", "error");
+  } finally { button.disabled = false; }
+});
 
 $("businessDescriptionSave").addEventListener("click", async () => {
   if (!comercio?.id || !session?.access_token) return;
@@ -1046,7 +1108,7 @@ async function afterAuth() {
       const ids = comercios.map(item => item.id).filter(Boolean);
       const inList = ids.map(id => `\"${String(id).replace(/"/g, "")}\"`).join(",");
       if (inList) {
-        const detailResponse = await authenticatedGet(`${SUPABASE_URL}/rest/v1/comercios?select=id,nombre,rubro,que_vende,localidad,provincia,telefono,cobertura_localidades&id=in.(${encodeURIComponent(inList)})`);
+        const detailResponse = await authenticatedGet(`${SUPABASE_URL}/rest/v1/comercios?select=id,nombre,rubro,que_vende,localidad,provincia,telefono,cobertura_localidades,logo_url&id=in.(${encodeURIComponent(inList)})`);
         if (detailResponse.ok) {
           const details = await detailResponse.json();
           comercios = comercios.map(item => ({ ...item, ...(details.find(detail => detail.id === item.id) || {}) }));
