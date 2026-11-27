@@ -151,6 +151,26 @@ footer strong{color:white}
 .product-actions{flex-wrap:wrap;margin-top:auto;padding-top:13px}
 .product-actions .small-btn,.product-actions .add-btn{flex:1 1 130px;min-height:40px}
 @media(max-width:520px){.product-image-placeholder{min-height:175px}.product-card-content{padding:14px}.product-actions .small-btn,.product-actions .add-btn{flex-basis:100%}}
+/* Perfil público del comercio */
+.business-profile-backdrop{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(9,30,48,.68);overflow:auto}
+.business-profile{width:min(720px,100%);max-height:min(88vh,900px);overflow:auto;background:#fff;border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.business-profile-head{padding:24px;background:linear-gradient(130deg,#e5f5f8,#f1f8f5);border-bottom:1px solid var(--line)}
+.business-profile-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.business-profile-head h2{font-size:1.55rem;margin:8px 0 4px}
+.business-profile-kicker{font-size:.74rem;font-weight:850;letter-spacing:.9px;text-transform:uppercase;color:var(--blue)}
+.business-profile-close{border:1px solid #c5d5df;background:#fff;color:var(--navy);border-radius:10px;padding:8px 11px;font-weight:800}
+.business-profile-body{padding:22px}
+.business-profile-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 20px}
+.business-profile-fact{padding:12px;border:1px solid var(--line);border-radius:12px;background:#f8fbfd;overflow-wrap:anywhere}
+.business-profile-fact strong{display:block;color:var(--navy);font-size:.78rem;margin-bottom:4px}
+.business-profile-fact span{font-size:.9rem;color:#486581}
+.business-profile-list{display:grid;gap:9px;margin-top:10px}
+.business-profile-item{padding:12px;border:1px solid var(--line);border-radius:11px}
+.business-profile-item strong{display:block;color:var(--navy)}
+.business-profile-item p{margin:4px 0 0;color:var(--muted);font-size:.86rem}
+.business-profile-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+.business-profile-actions a{flex:1 1 180px}
+@media(max-width:520px){.business-profile-backdrop{padding:8px}.business-profile{max-height:94vh;border-radius:15px}.business-profile-head,.business-profile-body{padding:17px}.business-profile-facts{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -326,6 +346,12 @@ footer strong{color:white}
 </nav>
 <div class="status" id="catalogStatus" role="status">Conectando con el catálogo…</div>
 <div class="grid" id="productGrid"></div>
+<section class="business-profile-backdrop hidden" id="businessProfileModal" role="dialog" aria-modal="true" aria-labelledby="businessProfileTitle">
+ <article class="business-profile">
+  <div class="business-profile-head"><div class="business-profile-top"><div><span class="business-profile-kicker">Conocé quién está detrás</span><h2 id="businessProfileTitle">Comercio</h2><p class="sub" id="businessProfileSubtitle"></p></div><button class="business-profile-close" id="closeBusinessProfile" type="button" aria-label="Cerrar ficha">Cerrar ✕</button></div></div>
+  <div class="business-profile-body"><div class="business-profile-facts" id="businessProfileFacts"></div><h3 style="margin:0;color:var(--navy)">Publicaciones de este comercio</h3><div class="business-profile-list" id="businessProfilePublications"></div><div class="business-profile-actions" id="businessProfileActions"></div><p class="sub" style="margin:16px 0 0">La disponibilidad, los precios y las condiciones deben confirmarse directamente con el comercio.</p></div>
+ </article>
+</section>
 
 <section class="panel hidden" id="orderStatusPanel" aria-labelledby="orderStatusTitle">
   <h2 id="orderStatusTitle">Estado de tu pedido</h2>
@@ -670,6 +696,7 @@ function renderProducts() {
           <small>Precio y disponibilidad sujetos a confirmación del comercio.</small>
         </div>
         <div class="product-actions">
+          <a class="small-btn" href="#" data-view-business="${escapeHTML(business?.id || "")}">Ver comercio</a>
           ${whatsapp
             ? `<a class="small-btn" href="${escapeHTML(whatsapp)}" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>`
             : '<span class="meta">Teléfono no disponible para WhatsApp</span>'
@@ -685,6 +712,28 @@ function renderProducts() {
     </article>`;
   }).join("");
 }
+
+function openBusinessProfile(businessId) {
+  const business = allBusinesses.find(item => String(item.id) === String(businessId));
+  if (!business) return;
+  const modal = document.getElementById('businessProfileModal');
+  const location = [business.localidad, business.provincia].filter(Boolean).join(', ');
+  const phone = String(business.telefono || '').trim();
+  const whatsapp = whatsappLink(phone, 'tu comercio');
+  document.getElementById('businessProfileTitle').textContent = business.nombre || 'Comercio o prestador';
+  document.getElementById('businessProfileSubtitle').textContent = location || 'Localidad no informada';
+  const facts = [['Localidad y provincia', location || 'No informadas'], ['Zona de atención', business.cobertura_localidades || 'No informada'], ['WhatsApp', whatsapp ? 'Disponible para consultas' : 'No disponible'], ['Teléfono informado', phone || 'No informado']];
+  document.getElementById('businessProfileFacts').innerHTML = facts.map(([label,value]) => '<div class="business-profile-fact"><strong>' + escapeHTML(label) + '</strong><span>' + escapeHTML(value) + '</span></div>').join('');
+  const publications = allProducts.filter(item => String(item.comercio_id) === String(business.id));
+  document.getElementById('businessProfilePublications').innerHTML = publications.length ? publications.map(item => '<div class="business-profile-item"><strong>' + escapeHTML(item.nombre || 'Publicación') + '</strong><p>' + escapeHTML(item.categoria || (item.tipo === 'servicio' ? 'Servicio / trabajo' : 'Producto')) + (item.descripcion ? ' · ' + escapeHTML(item.descripcion) : '') + '</p></div>').join('') : '<p class="sub">Este comercio todavía no tiene publicaciones disponibles.</p>';
+  document.getElementById('businessProfileActions').innerHTML = whatsapp ? '<a class="primary" href="' + escapeHTML(whatsapp) + '" target="_blank" rel="noopener noreferrer" style="text-align:center;text-decoration:none">Consultar por WhatsApp</a>' : '<span class="sub">El comercio no informó un WhatsApp de contacto.</span>';
+  modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; document.getElementById('closeBusinessProfile').focus();
+}
+function closeBusinessProfile() { document.getElementById('businessProfileModal').classList.add('hidden'); document.body.style.overflow = ''; }
+document.getElementById('productGrid').addEventListener('click', event => { const trigger = event.target.closest('[data-view-business]'); if (!trigger) return; event.preventDefault(); openBusinessProfile(trigger.dataset.viewBusiness); });
+document.getElementById('closeBusinessProfile').addEventListener('click', closeBusinessProfile);
+document.getElementById('businessProfileModal').addEventListener('click', event => { if (event.target.id === 'businessProfileModal') closeBusinessProfile(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !document.getElementById('businessProfileModal').classList.contains('hidden')) closeBusinessProfile(); });
 
 async function loadCatalog() {
   status.textContent = "Buscando productos y servicios publicados…";
