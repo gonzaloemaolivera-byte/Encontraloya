@@ -584,7 +584,7 @@ function whatsappLink(phoneRaw, productName, context = {}) {
   details.push(isService
     ? "¿Me contás si trabajás en mi zona y cómo puedo pedir un presupuesto?"
     : "¿Me confirmás el precio final, la disponibilidad y las opciones de entrega o retiro?");
-  const message = encodeURIComponent(details.join("\\n"));
+  const message = encodeURIComponent(details.join("\n"));
 
   return `https://wa.me/${international}?text=${message}`;
 }
