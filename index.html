@@ -20,11 +20,49 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "Encontralo Ya",
-  "url": "https://genuine-nasturtium-f4db10.netlify.app/",
-  "inLanguage": "es-AR",
-  "description": "Plataforma para buscar productos, comercios, profesionales y servicios en Argentina."
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://genuine-nasturtium-f4db10.netlify.app/#organization",
+      "name": "Encontralo Ya",
+      "url": "https://genuine-nasturtium-f4db10.netlify.app/",
+      "description": "Plataforma argentina para descubrir productos, comercios, profesionales, oficios y servicios.",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Argentina"
+      },
+      "knowsAbout": ["Productos", "Comercios", "Profesionales", "Oficios", "Servicios"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://genuine-nasturtium-f4db10.netlify.app/#website",
+      "name": "Encontralo Ya",
+      "url": "https://genuine-nasturtium-f4db10.netlify.app/",
+      "inLanguage": "es-AR",
+      "publisher": {"@id": "https://genuine-nasturtium-f4db10.netlify.app/#organization"},
+      "description": "Buscá productos, comercios, profesionales y servicios en Argentina.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://genuine-nasturtium-f4db10.netlify.app/?buscar={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://genuine-nasturtium-f4db10.netlify.app/#preguntas-frecuentes",
+      "mainEntity": [
+        {"@type":"Question","name":"¿Qué puedo encontrar en Encontralo Ya?","acceptedAnswer":{"@type":"Answer","text":"Podés buscar productos de comercios y también profesionales, oficios y servicios de distintas localidades. La oferta depende de los negocios y trabajadores que estén publicados."}},
+        {"@type":"Question","name":"¿Los precios y la disponibilidad están garantizados?","acceptedAnswer":{"@type":"Answer","text":"No. Los precios publicados son de referencia y el stock o la disponibilidad pueden cambiar. Antes de cerrar la compra o contratar, confirmá los detalles directamente con el comercio o profesional."}},
+        {"@type":"Question","name":"¿Cómo consulto por un producto o servicio?","acceptedAnswer":{"@type":"Answer","text":"Desde la publicación podés abrir la ficha del comercio y, cuando tenga WhatsApp habilitado, enviarle una consulta directa para confirmar precio, disponibilidad, entrega o cobertura."}},
+        {"@type":"Question","name":"¿Encontralo Ya cobra por registrarse?","acceptedAnswer":{"@type":"Answer","text":"El registro de comercios y trabajadores independientes es gratuito. Cada vendedor administra sus publicaciones y responde las consultas que recibe."}},
+        {"@type":"Question","name":"¿Puedo publicar si trabajo por mi cuenta?","acceptedAnswer":{"@type":"Answer","text":"Sí. Podés registrarte con tu nombre y oficio, indicar tu localidad y detallar los barrios o zonas donde brindás tus servicios."}},
+        {"@type":"Question","name":"¿Cómo sé quién ofrece lo que estoy buscando?","acceptedAnswer":{"@type":"Answer","text":"Las publicaciones muestran la información disponible del comercio o profesional, como su nombre, rubro y localidad. Revisá esos datos y consultá cualquier duda antes de acordar."}}
+      ]
+    }
+  ]
 }
 </script>
 <title>Encontralo Ya | Productos, comercios y servicios cerca tuyo</title>
@@ -952,6 +990,8 @@ async function loadCatalog() {
     status.textContent =
       `${allProducts.length} publicación(es) encontrada(s) en el catálogo.`;
 
+    const initialSearch = new URLSearchParams(window.location.search).get("buscar");
+    if (initialSearch) searchInput.value = initialSearch;
     renderProducts();
     const sharedBusinessId = new URLSearchParams(window.location.search).get('comercio');
     if (sharedBusinessId) {
@@ -1123,8 +1163,17 @@ document.getElementById("checkoutForm").addEventListener("submit", async event =
   }
 });
 
+function syncSearchUrl() {
+  const url = new URL(window.location.href);
+  const term = searchInput.value.trim();
+  if (term) url.searchParams.set("buscar", term);
+  else url.searchParams.delete("buscar");
+  history.replaceState({}, "", url.toString());
+}
+
 document.getElementById("searchForm").addEventListener("submit", event => {
   event.preventDefault();
+  syncSearchUrl();
   renderProducts();
 });
 
@@ -1133,6 +1182,7 @@ searchInput.addEventListener("input", renderProducts);
 document.querySelectorAll(".quick-search").forEach(button => {
   button.addEventListener("click", () => {
     searchInput.value = button.dataset.search || "";
+    syncSearchUrl();
     selectedCategory = "Todos";
     document.querySelectorAll(".chip").forEach(chip => chip.classList.toggle("active", chip.dataset.category === "Todos"));
     renderProducts();
