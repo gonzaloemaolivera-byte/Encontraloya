@@ -909,9 +909,60 @@ function renderProducts() {
   }).join("");
 }
 
+function updateBusinessSeo(business) {
+  const baseUrl = 'https://genuine-nasturtium-f4db10.netlify.app/';
+  const profileUrl = baseUrl + '?comercio=' + encodeURIComponent(String(business.id));
+  const location = [business.localidad, business.provincia].filter(Boolean).join(', ');
+  const title = (business.nombre || 'Comercio o profesional') + (business.rubro ? ' | ' + business.rubro : '') + ' | Encontralo Ya';
+  const description = [business.nombre, business.rubro, location, String(business.que_vende || '').trim()].filter(Boolean).join(' · ').slice(0, 250) || 'Conocé este comercio o profesional en Encontralo Ya y consultá sus publicaciones.';
+  document.title = title;
+  const setMeta = (selector, attribute, value) => {
+    let element = document.querySelector(selector);
+    if (!element) {
+      element = document.createElement('meta');
+      const parts = selector.match(/\[(name|property)="([^"]+)"\]/);
+      if (parts) element.setAttribute(parts[1], parts[2]);
+      document.head.appendChild(element);
+    }
+    element.setAttribute(attribute, value);
+  };
+  setMeta('meta[name="description"]', 'content', description);
+  setMeta('meta[property="og:title"]', 'content', title);
+  setMeta('meta[property="og:description"]', 'content', description);
+  setMeta('meta[property="og:url"]', 'content', profileUrl);
+  setMeta('meta[name="twitter:title"]', 'content', title);
+  setMeta('meta[name="twitter:description"]', 'content', description);
+  let canonical = document.querySelector('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    document.head.appendChild(canonical);
+  }
+  canonical.href = profileUrl;
+}
+
+function resetBusinessSeo() {
+  const baseUrl = 'https://genuine-nasturtium-f4db10.netlify.app/';
+  document.title = 'Encontralo Ya | Productos, comercios y servicios cerca tuyo';
+  const description = 'Encontrá productos, comercios, profesionales y servicios cerca tuyo. Compará opciones y consultá directamente con cada comercio en Encontralo Ya.';
+  const setContent = (selector, value) => {
+    const element = document.querySelector(selector);
+    if (element) element.setAttribute('content', value);
+  };
+  setContent('meta[name="description"]', description);
+  setContent('meta[property="og:title"]', 'Encontralo Ya | Productos, comercios y servicios cerca tuyo');
+  setContent('meta[property="og:description"]', 'Buscá productos, encontrá comercios y profesionales, compará opciones y consultá directamente.');
+  setContent('meta[property="og:url"]', baseUrl);
+  setContent('meta[name="twitter:title"]', 'Encontralo Ya | Comprá mejor, cerca tuyo');
+  setContent('meta[name="twitter:description"]', 'Productos, comercios, profesionales y servicios en un solo lugar.');
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.href = baseUrl;
+}
+
 function openBusinessProfile(businessId) {
   const business = allBusinesses.find(item => String(item.id) === String(businessId));
   if (!business) return;
+  updateBusinessSeo(business);
   const modal = document.getElementById('businessProfileModal');
   const location = [business.localidad, business.provincia].filter(Boolean).join(', ');
   const phone = String(business.telefono || '').trim();
@@ -956,7 +1007,7 @@ function openBusinessProfile(businessId) {
     '<a class="business-profile-share" href="' + escapeHTML(shareLink) + '" target="_blank" rel="noopener noreferrer">Compartir este comercio</a>';
   modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; document.getElementById('closeBusinessProfile').focus();
 }
-function closeBusinessProfile() { document.getElementById('businessProfileModal').classList.add('hidden'); document.body.style.overflow = ''; }
+function closeBusinessProfile() { document.getElementById('businessProfileModal').classList.add('hidden'); document.body.style.overflow = ''; resetBusinessSeo(); }
 document.getElementById('productGrid').addEventListener('click', event => { const trigger = event.target.closest('[data-view-business]'); if (!trigger) return; event.preventDefault(); openBusinessProfile(trigger.dataset.viewBusiness); });
 document.getElementById('closeBusinessProfile').addEventListener('click', closeBusinessProfile);
 document.getElementById('businessProfileModal').addEventListener('click', event => { if (event.target.id === 'businessProfileModal') closeBusinessProfile(); });
