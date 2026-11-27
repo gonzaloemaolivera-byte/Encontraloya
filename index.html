@@ -222,6 +222,19 @@ footer strong{color:white}
 .buyer-share-link{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:10px;background:#16845b;color:#fff;text-decoration:none;font-weight:850;text-align:center}
 .buyer-share-link:hover{background:#116b49}
 @media(max-width:560px){.buyer-share{align-items:stretch;flex-direction:column;gap:12px}.buyer-share-link{width:100%}}
+
+/* Preguntas frecuentes: transparencia para compradores y comercios */
+.faq-section{margin:30px 0;padding:clamp(20px,4vw,30px);border:1px solid #d7e5ed;border-radius:18px;background:#fff;box-shadow:0 6px 20px rgba(16,42,67,.045)}
+.faq-intro{max-width:720px;margin:0 auto 18px;text-align:center}
+.faq-intro p{margin:7px 0 0;color:var(--muted);font-size:.92rem}
+.faq-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.faq-item{border:1px solid var(--line);border-radius:12px;background:#f9fbfd;overflow:hidden}
+.faq-item summary{padding:14px 16px;color:var(--navy);font-weight:800;cursor:pointer;line-height:1.35}
+.faq-item summary::marker{color:var(--green)}
+.faq-item p{margin:0;padding:0 16px 15px;color:#486581;font-size:.9rem;line-height:1.55}
+.faq-footnote{margin:16px 0 0;color:var(--muted);font-size:.8rem;text-align:center}
+@media(max-width:650px){.faq-list{grid-template-columns:1fr}.faq-section{padding:18px}.faq-item summary{padding:13px}}
+
 </style>
 </head>
 <body>
@@ -529,6 +542,42 @@ footer strong{color:white}
     </div>
   </form>
   <div id="orderConfirmation" class="info hidden" role="status"></div>
+</section>
+
+
+<section class="faq-section" aria-labelledby="faqTitle">
+  <div class="faq-intro">
+    <span class="merchant-invite-kicker">Información clara antes de elegir</span>
+    <h2 id="faqTitle">Preguntas frecuentes</h2>
+    <p>Conocé cómo funciona Encontralo Ya y qué tener en cuenta antes de comprar o publicar.</p>
+  </div>
+  <div class="faq-list">
+    <details class="faq-item">
+      <summary>¿Qué puedo encontrar en Encontralo Ya?</summary>
+      <p>Podés buscar productos de comercios y también profesionales, oficios y servicios de distintas localidades. La oferta depende de los negocios y trabajadores que estén publicados.</p>
+    </details>
+    <details class="faq-item">
+      <summary>¿Los precios y la disponibilidad están garantizados?</summary>
+      <p>No. Los precios publicados son de referencia y el stock o la disponibilidad pueden cambiar. Antes de cerrar la compra o contratar, confirmá los detalles directamente con el comercio o profesional.</p>
+    </details>
+    <details class="faq-item">
+      <summary>¿Cómo consulto por un producto o servicio?</summary>
+      <p>Desde la publicación podés abrir la ficha del comercio y, cuando tenga WhatsApp habilitado, enviarle una consulta directa para confirmar precio, disponibilidad, entrega o cobertura.</p>
+    </details>
+    <details class="faq-item">
+      <summary>¿Encontralo Ya cobra por registrarse?</summary>
+      <p>El registro de comercios y trabajadores independientes es gratuito. Cada vendedor administra sus publicaciones y responde las consultas que recibe.</p>
+    </details>
+    <details class="faq-item">
+      <summary>¿Puedo publicar si trabajo por mi cuenta?</summary>
+      <p>Sí. Podés registrarte con tu nombre y oficio, indicar tu localidad y detallar los barrios o zonas donde brindás tus servicios.</p>
+    </details>
+    <details class="faq-item">
+      <summary>¿Cómo sé quién ofrece lo que estoy buscando?</summary>
+      <p>Las publicaciones muestran la información disponible del comercio o profesional, como su nombre, rubro y localidad. Revisá esos datos y consultá cualquier duda antes de acordar.</p>
+    </details>
+  </div>
+  <p class="faq-footnote">Encontralo Ya conecta compradores con comercios y profesionales; cada operación y sus condiciones se acuerdan con el vendedor o prestador.</p>
 </section>
 
 <section class="merchant-invite" aria-labelledby="merchantInviteTitle">
