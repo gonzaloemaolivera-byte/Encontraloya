@@ -80,6 +80,14 @@ footer strong{color:white}
 .order-items{padding-left:18px;margin:10px 0;color:#486581;font-size:.88rem}
 .order-total{font-weight:850;color:var(--green);margin-top:8px}
 
+
+/* Accesos rápidos del panel, optimizados para pantallas táctiles. */
+.dashboard-nav{position:sticky;top:0;z-index:20;display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;padding:10px max(16px,calc((100% - 1120px)/2));margin:0 0 18px;background:rgba(245,248,251,.96);border-bottom:1px solid var(--line);backdrop-filter:blur(10px);scrollbar-width:thin}
+.dashboard-nav a{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid #c8d8e6;border-radius:999px;background:#fff;color:var(--navy);font-size:.86rem;font-weight:800;text-decoration:none;white-space:nowrap}
+.dashboard-nav a:focus-visible{outline:3px solid #65d6df;outline-offset:2px}
+#comercioCard,#ordersCard,#serviceRequestsCard,#publicationCard,#productsCard{scroll-margin-top:82px}
+@media(max-width:640px){.dashboard-nav{gap:7px;padding:9px 12px;margin-bottom:12px}.dashboard-nav a{padding:10px 13px;font-size:.84rem}}
+
 </style>
 </head>
 <body>
@@ -197,6 +205,13 @@ footer strong{color:white}
 
 <!-- ======== Administración del comercio ======== -->
 <div class="hidden" id="comercioView">
+<nav class="dashboard-nav" aria-label="Accesos rápidos del panel">
+<a href="#comercioCard">Mi comercio</a>
+<a href="#ordersCard">Pedidos</a>
+<a href="#serviceRequestsCard">Solicitudes</a>
+<a href="#publicationCard">Publicar</a>
+<a href="#productsCard">Mis publicaciones</a>
+</nav>
 <section class="card" id="comercioCard">
 <h2 id="comercioNombre">Mi comercio</h2>
 <p class="sub" id="comercioDetalle"></p>
@@ -257,7 +272,7 @@ footer strong{color:white}
   <div id="serviceRequestsList"></div>
 </section>
 
-<section class="card">
+<section class="card" id="publicationCard">
 <h2 id="formTitle">Publicar un producto o servicio</h2>
 <p class="sub">Publicá lo que vendés o el trabajo que realizás. Completá los datos principales y agregá una foto si tenés; no es obligatorio.</p>
 <div class="publication-tip" id="publicationTip"><strong>Antes de publicar</strong><span>Usá un nombre que tus clientes buscarían. Indicá marca, medida o presentación en el nombre o la descripción cuando corresponda. El precio puede quedar vacío si necesitás confirmar el valor.</span></div>
@@ -281,7 +296,7 @@ footer strong{color:white}
 </form>
 </section>
 
-<section class="card" style="max-width:none">
+<section class="card" style="max-width:none" id="productsCard">
 <h2>Mis productos</h2>
 <p class="sub">Publicados con tu comercio. La edición usa funciones del servidor que solo alcanzan a tus propios productos.</p>
 <div class="status" id="productsStatus" role="status" style="color:var(--muted);font-size:.9rem;padding:8px 0"></div>
