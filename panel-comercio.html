@@ -53,6 +53,20 @@ textarea{min-height:85px;resize:vertical}
 footer{background:var(--navy);color:#d7e7f5;padding:23px 0;font-size:.85rem}
 footer strong{color:white}
 .hidden{display:none}
+.start-guide{max-width:900px;margin:0 auto 22px;background:linear-gradient(135deg,#edf7fb,#f1f8f4);border:1px solid #cfe1e8;border-radius:18px;padding:22px}
+.start-guide-head{text-align:center;max-width:650px;margin:0 auto 18px}
+.start-guide-kicker{display:inline-block;color:var(--green);font-size:.76rem;font-weight:850;letter-spacing:.9px;text-transform:uppercase;margin-bottom:5px}
+.start-guide h1{font-size:clamp(1.45rem,4vw,2rem);line-height:1.15;letter-spacing:-.6px;color:var(--navy);margin:0 0 7px}
+.start-guide-head p{margin:0;color:var(--muted);font-size:.94rem}
+.start-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.start-step{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px;min-width:0}
+.start-step-num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;font-weight:850;margin-bottom:9px}
+.start-step strong{display:block;color:var(--navy);margin-bottom:4px}
+.start-step p{font-size:.86rem;color:var(--muted);margin:0}
+.start-guide-foot{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+.start-guide-foot p{margin:0;color:#486581;font-size:.86rem}
+.start-guide-foot a{display:inline-block;text-decoration:none;background:var(--green);color:white;border-radius:10px;padding:11px 16px;font-weight:850}
+@media(max-width:640px){.start-guide{padding:17px}.start-steps{grid-template-columns:1fr}.start-step{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:start}.start-step-num{grid-row:span 2;margin:0}.start-step strong{margin:1px 0 3px}}
 @media(max-width:640px){.form-grid{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.card{padding:17px}}
 
 .order-card{border:1px solid var(--line);border-radius:14px;padding:15px;margin:10px 0;background:#fff}
@@ -76,6 +90,31 @@ footer strong{color:white}
 </header>
 
 <main class="wrap">
+<section class="start-guide" aria-labelledby="startGuideTitle">
+  <div class="start-guide-head">
+    <span class="start-guide-kicker">Bienvenido a Encontralo Ya</span>
+    <h1 id="startGuideTitle">Tu comercio puede empezar a mostrarse acá</h1>
+    <p>Sumate para que más personas encuentren tus productos, tu oficio o tus servicios. El registro no tiene costo.</p>
+  </div>
+  <div class="start-steps" aria-label="Pasos para comenzar">
+    <article class="start-step">
+      <span class="start-step-num" aria-hidden="true">1</span>
+      <div><strong>Creá tu cuenta</strong><p>Usá un correo que puedas abrir y confirmalo desde el mensaje que te enviamos.</p></div>
+    </article>
+    <article class="start-step">
+      <span class="start-step-num" aria-hidden="true">2</span>
+      <div><strong>Contanos qué ofrecés</strong><p>Registrá el nombre, rubro, localidad y datos de contacto de tu comercio o profesión.</p></div>
+    </article>
+    <article class="start-step">
+      <span class="start-step-num" aria-hidden="true">3</span>
+      <div><strong>Publicá y recibí consultas</strong><p>Agregá tus productos o servicios con una descripción y un precio de referencia.</p></div>
+    </article>
+  </div>
+  <div class="start-guide-foot">
+    <p>¿Ya tenés una cuenta? Iniciá sesión directamente.</p>
+    <a href="#authCard">Comenzar ahora</a>
+  </div>
+</section>
 <!-- ======== Acceso privado ======== -->
 <section class="card" id="authCard">
 <h2>Acceso de comercios</h2>
