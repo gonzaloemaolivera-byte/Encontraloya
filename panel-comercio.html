@@ -74,6 +74,7 @@ footer strong{color:white}
 .product-image{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:11px;background:#edf2f7;margin:0 0 12px}
 .image-upload-help{display:block;color:var(--muted);font-size:.82rem;margin-top:4px}
 .image-preview{display:block;width:min(100%,320px);max-height:220px;object-fit:cover;border-radius:12px;border:1px solid var(--line);margin-top:10px}
+.image-choice-status{margin-top:8px;padding:10px 12px;border-radius:10px;background:#f2f6fa;color:#486581;font-size:.84rem;overflow-wrap:anywhere}.image-choice-status.is-ready{background:#eaf7ef;color:#17633b;font-weight:700}
 .order-card{border:1px solid var(--line);border-radius:14px;padding:15px;margin:10px 0;background:#fff}
 .order-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .order-head strong{color:var(--navy)}
@@ -287,7 +288,7 @@ footer strong{color:white}
 <div class="field"><label for="productCurrency">Moneda</label><select id="productCurrency"><option value="ARS">ARS</option><option value="USD">USD</option></select></div>
 <div class="field"><label for="productAvailable">Disponibilidad</label><select id="productAvailable"><option value="true">Disponible</option><option value="false">No disponible</option></select></div>
 <div class="field full"><label for="productDescription">Descripción</label><textarea id="productDescription" maxlength="500" placeholder="Contá qué ofrecés, tus habilidades, experiencia, zona de trabajo, materiales o detalles importantes…"></textarea></div>
-<div class="field full"><label for="productImageFile">Foto de portada (opcional)</label><input id="productImageFile" type="file" accept="image/jpeg,image/png,image/webp"><small class="image-upload-help">JPG, PNG o WEBP. Máximo 5 MB. Una foto clara ayuda a que las personas reconozcan lo que ofrecés.</small><img id="productImagePreview" class="image-preview hidden" alt="Vista previa de la foto de la publicación"></div>
+<div class="field full"><label for="productImageFile">Foto de portada (opcional)</label><input id="productImageFile" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="productImageHelp productImageStatus"><small class="image-upload-help" id="productImageHelp">Elegí una foto desde tu iPhone o sacala con la cámara. JPG, PNG o WEBP, hasta 5 MB. La foto se puede cambiar o quitar antes de publicar.</small><div class="image-choice-status" id="productImageStatus" role="status" aria-live="polite">Todavía no elegiste una foto. Podés publicar igual.</div><img id="productImagePreview" class="image-preview hidden" alt="Vista previa de la foto de la publicación"><button class="ghost hidden" id="productImageRemove" type="button" style="margin-top:10px;min-height:44px">Quitar foto elegida</button></div>
 </div>
 <div class="form-foot">
 <button class="primary" id="productSubmit" type="submit">Publicar producto</button>
@@ -441,13 +442,30 @@ function setProductImagePreview(url, altText) {
   preview.alt = altText || "Vista previa de la foto de la publicación";
   preview.classList.remove("hidden");
 }
+function resetProductImageSelection() {
+  $("productImageFile").value = "";
+  if (productPreviewObjectUrl) URL.revokeObjectURL(productPreviewObjectUrl);
+  productPreviewObjectUrl = null;
+  setProductImagePreview("", "");
+  $("productImageStatus").textContent = "Todavía no elegiste una foto. Podés publicar igual.";
+  $("productImageStatus").classList.remove("is-ready");
+  $("productImageRemove").classList.add("hidden");
+}
 $("productImageFile").addEventListener("change", () => {
   const file = $("productImageFile").files?.[0];
   if (!file) return;
+  if (!validateProductImage(file)) {
+    resetProductImageSelection();
+    return;
+  }
   if (productPreviewObjectUrl) URL.revokeObjectURL(productPreviewObjectUrl);
   productPreviewObjectUrl = URL.createObjectURL(file);
   setProductImagePreview(productPreviewObjectUrl, file.name);
+  $("productImageStatus").textContent = `Foto elegida: ${file.name} · ${(file.size / (1024 * 1024)).toFixed(2)} MB. Revisá la vista previa antes de publicar.`;
+  $("productImageStatus").classList.add("is-ready");
+  $("productImageRemove").classList.remove("hidden");
 });
+$("productImageRemove").addEventListener("click", resetProductImageSelection);
 function validateProductImage(file) {
   if (!file) return true;
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
@@ -1577,9 +1595,7 @@ function clearProductForm() {
   $("productSubmit").textContent = "Publicar";
   $("formTitle").textContent = "Publicar producto o servicio";
   $("productCancel").classList.add("hidden");
-  if (productPreviewObjectUrl) URL.revokeObjectURL(productPreviewObjectUrl);
-  productPreviewObjectUrl = null;
-  setProductImagePreview("");
+  resetProductImageSelection();
   setMessage($("productMessage"), "");
   syncPublicationFields();
 }
@@ -1698,10 +1714,9 @@ function llenarParaEditar(producto) {
   $("productCurrency").value = producto.moneda || "ARS";
   $("productAvailable").value = producto.disponible === false ? "false" : "true";
   syncPublicationFields();
-  $("productImageFile").value = "";
-  if (productPreviewObjectUrl) URL.revokeObjectURL(productPreviewObjectUrl);
-  productPreviewObjectUrl = null;
+  resetProductImageSelection();
   setProductImagePreview(producto.imagen_url || "", producto.nombre || "Foto de la publicación");
+  if (producto.imagen_url) $("productImageStatus").textContent = "Esta publicación ya tiene una foto. Elegí otra si querés reemplazarla.";
   $("productSubmit").textContent = "Guardar cambios";
   $("formTitle").textContent = producto.tipo === "servicio" ? "Editar servicio" : "Editar producto";
   $("productCancel").classList.remove("hidden");
