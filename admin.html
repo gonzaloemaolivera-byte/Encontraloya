@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#102a43">
+<title>Encontralo Ya | Administración</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--ink:#172b4d;--muted:#627d98;--line:#d9e2ec;--paper:#f5f8fb;--green:#16845b;--red:#b42318}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+header{background:var(--navy);color:#fff;padding:18px 0}.wrap{width:min(1050px,calc(100% - 28px));margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-size:1.2rem;font-weight:850}.brand span{color:#65d6df}
+main{padding:28px 0 56px}.card,.metric{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 5px 18px #102a430b}.auth{max-width:440px;margin:30px auto}.auth h1{margin:0 0 6px;font-size:1.5rem}.muted{color:var(--muted)}label{display:block;font-weight:700;font-size:.9rem;margin:14px 0 5px}input{width:100%;padding:12px;border:1px solid #bcccdc;border-radius:9px;font:inherit}.btn{border:0;border-radius:9px;padding:11px 16px;background:var(--blue);color:#fff;font-weight:800;font:inherit;cursor:pointer}.btn.secondary{background:transparent;border:1px solid #8fb5d4;color:#fff}.btn:disabled{opacity:.6}.message{font-size:.9rem;margin-top:12px}.error{color:var(--red)}.ok{color:var(--green)}.hidden{display:none!important}
+h1{font-size:1.65rem;margin:0}.headrow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.metric small{display:block;color:var(--muted);font-weight:650}.metric strong{display:block;font-size:1.45rem;margin-top:7px;overflow-wrap:anywhere}.metric.primary-metric{border-color:#a9d8c5}.metric.primary-metric strong{color:var(--green)}
+.section{margin-top:20px}.section h2{font-size:1.15rem;margin:0 0 12px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:650px;font-size:.9rem}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.8rem}td.num{text-align:right;white-space:nowrap}.pill{display:inline-block;padding:3px 8px;border-radius:999px;background:#fff2cc;color:#805b00;font-size:.78rem;font-weight:750}.pill.paid{background:#e5f5ec;color:#176b43}.note{font-size:.88rem;color:var(--muted);margin-top:14px}.status{margin:12px 0;color:var(--muted);font-size:.9rem}
+@media(max-width:760px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric strong{font-size:1.25rem}.headrow{align-items:flex-start;flex-direction:column}.headrow .btn{align-self:flex-end}}
+</style>
+</head>
+<body>
+<header><div class="wrap top"><div class="brand">Encontralo <span>Ya</span> · Administración</div><button id="logout" class="btn secondary hidden" type="button">Cerrar sesión</button></div></header>
+<main class="wrap">
+<section id="loginCard" class="card auth">
+<h1>Panel de administración</h1><p class="muted">Ingresá con la cuenta administradora de Encontralo Ya.</p>
+<form id="loginForm"><label for="email">Correo electrónico</label><input id="email" type="email" autocomplete="username" required value="administracionencontraloya@gmail.com"><label for="password">Contraseña</label><input id="password" type="password" autocomplete="current-password" required><p><button id="loginButton" class="btn" type="submit">Ingresar</button></p><div id="loginMessage" class="message" role="status"></div></form>
+</section>
+<section id="dashboard" class="hidden">
+<div class="headrow"><div><h1>Mis ganancias</h1><div class="muted">Resumen de comisiones registradas en Encontralo Ya.</div></div><button id="refresh" class="btn" type="button">Actualizar datos</button></div>
+<div id="status" class="status" role="status">Consultando información…</div>
+<div class="metrics">
+<div class="metric"><small>Ventas registradas</small><strong id="sales">$0</strong></div>
+<div class="metric primary-metric"><small>Comisión generada</small><strong id="generated">$0</strong></div>
+<div class="metric"><small>Comisión acreditada</small><strong id="credited">$0</strong></div>
+<div class="metric"><small>Comisión pendiente</small><strong id="pending">$0</strong></div>
+</div>
+<div class="card section"><h2>Historial de comisiones</h2><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Pedido</th><th>Venta</th><th>Comisión</th><th>Acreditada</th><th>Estado</th></tr></thead><tbody id="rows"><tr><td colspan="6">Todavía no hay datos.</td></tr></tbody></table></div><p class="note">Importante: “Generada” es una comisión calculada; “Acreditada” solo refleja importes confirmados en los registros. Este panel no mueve dinero ni marca pagos como cobrados.</p></div>
+</section>
+</main>
+<script>
+(() => {
+"use strict";
+const URL="https://egvchkzktjaitskcqlnr.supabase.co";
+const KEY="sb_publishable_MhdqvUOMFQrImKw0ePCH1g_FU2BpGxj";
+const STORE="ey_admin_session";
+const $=id=>document.getElementById(id);
+let session=null;
+const money=n=>new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:2}).format(Number(n||0));
+const date=v=>v?new Intl.DateTimeFormat("es-AR",{dateStyle:"short",timeStyle:"short"}).format(new Date(v)):"—";
+function showLogin(){ $("loginCard").classList.remove("hidden");$("dashboard").classList.add("hidden");$("logout").classList.add("hidden");}
+function showDashboard(){ $("loginCard").classList.add("hidden");$("dashboard").classList.remove("hidden");$("logout").classList.remove("hidden");}
+function save(data){if(!data){localStorage.removeItem(STORE);session=null;return;}session={access_token:data.access_token,refresh_token:data.refresh_token,email:data.user?.email||data.email||session?.email||""};localStorage.setItem(STORE,JSON.stringify(session));}
+async function auth(path,body){return fetch(URL+"/auth/v1/"+path,{method:body?"POST":"GET",headers:{apikey:KEY,"Content-Type":"application/json"},...(body?{body:JSON.stringify(body)}:{})});}
+async function refresh(){if(!session?.refresh_token)return false;const r=await auth("token?grant_type=refresh_token",{refresh_token:session.refresh_token});if(!r.ok)return false;save(await r.json());return true;}
+async function rpc(){const send=()=>fetch(URL+"/rest/v1/rpc/obtener_resumen_ganancias_admin",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"},body:"{}"});let r=await send();if(r.status===401&&await refresh())r=await send();const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.message||data.msg||"No pudimos consultar el resumen.");return data;}
+function render(data){
+$("sales").textContent=money(data.total_ventas_registradas);$("generated").textContent=money(data.comision_generada);$("credited").textContent=money(data.comision_acreditada);$("pending").textContent=money(data.comision_pendiente);
+const items=Array.isArray(data.operaciones)?data.operaciones:[];
+$("rows").innerHTML=items.length?items.map(x=>{const paid=Number(x.importe_acreditado||0);const state=String(x.estado_comision||"pendiente");return "<tr><td>"+date(x.fecha)+"</td><td>"+String(x.pedido_id||"").slice(0,8)+"…</td><td class='num'>"+money(x.base)+"</td><td class='num'>"+money(x.comision)+" ("+Number(x.porcentaje||0)+"%)</td><td class='num'>"+money(paid)+"</td><td><span class='pill "+(state==="cobrada"?"paid":"")+"'>"+(state==="cobrada"?"Acreditada":state==="pendiente"?"Pendiente":state)+"</span></td></tr>";}).join(""):"<tr><td colspan='6'>Todavía no hay comisiones registradas.</td></tr>";
+}
+async function load(){ $("status").textContent="Actualizando…";try{const d=await rpc();render(d);$("status").textContent="Datos actualizados. Comisión vigente: "+Number(d.porcentaje_actual||5)+"%.";}catch(e){$("status").textContent=e.message;$("status").className="status error";if(/no autorizado/i.test(e.message)){save(null);showLogin();$("loginMessage").textContent="Esta cuenta no tiene permisos de administrador.";}}}
+$("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginButton").disabled=true;$("loginMessage").textContent="Verificando…";try{const r=await auth("token?grant_type=password",{email:$("email").value.trim(),password:$("password").value});const d=await r.json();if(!r.ok)throw new Error(d.msg||d.message||"Correo o contraseña incorrectos.");save(d);if((session.email||"").toLowerCase()!=="administracionencontraloya@gmail.com"){save(null);throw new Error("La cuenta ingresada no es la administradora autorizada.");}showDashboard();await load();}catch(err){$("loginMessage").textContent=err.message;$("loginMessage").className="message error";}finally{$("loginButton").disabled=false;}});
+$("refresh").addEventListener("click",load);
+$("logout").addEventListener("click",()=>{save(null);showLogin();$("password").value="";$("loginMessage").textContent="Sesión cerrada.";});
+(async()=>{try{const raw=localStorage.getItem(STORE);if(!raw)return;session=JSON.parse(raw);let r=await auth("user",null);if(session.access_token)r=await fetch(URL+"/auth/v1/user",{headers:{apikey:KEY,Authorization:"Bearer "+session.access_token}});if(r.status===401&&await refresh())r=await fetch(URL+"/auth/v1/user",{headers:{apikey:KEY,Authorization:"Bearer "+session.access_token}});if(!r.ok)throw new Error("Sesión vencida");const u=await r.json();session.email=u.email||session.email;if(session.email.toLowerCase()!=="administracionencontraloya@gmail.com")throw new Error("Cuenta sin permisos");showDashboard();await load();}catch{save(null);showLogin();}})();
+})();
+</script>
+</body></html>
