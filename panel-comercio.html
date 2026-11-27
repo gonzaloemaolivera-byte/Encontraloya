@@ -41,6 +41,7 @@ textarea{min-height:85px;resize:vertical}
 .ghost{background:white;color:var(--blue);border:1px solid var(--blue);border-radius:10px;padding:11px 16px;font-weight:750}
 .info{background:#e5f5f8;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 16px;color:#334e68;font-size:.9rem}
 .product{background:white;border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:0 4px 14px rgba(16,42,67,.04)}
+.product{display:flex;flex-direction:column;min-width:0;gap:3px;transition:box-shadow .18s ease,border-color .18s ease}.product:hover{border-color:#b8d4e5;box-shadow:0 8px 22px rgba(16,42,67,.08)}.product-image{aspect-ratio:16/10;margin:0 0 10px}.product-placeholder{display:grid;place-items:center;min-height:132px;margin:0 0 10px;border-radius:11px;background:linear-gradient(135deg,#edf7fb,#f0f8f3);color:#52758b;font-size:2rem}.product-kind{display:inline-flex;align-self:flex-start;border-radius:999px;padding:4px 10px;background:#edf4fa;color:#315b78;font-size:.73rem;font-weight:850;letter-spacing:.2px}.product .price-label{margin:8px 0 0;color:var(--muted);font-size:.76rem;font-weight:750}.product .price{margin:1px 0 7px}.product .product-edit{width:100%;min-height:46px;margin-top:auto;font-weight:850}.product .meta{margin-top:2px}
 .product h3{font-size:1.03rem;margin:0 0 5px;color:var(--navy)}
 .product .desc{font-size:.88rem;color:var(--muted);margin:0 0 10px}
 .product .meta{font-size:.82rem;color:var(--muted)}
@@ -1735,20 +1736,20 @@ async function loadMisProductos() {
       return;
     }
 
-    status.textContent = `${productos.length} publicación(es) activas o guardadas.`;
+    status.textContent = `${productos.length} publicación(es) en tu comercio.`;
 
     grid.innerHTML = productos.map(producto => {
       const disponible = producto.disponible !== false;
       return `<article class="product">
-        ${producto.imagen_url ? `<img class="product-image" src="${escapeHTML(producto.imagen_url)}" alt="Foto de ${escapeHTML(producto.nombre || "publicación")}" loading="lazy">` : ""}
-        <h3>${producto.tipo === "servicio" ? "Servicio: " : "Producto: "}${escapeHTML(producto.nombre || "Publicación")}</h3>
-        <p class="desc">${escapeHTML(producto.descripcion || producto.categoria || "")}</p>
-        <div class="price">${escapeHTML(money(producto.precio, producto.moneda))}</div>
+        ${producto.imagen_url ? `<img class="product-image" src="${escapeHTML(producto.imagen_url)}" alt="Foto de ${escapeHTML(producto.nombre || "publicación")}" loading="lazy">` : `<div class="product-placeholder" aria-label="Publicación sin foto">📦</div>`}
+        <span class="product-kind">${producto.tipo === "servicio" ? "SERVICIO / TRABAJO" : "PRODUCTO"}</span>
+        <h3>${escapeHTML(producto.nombre || "Publicación")}</h3>
+        <p class="desc">${escapeHTML(producto.descripcion || producto.categoria || "Sin descripción cargada.")}</p>
         <div class="meta">${escapeHTML(producto.categoria || "Sin categoría")}</div>
+        <div class="price-label">Precio de referencia</div>
+        <div class="price">${escapeHTML(money(producto.precio, producto.moneda))}</div>
         <span class="badge ${disponible ? "on" : "off"}">${disponible ? "Disponible" : "No disponible"}</span>
-        <div class="form-foot">
-          <button class="ghost" type="button" data-edit="${escapeHTML(producto.id)}">Editar</button>
-        </div>
+        <button class="ghost product-edit" type="button" data-edit="${escapeHTML(producto.id)}">Editar publicación</button>
       </article>`;
     }).join("");
   } catch (error) {
