@@ -1487,7 +1487,7 @@ $("productForm").addEventListener("submit", async event => {
     loadMisProductos();
   } catch (error) {
     console.error(error);
-    setMessage($("productMessage"), "Error de conexión. Intentá nuevamente.", "error");
+    setMessage($("productMessage"), error.message || "Error de conexión. Intentá nuevamente.", "error");
   } finally {
     submit.disabled = false;
   }
