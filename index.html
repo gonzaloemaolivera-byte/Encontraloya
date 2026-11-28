@@ -59,6 +59,7 @@ h2{font-size:1.45rem;margin:0;color:var(--navy);letter-spacing:-.4px}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .product{background:white;border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:0 4px 14px rgba(16,42,67,.04);display:flex;flex-direction:column;min-height:210px}
 .product h3{font-size:1.03rem;margin:0 0 5px;color:var(--navy)}
+.product-gallery{display:flex;gap:7px;overflow-x:auto;margin:-2px 0 12px;padding-bottom:4px}.product-gallery .gallery-thumb{flex:0 0 31%;max-width:31%}.product-gallery img{width:100%;height:76px;object-fit:cover;border-radius:10px;background:#edf2f7}
 .desc{font-size:.88rem;color:var(--muted);margin:0 0 12px}
 .meta{font-size:.82rem;color:var(--muted);margin-top:auto}
 .price{font-size:1.2rem;font-weight:850;color:var(--green);margin:9px 0}
@@ -562,7 +563,11 @@ function renderProducts() {
       product.nombre
     );
 
+    const gallery = Array.isArray(product.imagenes_urls) && product.imagenes_urls.length ? product.imagenes_urls : (product.imagen_url ? [product.imagen_url] : []);
+    const galleryHtml = gallery.length ? `<div class="product-gallery" aria-label="Fotos de la publicación">${gallery.map((url, index) => `<div class="gallery-thumb"><img src="${escapeHTML(url)}" alt="Foto ${index + 1} de ${escapeHTML(product.nombre || "publicación")}" loading="lazy"></div>`).join("")}</div>` : "";
+
     return `<article class="product">
+      ${galleryHtml}
       <h3>${product.tipo === "servicio" ? "Servicio: " : ""}${escapeHTML(product.nombre || "Publicación")}</h3>
       <p class="desc">${escapeHTML(product.descripcion || product.categoria || "")}</p>
       <div class="meta">${escapeHTML(business?.nombre || "Comercio")}${business?.localidad ? " · " + escapeHTML(business.localidad) : ""}${business?.provincia ? ", " + escapeHTML(business.provincia) : ""}</div>
@@ -590,7 +595,7 @@ async function loadCatalog() {
 
   try {
     allProducts = await supabaseGet(
-      "productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id,tipo,imagen_url&disponible=eq.true&order=nombre.asc&limit=200"
+      "productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,comercio_id,tipo,imagen_url,imagenes_urls&disponible=eq.true&order=nombre.asc&limit=200"
     );
 
     const ids = [
