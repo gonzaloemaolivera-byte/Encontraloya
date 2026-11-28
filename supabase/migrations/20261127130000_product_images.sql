@@ -26,7 +26,12 @@ set imagenes_urls = pg_catalog.jsonb_build_array(imagen_url)
 where imagen_url is not null
   and imagenes_urls = '[]'::jsonb;
 
-create or replace function public.actualizar_imagenes_publicacion(p_publicacion_id uuid,p_imagenes_urls jsonb)
+-- La función privilegiada vive en un esquema no expuesto por la Data API.
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+grant usage on schema private to authenticated;
+
+create or replace function private._actualizar_imagenes_publicacion(p_publicacion_id uuid,p_imagenes_urls jsonb)
 returns jsonb
 language plpgsql
 security definer
@@ -61,7 +66,7 @@ begin
   loop
     if pg_catalog.length(v_url) > 1000
        or pg_catalog.left(v_url,pg_catalog.length(v_prefix)) <> v_prefix
-       or v_url !~ '\.(jpg|jpeg|png|webp)$' then
+       or v_url !~ '[.](jpg|jpeg|png|webp)$' then
       return pg_catalog.jsonb_build_object('ok',false,'mensaje','Una de las direcciones de foto no es válida para esta publicación.');
     end if;
   end loop;
@@ -76,6 +81,19 @@ begin
     and comercio_id = v_comercio_id;
   return pg_catalog.jsonb_build_object('ok',true,'mensaje','Galería de fotos guardada.');
 end;
+$$;
+
+revoke all on function private._actualizar_imagenes_publicacion(uuid,jsonb) from public,anon;
+grant execute on function private._actualizar_imagenes_publicacion(uuid,jsonb) to authenticated;
+
+-- Punto de entrada RPC no privilegiado; delega en la función privada con control de propietario.
+create or replace function public.actualizar_imagenes_publicacion(p_publicacion_id uuid,p_imagenes_urls jsonb)
+returns jsonb
+language sql
+security invoker
+set search_path=''
+as $$
+  select private._actualizar_imagenes_publicacion(p_publicacion_id,p_imagenes_urls);
 $$;
 
 revoke all on function public.actualizar_imagenes_publicacion(uuid,jsonb) from public,anon;
