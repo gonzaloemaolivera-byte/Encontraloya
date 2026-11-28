@@ -50,6 +50,7 @@ textarea{min-height:85px;resize:vertical}
 .badge.off{background:#f0f4f8;color:#829ab1}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .empty{background:white;border:1px dashed #9fb3c8;border-radius:15px;padding:25px;text-align:center;color:var(--muted)}
+.image-preview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}.image-preview-item{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#edf2f7}.image-preview-item img{width:100%;height:100%;object-fit:cover}.image-preview-item button{position:absolute;top:4px;right:4px;border:0;border-radius:50%;background:#102a43;color:#fff;width:27px;height:27px;font-weight:800}.image-preview-note{grid-column:1/-1;color:var(--muted);font-size:.82rem}@media(max-width:420px){.image-preview-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 footer{background:var(--navy);color:#d7e7f5;padding:23px 0;font-size:.85rem}
 footer strong{color:white}
 .hidden{display:none}
@@ -224,7 +225,7 @@ footer strong{color:white}
 <div class="field"><label for="productPrice">Precio</label><input id="productPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Vacío = consultar precio"></div>
 <div class="field"><label for="productCurrency">Moneda</label><select id="productCurrency"><option value="ARS">ARS</option><option value="USD">USD</option></select></div>
 <div class="field"><label for="productAvailable">Disponibilidad</label><select id="productAvailable"><option value="true">Disponible</option><option value="false">No disponible</option></select></div>
-<div class="field full"><label for="productImage">Foto del producto (opcional)</label><input id="productImage" type="file" accept="image/jpeg,image/png,image/webp"><small>JPG, PNG o WebP. Máximo 5 MB. Los servicios pueden publicarse sin foto.</small><div id="productImagePreview" class="meta" aria-live="polite"></div></div>
+<div class="field full"><label for="productImage">Fotos del producto o servicio (opcional)</label><input id="productImage" type="file" accept="image/jpeg,image/png,image/webp" multiple><small>Hasta 8 fotos por publicación. JPG, PNG o WebP; máximo 5 MB cada una. En iPhone podés seleccionar varias desde Fotos.</small><div id="productImagePreview" class="image-preview-grid" aria-live="polite"></div></div>
 <div class="field full"><label for="productDescription">Descripción</label><textarea id="productDescription" maxlength="500" placeholder="Contá qué ofrecés, tus habilidades, experiencia, zona de trabajo, materiales o detalles importantes…"></textarea></div>
 </div>
 <div class="form-foot">
@@ -1347,6 +1348,50 @@ $("ordersList").addEventListener("click", async event => {
 
 // ---------- Productos ----------
 
+let existingProductImages = [];
+
+function productImageList(product) {
+  if (Array.isArray(product?.imagenes_urls) && product.imagenes_urls.length) return product.imagenes_urls.filter(url => typeof url === "string");
+  return product?.imagen_url ? [product.imagen_url] : [];
+}
+
+function renderProductImagePreview() {
+  const container = $("productImagePreview");
+  if (!container) return;
+  container.innerHTML = existingProductImages.map((url, index) => `
+    <div class="image-preview-item">
+      <img src="${escapeHTML(url)}" alt="Foto actual ${index + 1}">
+      <button type="button" data-remove-existing-image="${index}" aria-label="Quitar foto ${index + 1}">×</button>
+    </div>`).join("");
+  const files = Array.from($("productImage").files || []);
+  if (files.length) {
+    const note = document.createElement("div");
+    note.className = "image-preview-note";
+    note.textContent = files.length + " foto(s) nueva(s) seleccionada(s).";
+    container.appendChild(note);
+    files.forEach(file => {
+      const item = document.createElement("div");
+      item.className = "image-preview-item";
+      const img = document.createElement("img");
+      img.alt = "Vista previa de foto nueva";
+      img.src = URL.createObjectURL(file);
+      img.onload = () => URL.revokeObjectURL(img.src);
+      item.appendChild(img);
+      container.appendChild(item);
+    });
+  } else if (!existingProductImages.length) {
+    container.innerHTML = '<div class="image-preview-note">Todavía no agregaste fotos.</div>';
+  }
+}
+
+$("productImage").addEventListener("change", renderProductImagePreview);
+$("productImagePreview").addEventListener("click", event => {
+  const button = event.target.closest("button[data-remove-existing-image]");
+  if (!button) return;
+  existingProductImages.splice(Number(button.dataset.removeExistingImage), 1);
+  renderProductImagePreview();
+});
+
 function clearProductForm() {
   $("productId").value = "";
   $("productForm").reset();
@@ -1354,7 +1399,10 @@ function clearProductForm() {
   $("productSubmit").textContent = "Publicar";
   $("formTitle").textContent = "Publicar producto o servicio";
   $("productCancel").classList.add("hidden");
-  $("productImage").value = "";\n  $("productImagePreview").textContent = "";\n  setMessage($("productMessage"), "");
+  existingProductImages = [];
+  $("productImage").value = "";
+  renderProductImagePreview();
+  setMessage($("productMessage"), "");
 }
 
 $("productCancel").addEventListener("click", clearProductForm);
@@ -1407,23 +1455,32 @@ $("productForm").addEventListener("submit", async event => {
     }
 
     const savedId = resultado.id || (editando ? $("productId").value : null);
-    const photo = $("productImage").files?.[0];
-    if (photo && savedId) {
-      if (!["image/jpeg","image/png","image/webp"].includes(photo.type) || photo.size > 5 * 1024 * 1024) {
-        throw new Error("La foto debe ser JPG, PNG o WebP y pesar hasta 5 MB.");
+    const photoFiles = Array.from($("productImage").files || []);
+    if (photoFiles.length + existingProductImages.length > 8) {
+      throw new Error("Cada publicación puede tener hasta 8 fotos. Quitá alguna para continuar.");
+    }
+    if (photoFiles.some(photo => !["image/jpeg","image/png","image/webp"].includes(photo.type) || photo.size > 5 * 1024 * 1024)) {
+      throw new Error("Cada foto debe ser JPG, PNG o WebP y pesar hasta 5 MB.");
+    }
+    if (savedId && (photoFiles.length || editando)) {
+      const uploadedUrls = [];
+      for (const photo of photoFiles) {
+        const extension = ({ "image/jpeg":"jpg", "image/png":"png", "image/webp":"webp" })[photo.type];
+        const objectPath = `${comercio.id}/${savedId}/${crypto.randomUUID()}.${extension}`;
+        const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/productos/${objectPath}`, {
+          method:"POST",
+          headers:{ apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${session.access_token}`, "Content-Type":photo.type, "x-upsert":"false" },
+          body:photo
+        });
+        if (!uploadResponse.ok) throw new Error("La publicación se guardó, pero no pudimos subir todas las fotos. Podés editarla e intentarlo otra vez.");
+        uploadedUrls.push(`${SUPABASE_URL}/storage/v1/object/public/productos/${objectPath}`);
       }
-      const extension = ({ "image/jpeg":"jpg", "image/png":"png", "image/webp":"webp" })[photo.type];
-      const objectPath = `${comercio.id}/${savedId}/${crypto.randomUUID()}.${extension}`;
-      const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/productos/${objectPath}`, {
-        method:"POST",
-        headers:{ apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${session.access_token}`, "Content-Type":photo.type, "x-upsert":"false" },
-        body:photo
+      const imageResult = await authenticatedRpc("actualizar_imagenes_publicacion", {
+        p_publicacion_id:savedId,
+        p_imagenes_urls:[...existingProductImages, ...uploadedUrls]
       });
-      if (!uploadResponse.ok) throw new Error("La publicación se guardó, pero no pudimos subir la foto. Podés editarla e intentarlo otra vez.");
-      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/productos/${objectPath}`;
-      const imageResult = await authenticatedRpc("actualizar_imagen_publicacion", { p_publicacion_id:savedId, p_imagen_url:publicUrl });
       const imageData = await imageResult.json().catch(()=>({}));
-      if (!imageResult.ok || !imageData?.ok) throw new Error(imageData?.mensaje || "La foto se subió, pero no pudimos asociarla a la publicación.");
+      if (!imageResult.ok || !imageData?.ok) throw new Error(imageData?.mensaje || "No pudimos guardar la galería de fotos.");
     }
     setMessage($("productMessage"), resultado.mensaje, "ok");
     clearProductForm();
@@ -1446,7 +1503,8 @@ function llenarParaEditar(producto) {
   $("productCurrency").value = producto.moneda || "ARS";
   $("productAvailable").value = producto.disponible === false ? "false" : "true";
   $("productImage").value = "";
-  $("productImagePreview").textContent = producto.imagen_url ? "Ya tiene una foto. Elegí otra para reemplazarla." : "Todavía no tiene foto.";\n  $("productImage").value = "";\n  $("productImagePreview").textContent = producto.imagen_url ? "Ya tiene una foto. Elegí otra para reemplazarla." : "Todavía no tiene foto.";
+  existingProductImages = productImageList(producto);
+  renderProductImagePreview();
   $("productSubmit").textContent = "Guardar cambios";
   $("formTitle").textContent = producto.tipo === "servicio" ? "Editar servicio" : "Editar producto";
   $("productCancel").classList.remove("hidden");
@@ -1465,7 +1523,7 @@ async function loadMisProductos() {
 
   try {
     const response = await authenticatedGet(
-      `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo,imagen_url&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=nombre.asc`
+      `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo,imagen_url,imagenes_urls&comercio_id=eq.${encodeURIComponent(comercio.id)}&order=nombre.asc`
     );
 
     if (!response.ok) {
@@ -1486,6 +1544,7 @@ async function loadMisProductos() {
     grid.innerHTML = productos.map(producto => {
       const disponible = producto.disponible !== false;
       return `<article class="product">
+        ${productImageList(producto).length ? `<div class="image-preview-grid">${productImageList(producto).map(url => `<div class="image-preview-item"><img src="${escapeHTML(url)}" alt="Foto de ${escapeHTML(producto.nombre || "publicación")}"></div>`).join("")}</div>` : ""}
         <h3>${producto.tipo === "servicio" ? "Servicio: " : "Producto: "}${escapeHTML(producto.nombre || "Publicación")}</h3>
         <p class="desc">${escapeHTML(producto.descripcion || producto.categoria || "")}</p>
         <div class="price">${escapeHTML(money(producto.precio, producto.moneda))}</div>
@@ -1507,7 +1566,7 @@ $("productsGrid").addEventListener("click", event => {
   if (!button) return;
 
   authenticatedGet(
-    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo,imagen_url&id=eq.${encodeURIComponent(button.dataset.edit)}`
+    `${SUPABASE_URL}/rest/v1/productos?select=id,nombre,descripcion,categoria,precio,moneda,disponible,tipo,imagen_url,imagenes_urls&id=eq.${encodeURIComponent(button.dataset.edit)}`
   )
     .then(response => response.json())
     .then(rows => {
