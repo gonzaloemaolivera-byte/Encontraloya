@@ -288,6 +288,14 @@ footer strong{color:white}
 .business-profile-share:hover{background:#e1f0f7}
 
 </style>
+
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="/icon-192.svg">
+<meta name="theme-color" content="#102a43">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Encontralo Ya">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 </head>
 <body>
 <header>
@@ -1799,5 +1807,64 @@ registerVisit();
 loadCatalog();
 })();
 </script>
+
+<style>
+#eyInstallBar{position:fixed;z-index:9999;left:12px;right:12px;bottom:12px;max-width:520px;margin:auto;display:flex;align-items:center;gap:12px;padding:12px 14px;background:#102a43;color:#fff;border:1px solid #52728e;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.24);font:inherit}
+#eyInstallBar[hidden]{display:none}
+#eyInstallBar .ey-install-copy{flex:1;font-size:.88rem;line-height:1.3}
+#eyInstallBar strong{display:block;font-size:.96rem}
+#eyInstallBar button{border:0;border-radius:9px;padding:9px 12px;font-weight:800}
+#eyInstallButton{background:#65d6df;color:#102a43}
+#eyInstallClose{background:transparent;color:#fff;padding:6px!important}
+</style>
+<div id="eyInstallBar" hidden role="region" aria-label="Instalar Encontralo Ya">
+  <div class="ey-install-copy"><strong>Encontralo Ya en tu celular</strong>Instalá el acceso directo para entrar más rápido.</div>
+  <button id="eyInstallButton" type="button">Instalar</button>
+  <button id="eyInstallClose" type="button" aria-label="Cerrar">×</button>
+</div>
+<script>
+(() => {
+  let deferredPrompt = null;
+  const bar = document.getElementById("eyInstallBar");
+  const installButton = document.getElementById("eyInstallButton");
+  const closeButton = document.getElementById("eyInstallClose");
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  if (isStandalone || !bar || !installButton) return;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  let dismissed = false;
+  try { dismissed = sessionStorage.getItem("ey_install_dismissed") === "1"; } catch (_) {}
+  bar.hidden = dismissed;
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    deferredPrompt = event;
+    bar.hidden = false;
+  });
+  installButton.addEventListener("click", async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      bar.hidden = true;
+      return;
+    }
+    if (isIOS) {
+      alert('Para instalar Encontralo Ya en tu iPhone:\n1. Abrí esta página en Safari.\n2. Tocá el botón Compartir.\n3. Elegí “Agregar a pantalla de inicio”.\n4. Confirmá con “Agregar”.');
+    } else {
+      alert('Si tu navegador ofrece “Instalar aplicación” o “Agregar a pantalla de inicio”, elegí esa opción para guardar Encontralo Ya en tu celular.');
+    }
+  });
+  closeButton.addEventListener("click", () => {
+    bar.hidden = true;
+    try { sessionStorage.setItem("ey_install_dismissed", "1"); } catch (_) {}
+  });
+  window.addEventListener("appinstalled", () => { bar.hidden = true; });
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(error => console.warn("No se pudo activar el modo instalable:", error));
+    });
+  }
+})();
+</script>
+
 </body>
 </html>
